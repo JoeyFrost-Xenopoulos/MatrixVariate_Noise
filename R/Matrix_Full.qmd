@@ -3,6 +3,12 @@ title: "Matrix_Full"
 format: pdf
 ---
 
+# General Question
+We cluster the trends of measurements across time and group subjects with similar patterns across rows and columns.
+U row covariance asks do measurements at occasions change together? (Across time)
+V col covariance asks do measurements tend to change together? (Time flat)
+
+
 # Matrix-Variate Normal Distribution
 
 - n is the number of subjects
@@ -53,7 +59,9 @@ $$
 \end{align}
 $$
 
-We can initialize $\hat{z}_{ig}$ using k-means. Meaning we define the Mahalonobis distance as
+We can initialize $\hat{z}_{ig}$ using k-means by vectorizing the matrices first. 
+
+Meaning we define the Mahalonobis distance as
 
 $$
 \mathcal{D}_M(\mathbf{X}_i, \mathbf{M}, \mathbf{V}, \mathbf{U}) = \text{tr}\left\{\mathbf{U}^{-1}(\mathbf{X}_i - \mathbf{M})\mathbf{V^{-1}(\mathbf{X}_i - \mathbf{M})^\top} \right\}
@@ -61,7 +69,7 @@ $$
 
 These will form as the foundation for our base Matrix Gaussian Mixture Model (MGMM) updates. Let us try putting that into a function!
 
-## Code
+## MGMM Implementation
 
 ```{r}
 #| label: libraries
@@ -72,19 +80,301 @@ These will form as the foundation for our base Matrix Gaussian Mixture Model (MG
 library(dplyr)
 ```
 
+- `matrix_mahalanobis()` computes the matrix-variate Mahalanobis distance from one matrix to a component mean under the row and column covariance structure. It returns tr(U^{-1} (X - M) V^{-1} (X - M)^T).
+
+- `matrix_mixture_kmeans_init()` builds the starting values for the mixture model using k-means on vectorized matrices. It returns initial mixing proportions, component mean matrices, row covariances, column covariances, and the starting cluster labels. 
+
 ```{r}
 #| label: Mahalonbis_D
 #| warning: false
 #| message: false
 
+# Compute matrix-variate Mahalanobis distance
+matrix_mahalanobis <- function(x, mean_matrix, row_cov, col_cov) {
+	row_cov <- (row_cov + t(row_cov)) / 2
+	col_cov <- (col_cov + t(col_cov)) / 2
+
+	# U^{-1} and V^{-1}
+	row_chol <- chol(row_cov)
+	col_chol <- chol(col_cov)
+	centered <- x - mean_matrix
+	row_inv_centered <- backsolve(row_chol, forwardsolve(t(row_chol), centered))
+	col_inv <- chol2inv(col_chol)
+
+	sum(row_inv_centered * (centered %*% col_inv))
+}
+
+# kmeans initialization
+matrix_mixture_kmeans_init <- function(x_list, g, nstart = 10) {
+	# Extract dimensions
+	n <- length(x_list)
+	r <- nrow(x_list[[1]])
+	p <- ncol(x_list[[1]])
+
+	# vectorize and run kmeans for init
+	x_matrix <- do.call(rbind, lapply(x_list, function(x) as.vector(x)))
+	km <- kmeans(x_matrix, centers = g, nstart = nstart)
+	z <- km$cluster
+
+	mixing_proportions <- numeric(g)
+	mean_matrices <- vector("list", g)
+	row_covariances <- vector("list", g)
+	col_covariances <- vector("list", g)
+
+	# For each component, compute sample mean and covariances from k-means clusters
+	for (component in seq_len(g)) {
+		component_index <- which(z == component)
+		if (length(component_index) == 0) {
+			component_index <- sample.int(n, 1)  # Fallback if k-means created empty cluster
+		}
+
+		component_data <- x_list[component_index]
+		mixing_proportions[component] <- length(component_index) / n
+		# Calculates M_hat
+		mean_matrices[[component]] <- Reduce(`+`, component_data) / length(component_data)
+
+		# M-step for the covariance U and V
+		row_cov <- matrix(0, r, r)
+		col_cov <- matrix(0, p, p)
+		for (x in component_data) {
+			centered <- x - mean_matrices[[component]]
+			row_cov <- row_cov + centered %*% t(centered)
+			col_cov <- col_cov + t(centered) %*% centered
+		}
+		
+		row_cov <- row_cov / (p * length(component_data))
+		col_cov <- col_cov / (r * length(component_data))
+
+		# Regularize
+		row_covariances[[component]] <- (row_cov + t(row_cov)) / 2
+		col_covariances[[component]] <- (col_cov + t(col_cov)) / 2
+
+		# Enforce identifiability scale so that tr(U) = r
+		row_scale <- r / sum(diag(row_covariances[[component]]))
+		row_covariances[[component]] <- row_covariances[[component]] * row_scale
+		col_covariances[[component]] <- col_covariances[[component]] / row_scale
+	}
+
+	list(
+		pi = mixing_proportions,
+		M = mean_matrices,
+		U = row_covariances,
+		V = col_covariances,
+		cluster = z
+	)
+}
+```
+
+- `matrix_variate_log_density()` (Z_igs posterior E-step Update) computes the log-density of a single matrix under the matrix normal distribution. It uses the row covariance and column covariance separately.
+
+- `matrix_variate_mixture_fit()` is the main EM fitter for the matrix variate Gaussian mixture model. It repeatedly does the E-step to compute responsibilities and the M-step to update mixing proportions, means, row covariances, and column covariances until convergence or the iteration limit is reached.
+
+```{r}
+#| label: MGMM_base
+#| warning: false
+#| message: false
+
+# Compute log-density of single matrix under matrix-variate normal
+matrix_variate_log_density <- function(x, mean_matrix, row_cov, col_cov) {
+	row_cov <- (row_cov + t(row_cov)) / 2
+	col_cov <- (col_cov + t(col_cov)) / 2
+
+	# Cholesky decomposition
+	row_chol <- chol(row_cov)
+	col_chol <- chol(col_cov)
+
+	# |U| and |V| for the denominator
+	row_logdet <- 2 * sum(log(diag(row_chol)))
+	col_logdet <- 2 * sum(log(diag(col_chol)))
+
+	# tr(V^{-1} * (X - M)^T * U^{-1} * (X - M))
+	centered <- x - mean_matrix
+	row_inv_centered <- backsolve(row_chol, forwardsolve(t(row_chol), centered))
+	col_inv <- chol2inv(col_chol)
+	trace_form <- sum(row_inv_centered * (centered %*% col_inv))
+
+	r <- nrow(x)
+	p <- ncol(x)
+
+	# Returns log density value
+	-0.5 * (r * p * log(2 * pi) + p * row_logdet + r * col_logdet + trace_form)
+}
+
+matrix_variate_mixture_fit <- function(x_list, g, max_iter = 100, tol = 1e-06,
+																			 nstart = 10, verbose = FALSE) {
+	if (!is.list(x_list) || length(x_list) == 0) {
+		stop("x_list must be a non-empty list of matrices.")
+	}
+
+	n <- length(x_list)
+	r <- nrow(x_list[[1]])
+	p <- ncol(x_list[[1]])
+
+	for (x in x_list) {
+		if (!is.matrix(x) || nrow(x) != r || ncol(x) != p) {
+			stop("All elements of x_list must be matrices with the same dimensions.")
+		}
+	}
+
+	# Initialize parameters using k-means
+	params <- matrix_mixture_kmeans_init(x_list, g = g, nstart = nstart)
+	loglik_trace <- numeric(0)
+	responsibilities <- matrix(0, n, g)  # Will hold posterior probabilities P(z_ig = 1 | X_i)
+
+	log_sum_exp <- function(values) {
+		max_value <- max(values)
+		max_value + log(sum(exp(values - max_value)))
+	}
+
+	# EM loop
+	for (iteration in seq_len(max_iter)) {
+		# E-step
+		log_density <- matrix(NA_real_, nrow = n, ncol = g)
+
+		for (component in seq_len(g)) {
+			for (i in seq_len(n)) {
+				# compute P(X_i | component)
+				log_density[i, component] <- log(params$pi[component]) +
+					matrix_variate_log_density(
+						x = x_list[[i]],
+						mean_matrix = params$M[[component]],
+						row_cov = params$U[[component]],
+						col_cov = params$V[[component]]
+					)
+			}
+		}
+
+		# Normalize log-densities to get responsibilities
+		for (i in seq_len(n)) {
+			row_log_densities <- log_density[i, ]
+			normalizer <- log_sum_exp(row_log_densities)  # numerically stable log-sum-exp
+			responsibilities[i, ] <- exp(row_log_densities - normalizer)  # z_hat_ig
+		}
+
+		# Compute observed data log-likelihood for convergence check
+		current_loglik <- sum(apply(log_density, 1, log_sum_exp))
+		loglik_trace <- c(loglik_trace, current_loglik)
+
+		# Check convergence
+		if (iteration > 1 && abs(loglik_trace[iteration] - loglik_trace[iteration - 1]) < tol) {
+			break
+		}
+
+		# M-step
+		component_sizes <- colSums(responsibilities)  # sum of z_hat_ig over all observations i
+		new_params <- params
+
+		# Update each component's parameters
+		for (component in seq_len(g)) {
+			if (component_sizes[component] <= 0) {
+				next
+			}
+
+			weights <- responsibilities[, component]
+			weights_sum <- component_sizes[component]  # effective sample size for this component
+
+			# Update mean matrix (M-step: M_hat_g)
+			mean_matrix <- matrix(0, r, p)
+			for (i in seq_len(n)) {
+				mean_matrix <- mean_matrix + weights[i] * x_list[[i]]
+			}
+			mean_matrix <- mean_matrix / weights_sum
+
+			# Update row covariance U_hat_g
+			row_cov <- matrix(0, r, r)
+			for (i in seq_len(n)) {
+				centered <- x_list[[i]] - mean_matrix
+				row_cov <- row_cov + weights[i] * (centered %*% solve(params$V[[component]], t(centered)))
+			}
+			row_cov <- row_cov / (p * weights_sum)
+			# Regularize
+			row_cov <- (row_cov + t(row_cov)) / 2 + diag(nrow(row_cov))
+			
+			# Enforce tr(U) = r
+			row_scale <- r / sum(diag(row_cov))
+			row_cov <- row_cov * row_scale
+
+			# Update column covariance V_hat_g
+			col_cov <- matrix(0, p, p)
+			for (i in seq_len(n)) {
+				centered <- x_list[[i]] - mean_matrix
+				col_cov <- col_cov + weights[i] * (t(centered) %*% solve(row_cov, centered))
+			}
+			col_cov <- col_cov / (r * weights_sum)
+			# Regularize
+			col_cov <- (col_cov + t(col_cov)) / 2 + diag(nrow(col_cov))
+
+			# Store updated parameters
+			new_params$pi[component] <- weights_sum / n  # mixing proportion
+			new_params$M[[component]] <- mean_matrix
+			new_params$U[[component]] <- row_cov
+			new_params$V[[component]] <- col_cov
+		}
+
+		# Normalize mixing proportions to sum to 1
+		new_params$pi <- new_params$pi / sum(new_params$pi)
+
+		params <- new_params
+
+		if (verbose) {
+			message(sprintf("Iteration %d: log-likelihood = %.4f", iteration, current_loglik))
+		}
+	}
+
+	# Assign each observation to its most likely component
+	cluster_membership <- max.col(responsibilities, ties.method = "first")
+
+	# Return fitted model with all parameters and diagnostics
+	list(
+		pi = params$pi,
+		M = params$M,
+		U = params$U,
+		V = params$V,
+		z = responsibilities,
+		cluster = cluster_membership,
+		logLik = loglik_trace,
+		iterations = length(loglik_trace),
+		converged = length(loglik_trace) < max_iter
+	)
+}
 
 ```
 
 ```{r}
-#| label: MGMM
+#| label: fit_ex
 #| warning: false
 #| message: false
 
+set.seed(123)
+
+simulate_matrix_group <- function(n, mean_matrix, row_sd = 0.35, col_sd = 0.35) {
+	r <- nrow(mean_matrix)
+	p <- ncol(mean_matrix)
+
+	row_cov <- diag(row_sd, r)
+	col_cov <- diag(col_sd, p)
+
+	lapply(seq_len(n), function(i) {
+		noise <- matrix(rnorm(r * p), r, p)
+		mean_matrix + row_cov %*% noise %*% col_cov
+	})
+}
+
+mean_1 <- matrix(c(1.5, 1.2, 1.0, 1.3,
+					 1.1, 1.4, 1.2, 1.0), nrow = 2, byrow = TRUE)
+mean_2 <- matrix(c(-1.4, -1.0, -1.2, -1.3,
+					 -1.1, -1.5, -1.0, -1.2), nrow = 2, byrow = TRUE)
+
+x_list <- c(
+	simulate_matrix_group(n = 15, mean_matrix = mean_1),
+	simulate_matrix_group(n = 15, mean_matrix = mean_2)
+)
+
+fit <- matrix_variate_mixture_fit(x_list = x_list, g = 2, max_iter = 50, verbose = TRUE)
+
+fit$cluster
+fit$pi
+fit$logLik
 
 ```
 
