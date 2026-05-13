@@ -78,6 +78,7 @@ These will form as the foundation for our base Matrix Gaussian Mixture Model (MG
 
 library(dplyr)
 library(clusterGeneration)
+library(ggplot2)
 ```
 
 - `matrix_mahalanobis()` computes the matrix-variate Mahalanobis distance from one matrix to a component mean under the row and column covariance structure. It returns tr(U^{-1} (X - M) V^{-1} (X - M)^T).
@@ -758,4 +759,142 @@ summary_df <- data.frame(
 
 print(head(summary_df[order(-summary_df$Accuracy), ], 10))
 print(head(summary_df[order(summary_df$Accuracy), ], 10))
+```
+
+## Functional Data
+
+Here we test the matrix-variate clustering model on functional data represented as image matrices (hearts vs random squares). Each observation is a 12×12 matrix with grayscale values and added noise.
+
+```{r}
+sim_function<-function(Ea,Eb,Ec,x,basis,fun){
+  a=rnorm(30,Ea,0.4^2)
+  b=rnorm(30,Eb,0.4^2)
+  c=rnorm(30,Ec,0.4^2)
+  y=a*fun(x-b)+c
+  return(data.frame(basis,y=y))}
+
+plotImage<-function(m){
+  df <- as.data.frame(as.table(m))  
+  df$Var1 <- as.numeric(df$Var1)
+  df$Var2 <- as.numeric(df$Var2)
+  
+  ggplot(df, aes(x = Var2, y = Var1, fill = Freq)) +
+    geom_tile() +
+    scale_y_reverse() +       
+    coord_fixed() +          
+    scale_fill_gradient(low = "white", high = "black") +  
+    theme_void()   +theme(legend.position = "none")
+}
+
+make_shape<-function(shape){
+  if(shape=="heart"){
+    m <- matrix(0, 12, 12)
+    m[3, 4:5] <- 0.8
+    m[3, 8:9] <- 0.8
+    m[4, 3:6] <- 0.9
+    m[4, 7:10] <- 0.9
+    m[5, 2:11] <- 1.0
+    m[6, 2:11] <- 1.0
+    m[7, 3:10] <- 0.9
+    m[8, 4:9] <- 0.8
+    m[9, 5:8] <- 0.6
+    m[10, 6:7] <- 0.4
+  }else{
+    m <- matrix(0, 12, 12)
+    for (i in 4:9) {
+      for (j in 4:9) {
+        m[i, j] <- runif(1, 0.7, 1)  # random grayscale inside square
+      }
+    }}
+  noise <- matrix(rnorm(length(m), mean = 0, sd = 0.1), nrow = nrow(m))
+  noisy <- pmin(pmax(m + noise, 0), 1)  # clamp between 0 and 1
+  return(noisy)
+}
+```
+
+
+```{r}
+#| label: functional_data
+#| warning: false
+#| message: false
+
+set.seed(42)
+n_per_group <- 200
+
+# Heart shapes with noise
+hearts <- replicate(n_per_group, make_shape("heart"), simplify = FALSE)
+
+# Random squares with noise
+squares <- replicate(n_per_group, make_shape("square"), simplify = FALSE)
+
+functional_data <- c(hearts, squares)
+true_labels_functional <- c(rep(1, n_per_group), rep(2, n_per_group))
+```
+
+```{r}
+#| label: ex_func_clust
+#| warning: false
+#| message: false
+
+fit_functional <- matrix_variate_mixture_fit(
+	x_list = functional_data,
+	g = 2,
+	max_iter = 100,
+	tol = 1e-6,
+	nstart = 10,
+	verbose = TRUE
+)
+
+pred_labels <- fit_functional$cluster
+acc1 <- mean(pred_labels == true_labels_functional)
+acc2 <- mean(3 - pred_labels == true_labels_functional)
+accuracy <- max(acc1, acc2)
+
+cat("Clustering Accuracy:", round(accuracy * 100, 2), "%\n")
+# Iterations
+fit_functional$iterations
+# Final Loglikelihood
+round(tail(fit_functional$logLik, 1), 4)
+
+print(fit_functional$pi)
+table(true = true_labels_functional, predicted = pred_labels)
+```
+
+```{r}
+#| label: func_viz
+#| warning: false
+#| message: false
+#| fig.width: 14
+#| fig.height: 10
+
+par(mfrow = c(4, 5), mar = c(2, 2, 2, 1))
+for (i in 1:10) {
+	image(functional_data[[i]], main = paste("Heart", i, "-> Cluster", pred_labels[i]), 
+	      axes = FALSE)
+}
+
+for (i in (n_per_group + 1):(n_per_group + 10)) {
+	image(functional_data[[i]], main = paste("Square", i - n_per_group, "-> Cluster", pred_labels[i]), 
+	      axes = FALSE)
+}
+```
+
+```{r}
+#| label: func_diagnostics
+#| warning: false
+#| message: false
+#| fig.width: 10
+#| fig.height: 5
+
+plot(fit_functional$logLik, type = "l", xlab = "Iteration", ylab = "Log-Likelihood",
+     main = "Convergence Trace: Functional Data Clustering",
+     col = "steelblue", lwd = 2)
+grid()
+
+par(mfrow = c(1, 2), mar = c(1, 1, 3, 1))
+for (g in 1:2) {
+	image(fit_functional$M[[g]], main = paste("Estimated Mean - Component", g),
+	      axes = FALSE, col = gray.colors(256))
+}
+par(mfrow = c(1, 1))
 ```
