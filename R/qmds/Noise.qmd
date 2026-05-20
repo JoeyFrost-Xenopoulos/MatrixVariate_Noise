@@ -159,9 +159,58 @@ $$
 
 ## Noise Implmentation
 
+```{r}
+set.seed(123)
+r <- 3; p <- 4
+simulate_group <- function(n, mean_matrix, row_sd = 0.5, col_sd = 0.5) {
+	row_cov <- diag(row_sd, nrow(mean_matrix))
+	col_cov <- diag(col_sd, ncol(mean_matrix))
+	lapply(seq_len(n), function(i) mean_matrix + row_cov %*% matrix(rnorm(r * p), r, p) %*% col_cov)
+}
+
+M1 <- matrix(1, r, p)
+M2 <- matrix(-1, r, p)
+x_list <- c(simulate_group(200, M1), simulate_group(100, M2))
+
+contam <- lapply(seq_len(50), function(i) matrix(runif(r * p, -15, 15), r, p))
+x_list <- c(x_list, contam)
+```
+
+
 ### HC-noise
 
 ```{r}
+fit_hc <- matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc", noise_k = 1e-06, 
+                                   nstart = 100, max_iter = 50, verbose = FALSE)
 
+cat('HC fit mixing proportions:\n')
+print(fit_hc$pi)
+cat('\nHC cluster counts (0 indicates noise):\n')
+print(table(fit_hc$cluster))
+print(fit_hc$noise)
 ```
+
+### BR-noise
+
+```{r}
+fit_br <- matrix_variate_noise_fit(x_list, g = 2, noise_type = "br", noise_jitter = 1e-08, 
+                                   nstart = 100, max_iter = 50, verbose = FALSE)
+
+cat('BR fit mixing proportions:\n')
+print(fit_br$pi)
+cat('\nBR cluster counts (0 indicates noise):\n')
+print(table(fit_br$cluster))
+print(fit_br$noise)
+```
+
+HC-noise recovered the two clusters and the noise proportion accurately.
+
+BR fit largely collapsed the two true clusters into one component (component_2), leaving component_1 with very few items. Noise proportion is near the true value (~0.13), but cluster recovery failed for the two Gaussians.
+
+Box diagnostics: per-entry limits $\approx$ +-13–15 and log-volume $\approx$ 40 nears uniform density = exp(-40) (extremely small). That tiny uniform density makes the BR background numerically negligible compared with Gaussian peaks, which can change how the EM balances components and makes results sensitive to initialization.
+Likely causes for the BR behaviour
+
+Bounding-box volume is huge (because contamination inflates min/max), so the BR uniform density is extremely small and competes poorly with Gaussians; EM may then prefer to explain almost-all data with one Gaussian and use the other Gaussian only for a handful of points.
+Initialization sensitivity (kmeans nstart small) can let components merge.
+BR using the simple axis-aligned box is fragile when contamination sets wide margins.
 
