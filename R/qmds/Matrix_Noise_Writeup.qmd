@@ -14,7 +14,7 @@ We implement two background types
 
 Decision rule (both types) is at the observation (matrix) level: the posterior for the noise component for matrix $\mathbf{X}_i$ is proportional to $\pi_0 h(\mathbf{X}_i)$, where $h(\cdot)$ is either the uniform BR density or the constant HC value. In practice, a single contaminated column or large deviation in a matrix can make the full matrix unlikely under all Gaussians and therefore increase its posterior probability of being labeled noise.
 
-For HC we provide an optional grid search over candidate $k$ values (log-spaced by default) and select the value minimizing AIC; this stabilizes the choice of $k$ compared with a single arbitrary setting.
+For HC we provide an optional grid search over candidate $k$ values (log-spaced by default) and select the value whose fitted matrix-KS goodness-of-fit score is best; this stabilizes the choice of $k$ compared with a single arbitrary setting.
 
 ## Matrix Noise
 For matrix-valued observations, the noise term should play the same role as the Banfield-Raftery or Hennig-Coretto background component: it should absorb matrices that are not well explained by any Gaussian cluster, without forcing them to belong to a particular structured component.

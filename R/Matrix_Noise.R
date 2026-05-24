@@ -7,12 +7,13 @@
 #' @param x_list A non-empty list of numeric matrices, each of the same size.
 #' @param g Integer: number of Gaussian mixture components.
 #' @param noise_type Character: `"hc"` for improper constant noise or `"br"`
-#'   for bounding-box uniform noise.
+#'   for convex-hull uniform noise.
 #' @param max_iter Integer: maximum EM iterations.
 #' @param tol Numeric: convergence tolerance on the log-likelihood trace.
 #' @param nstart Integer: number of k-means restarts for initialization.
 #' @param noise_k Numeric: constant noise height used when `noise_type = "hc"`.
-#' @param noise_jitter Numeric: padding used to expand the BR bounding box.
+#' @param noise_jitter Numeric: retained for compatibility; unused by the BR
+#'   convex-hull support.
 #' @param noise_pi_init Numeric: initial mixing proportion for the noise
 #'   component.
 #' @param verbose Logical: print iteration progress.
@@ -65,10 +66,10 @@ matrix_variate_noise_fit <- function(x_list, g,
 	# k-means init
 	params <- matrix_mixture_kmeans_init(x_list, g = g, nstart = nstart)
 
-	# For BR noise compute an axis-aligned bounding box
-	noise_box <- NULL
+	# For BR noise compute a convex hull over the vectorized matrices
+	noise_support <- NULL
 	if (noise_type == "br") {
-		noise_box <- matrix_noise_box_limits(x_list, jitter = noise_jitter)
+		noise_support <- matrix_noise_convex_hull_support(x_list, jitter = noise_jitter)
 	}
 
 	# Append noise mixing proportion as the last component
@@ -90,11 +91,11 @@ matrix_variate_noise_fit <- function(x_list, g,
 
 	# Precompute noise log-density vector:
 	# HC: constant improper background log(k)
-	# BR: uniform within the bounding box (log(1/volume)), -Inf outside
+	# BR: uniform within the convex hull (log(1/volume)), -Inf outside
 	noise_log_density <- if (noise_type == "hc") {
 		rep(log(noise_k), n)
 	} else {
-		matrix_noise_br_log_density(x_list, noise_box)
+		matrix_noise_br_log_density(x_list, noise_support)
 	}
 
 	for (iteration in seq_len(max_iter)) {
@@ -211,49 +212,67 @@ matrix_variate_noise_fit <- function(x_list, g,
 			type = noise_type,
 			pi = params$pi[g + 1],
 			k = if (noise_type == "hc") noise_k else NA_real_,
-			box = noise_box
+			hull = noise_support
 		)
 	)
 }
 
-#' Construct a BR-Style Bounding Box for Matrix Noise
+#' Construct a BR-Style Convex Hull for Matrix Noise
 #'
 #' @param x_list A list of same-sized matrices.
-#' @param jitter Positive padding added to each margin.
+#' @param jitter Positive padding retained for compatibility.
 #'
-#' @return A list with lower/upper bounds and the log-volume of the box.
+#' @return A list with the vectorized points, the convex hull object, and the
+#'   log-volume of the hull.
 #'
 #' @keywords internal
-matrix_noise_box_limits <- function(x_list, jitter = 1e-08) {
-	x_matrix <- do.call(rbind, lapply(x_list, function(x) as.vector(x)))
-	lower <- apply(x_matrix, 2, min) - jitter
-	upper <- apply(x_matrix, 2, max) + jitter
-	widths <- upper - lower
-	widths[widths <= 0] <- jitter
+matrix_noise_convex_hull_support <- function(x_list, jitter = 1e-08) {
+	noise_matrix <- do.call(rbind, lapply(x_list, function(x) as.vector(x)))
+	unique_points <- unique(noise_matrix)
+	point_dimension <- ncol(unique_points)
+
+	if (nrow(unique_points) <= point_dimension) {
+		stop("At least d + 1 unique vectorized matrices are required to form a convex hull.", call. = FALSE)
+	}
+
+	hull <- tryCatch(
+		geometry::convhulln(unique_points, output.options = TRUE),
+		error = function(e) {
+			stop("Failed to build the BR noise convex hull: ", conditionMessage(e), call. = FALSE)
+		}
+	)
+
+	log_volume <- if (!is.null(hull$vol)) {
+		log(as.numeric(hull$vol))
+	} else if (!is.null(hull$volume)) {
+		log(as.numeric(hull$volume))
+	} else {
+		stop("The BR noise convex hull did not return a volume.", call. = FALSE)
+	}
 
 	list(
-		lower = lower,
-		upper = upper,
-		widths = widths,
-		log_volume = sum(log(widths))
+		points = unique_points,
+		hull = hull,
+		log_volume = log_volume,
+		jitter = jitter
 	)
 }
 
 #' Log Density for BR Matrix Noise
 #'
 #' @param x_list List of matrices to evaluate.
-#' @param box Bounding box from [matrix_noise_box_limits()].
+#' @param support Convex-hull support from [matrix_noise_convex_hull_support()].
 #'
 #' @return Numeric vector of log-densities.
 #'
 #' @keywords internal
-matrix_noise_br_log_density <- function(x_list, box) {
+matrix_noise_br_log_density <- function(x_list, support) {
 	vapply(x_list, function(x) {
 		vec_x <- as.vector(x)
-		# Return log-density: -log(volume) if inside the box, otherwise -Inf
-		inside <- all(vec_x >= box$lower & vec_x <= box$upper)
+		# Return log-density: -log(volume) if inside the hull, otherwise -Inf
+		inside <- isTRUE(geometry::inhulln(support$hull, matrix(vec_x, nrow = 1)))
 		if (inside) {
-			return(-box$log_volume)
+			return(-support$log_volume)
 		}
 		-Inf
 	}, numeric(1))

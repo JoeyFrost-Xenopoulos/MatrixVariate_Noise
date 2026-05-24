@@ -128,7 +128,7 @@ $$
 \hat z_{i0} = \frac{\hat\pi_0 h(\mathbf{X}_i)}{\hat\pi_0 k + \sum_{g=1}^{G} \hat\pi_g \phi_{r\times p}(\mathbf{X}_i \,|\, \hat{\mathbf{M}}_g, \hat{\mathbf{U}}_g, \hat{\mathbf{V}}_g)}
 $$
 
-To pick $k$ we can just start by picking a small enough $k$ and then going from there.
+To pick $k$ we can automate a grid search over candidate values and choose the one with the best matrix-KS goodness-of-fit score for the fitted distances.
 
 ### Uniform BR-noise
 
