@@ -11,7 +11,8 @@
 #' that makes size-scaling patterns easy to inspect.
 #'
 #' @param size_grid A list of integer length-2 vectors giving the matrix
-#'   dimensions to test, for example `list(c(3, 4), c(10, 12))`.
+#'   dimensions to test. The default covers a broad progression of shapes from
+#'   very small to substantially larger matrices.
 #' @param n_grid Integer vector of sample sizes to test for each matrix shape.
 #' @param contam_grid Integer vector of contamination counts to inject into
 #'   each simulated dataset.
@@ -42,7 +43,7 @@
 #' @examples
 #' \dontrun{
 #' run_optimal_k_test_scheme(
-#'   size_grid = list(c(3, 4), c(10, 12)),
+#'   size_grid = default_optimal_k_size_grid(),
 #'   n_grid = c(30, 60),
 #'   contam_grid = c(0, 5, 10),
 #'   n_sim = 5,
@@ -51,7 +52,7 @@
 #' }
 #'
 #' @export
-run_optimal_k_test_scheme <- function(size_grid = list(c(3, 4), c(10, 12)),
+run_optimal_k_test_scheme <- function(size_grid = default_optimal_k_size_grid(),
 										 n_grid = c(30L, 50L, 100L),
 										 contam_grid = c(0L, 5L, 10L, 20L),
 										 n_sim = 20L,
@@ -193,6 +194,31 @@ run_optimal_k_test_scheme <- function(size_grid = list(c(3, 4), c(10, 12)),
 		results = results,
 		summary = summary,
 		scaling_fit = scaling_fit
+	)
+}
+
+#' Default Size Grid for Optimal-k Testing
+#'
+#' @return A broad list of matrix dimension pairs for the default simulation sweep.
+#' @keywords internal
+default_optimal_k_size_grid <- function() {
+	list(
+		c(2, 3),
+		c(3, 4),
+		c(4, 6),
+		c(5, 7),
+		c(6, 8),
+		c(7, 10),
+		c(8, 10),
+		c(10, 12),
+		c(12, 16),
+		c(14, 18),
+		c(16, 20),
+		c(18, 24),
+		c(20, 24),
+		c(24, 30),
+		c(30, 36),
+		c(36, 45)
 	)
 }
 

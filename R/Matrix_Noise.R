@@ -223,7 +223,7 @@ matrix_noise_ks_score <- function(fit, x_list) {
 
 	df <- nrow(x_list[[1]]) * ncol(x_list[[1]])
 	test <- tryCatch(
-		stats::ks.test(distances, "pchisq", df = df),
+		suppressWarnings(stats::ks.test(distances, "pchisq", df = df)),
 		error = function(e) NULL
 	)
 	if (is.null(test)) {
