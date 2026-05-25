@@ -73,6 +73,10 @@ matrix_variate_noise_fit <- function(x_list, g,
 		best_k <- NA_real_
 		best_statistic <- Inf
 		best_p_value <- NA_real_
+		fallback_fit <- NULL
+		fallback_k <- NA_real_
+		fallback_n_used <- -Inf
+		fallback_loglik <- -Inf
 		seen_keys <- character(0)
 		max_rounds <- 3L
 
@@ -112,6 +116,17 @@ matrix_variate_noise_fit <- function(x_list, g,
 					stringsAsFactors = FALSE
 				)
 
+				candidate_loglik <- if (length(candidate_fit$logLik) > 0) tail(candidate_fit$logLik, 1) else NA_real_
+				if (is.finite(score$n_used) && (
+					score$n_used > fallback_n_used ||
+					(score$n_used == fallback_n_used && is.finite(candidate_loglik) && candidate_loglik > fallback_loglik)
+				)) {
+					fallback_fit <- candidate_fit
+					fallback_k <- candidate_k
+					fallback_n_used <- score$n_used
+					fallback_loglik <- candidate_loglik
+				}
+
 				if (is.finite(score$statistic) && (
 					score$statistic < best_statistic ||
 					(identical(score$statistic, best_statistic) && (!is.finite(best_p_value) || score$p.value > best_p_value))
@@ -124,7 +139,20 @@ matrix_variate_noise_fit <- function(x_list, g,
 			}
 
 			if (is.null(best_fit)) {
-				stop("No HC noise_k candidate produced enough non-noise distances for a KS score.")
+				best_fit <- fallback_fit
+				best_k <- fallback_k
+				best_statistic <- NA_real_
+				best_p_value <- NA_real_
+				if (!is.null(best_fit) && verbose) {
+					message(sprintf(
+						"HC noise_k selection fell back to the candidate with the most non-noise observations (n_used = %s).",
+						format(fallback_n_used, trim = TRUE)
+					))
+				}
+			}
+
+			if (is.null(best_fit)) {
+				stop("HC noise_k selection failed: no candidate fit could be retained.")
 			}
 
 			current_min <- min(candidate_grid)
@@ -170,7 +198,9 @@ matrix_variate_noise_fit <- function(x_list, g,
 			results = do.call(rbind, search_results),
 			selected_k = best_k,
 			ks_statistic = best_statistic,
-			ks_p_value = best_p_value
+			ks_p_value = best_p_value,
+			fallback_used = is.na(best_statistic),
+			fallback_n_used = if (is.finite(fallback_n_used)) fallback_n_used else NA_real_
 		)
 		return(best_fit)
 	}

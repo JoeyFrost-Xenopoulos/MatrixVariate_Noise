@@ -7,7 +7,7 @@ format: html
 
 ```{r}
 set.seed(123)
-r <- 10; p <- 12
+r <- 3; p <- 4
 simulate_group <- function(n, mean_matrix, row_sd = 0.5, col_sd = 0.5) {
 	row_cov <- diag(row_sd, nrow(mean_matrix))
 	col_cov <- diag(col_sd, ncol(mean_matrix))
