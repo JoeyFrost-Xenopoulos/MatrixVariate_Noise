@@ -49,64 +49,6 @@
 #' }
 #'
 #' @export
-.matrix_noise_source_dir <- tryCatch(dirname(normalizePath(sys.frame(1)$ofile)), error = function(e) NA_character_)
-
-matrix_noise_load_helpers <- function() {
-	required_functions <- c(
-		"make_spd",
-		"matrix_mahalanobis",
-		"matrix_variate_log_density",
-		"matrix_mixture_kmeans_init",
-		"matrix_noise_hc_select_fit",
-		"matrix_noise_ks_score",
-		"matrix_noise_hc_search_grid"
-	)
-
-	missing_functions <- required_functions[!vapply(required_functions, function(fun_name) {
-		exists(fun_name, mode = "function", inherits = TRUE)
-	}, logical(1))]
-
-	if (length(missing_functions) == 0) {
-		return(invisible(TRUE))
-	}
-
-	candidate_directories <- c(
-		if (exists(".matrix_noise_source_dir", inherits = FALSE) && nzchar(.matrix_noise_source_dir)) .matrix_noise_source_dir else character(0),
-		system.file("R", package = "Ampharos"),
-		"R"
-	)
-	candidate_directories <- candidate_directories[nzchar(candidate_directories) & dir.exists(candidate_directories)]
-	if (length(candidate_directories) == 0) {
-		stop("Could not locate the R/ directory needed to auto-load matrix noise helpers.")
-	}
-
-	dependency_files <- c("Matrix.R", "HC_Noise_Search.R")
-	target_env <- .GlobalEnv
-
-	for (dependency_file in dependency_files) {
-		dependency_path <- NULL
-		for (candidate_directory in candidate_directories) {
-			candidate_path <- file.path(candidate_directory, dependency_file)
-			if (file.exists(candidate_path)) {
-				dependency_path <- candidate_path
-				break
-			}
-		}
-
-		if (!is.null(dependency_path)) {
-			source(dependency_path, local = target_env)
-		}
-	}
-
-	still_missing <- required_functions[!vapply(required_functions, function(fun_name) {
-		exists(fun_name, mode = "function", inherits = TRUE)
-	}, logical(1))]
-	if (length(still_missing) > 0) {
-		stop("Could not auto-load matrix noise helpers: ", paste(still_missing, collapse = ", "), ".")
-	}
-
-	invisible(TRUE)
-}
 
 matrix_variate_noise_fit <- function(x_list, g,
 											 noise_type = c("hc", "br"),
@@ -120,7 +62,6 @@ matrix_variate_noise_fit <- function(x_list, g,
 											 noise_pi_init = 0.05,
 											 verbose = FALSE) {
 										
-	matrix_noise_load_helpers()
 	noise_type <- match.arg(noise_type)
 
 	if (!is.list(x_list) || length(x_list) == 0) {
