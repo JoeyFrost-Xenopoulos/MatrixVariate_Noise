@@ -102,7 +102,7 @@ matrix_noise_hc_select_fit <- function(x_list, g,
 		if (is.null(best_fit)) {
 			best_fit <- fallback_fit
 			best_k <- fallback_k
-			best_statistic <- NA_real_
+			best_statistic <- Inf
 			best_p_value <- NA_real_
 			if (!is.null(best_fit) && verbose) {
 				message(sprintf(

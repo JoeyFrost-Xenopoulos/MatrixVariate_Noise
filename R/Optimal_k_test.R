@@ -31,6 +31,8 @@
 #' @param tol Numeric: EM convergence tolerance.
 #' @param nstart Integer: number of k-means restarts for initialization.
 #' @param verbose Logical: print progress messages.
+#' @param csv_path Optional path or filename stem for a CSV file to write the
+#'   per-simulation results at the end of the run.
 #' @param seed Optional integer seed for reproducibility.
 #'
 #' @return A list with three elements:
@@ -47,6 +49,7 @@
 #'   n_grid = c(30, 60),
 #'   contam_grid = c(0, 5, 10),
 #'   n_sim = 5,
+#'   csv_path = "output/optimal_k_results.csv",
 #'   seed = 1
 #' )
 #' }
@@ -67,6 +70,7 @@ run_optimal_k_test_scheme <- function(size_grid = default_optimal_k_size_grid(),
 										 tol = 1e-06,
 										 nstart = 50L,
 										 verbose = FALSE,
+										 csv_path = NULL,
 										 seed = NULL) {
 	if (!is.null(seed)) {
 		set.seed(seed)
@@ -95,89 +99,136 @@ run_optimal_k_test_scheme <- function(size_grid = default_optimal_k_size_grid(),
 		stop("g must be at least 2.")
 	}
 
+	csv_file <- NULL
+	if (!is.null(csv_path)) {
+		csv_path <- as.character(csv_path)[1]
+		if (nzchar(csv_path)) {
+			if (dir.exists(csv_path)) {
+				csv_file <- file.path(csv_path, "optimal_k_results.csv")
+			} else if (grepl("\\.csv$", csv_path, ignore.case = TRUE)) {
+				csv_file <- csv_path
+			} else {
+				csv_file <- paste0(csv_path, ".csv")
+			}
+			dir.create(dirname(csv_file), recursive = TRUE, showWarnings = FALSE)
+		}
+	}
+
+	write_optimal_k_results_csv <- function(result_rows, csv_file, verbose = FALSE, completed = FALSE) {
+		if (is.null(csv_file)) {
+			return(invisible(NULL))
+		}
+		if (is.null(result_rows) || nrow(result_rows) == 0L) {
+			return(invisible(NULL))
+		}
+		utils::write.csv(result_rows, file = csv_file, row.names = FALSE)
+		if (verbose) {
+			if (completed) {
+				message(sprintf("Wrote optimal-k results to %s", csv_file))
+			} else {
+				message(sprintf("Wrote partial optimal-k results to %s before stopping due to an error.", csv_file))
+			}
+		}
+		invisible(NULL)
+	}
+
 	results <- vector("list", length(size_grid) * length(n_grid) * length(contam_grid) * n_sim)
 	result_idx <- 0L
 
-	for (size_item in size_grid) {
-		r <- size_item[1]
-		p <- size_item[2]
-		dimension <- r * p
+	tryCatch(
+		{
+			for (size_item in size_grid) {
+				r <- size_item[1]
+				p <- size_item[2]
+				dimension <- r * p
 
-		for (n_obs in n_grid) {
-			for (n_contam in contam_grid) {
-				n_clean <- n_obs - n_contam
-				if (n_clean <= 0L) {
-					if (verbose) {
-						message(sprintf("Skipping size %dx%d, n = %d, contam = %d because there are no clean observations.", r, p, n_obs, n_contam))
+				for (n_obs in n_grid) {
+					for (n_contam in contam_grid) {
+						n_clean <- n_obs - n_contam
+						if (n_clean <= 0L) {
+							if (verbose) {
+								message(sprintf("Skipping size %dx%d, n = %d, contam = %d because there are no clean observations.", r, p, n_obs, n_contam))
+							}
+							next
+						}
+
+						group_sizes <- rep(floor(n_clean / g), g)
+						remainder <- n_clean - sum(group_sizes)
+						if (remainder > 0L) {
+							group_sizes[seq_len(remainder)] <- group_sizes[seq_len(remainder)] + 1L
+						}
+						if (any(group_sizes <= 0L)) {
+							if (verbose) {
+								message(sprintf("Skipping size %dx%d, n = %d, contam = %d because a Gaussian group would be empty.", r, p, n_obs, n_contam))
+							}
+							next
+						}
+
+						for (sim_idx in seq_len(n_sim)) {
+							if (verbose && sim_idx %% 5L == 0L) {
+								message(sprintf("Testing %dx%d | n = %d | contam = %d | sim %d/%d", r, p, n_obs, n_contam, sim_idx, n_sim))
+							}
+
+							dataset <- simulate_optimal_k_dataset(
+								r = r,
+								p = p,
+								group_sizes = group_sizes,
+								n_contam = n_contam,
+								signal_shift = signal_shift,
+								row_sd = row_sd,
+								col_sd = col_sd,
+								contam_low = contam_low,
+								contam_high = contam_high
+							)
+
+							fit <- matrix_variate_noise_fit(
+								x_list = dataset$x_list,
+								g = g,
+								noise_type = "hc",
+								select_noise_k = TRUE,
+								noise_k_grid = noise_k_grid,
+								nstart = nstart,
+								max_iter = max_iter,
+								tol = tol,
+								verbose = verbose
+							)
+
+							result_idx <- result_idx + 1L
+							selected_k <- fit$noise$search$selected_k
+							results[[result_idx]] <- data.frame(
+								sim = sim_idx,
+								r = r,
+								p = p,
+								dimension = dimension,
+								n_obs = n_obs,
+								n_clean = n_clean,
+								n_contam = n_contam,
+								contam_rate = n_contam / n_obs,
+								selected_k = selected_k,
+								log10_selected_k = log10(selected_k),
+								selected_k_per_entry = selected_k^(1 / dimension),
+								log10_selected_k_per_entry = log10(selected_k) / dimension,
+								ks_statistic = fit$noise$search$ks_statistic,
+								ks_p_value = fit$noise$search$ks_p_value,
+								noise_rate = mean(fit$cluster == 0L),
+								stringsAsFactors = FALSE
+							)
+						}
 					}
-					next
-				}
-
-				group_sizes <- rep(floor(n_clean / g), g)
-				remainder <- n_clean - sum(group_sizes)
-				if (remainder > 0L) {
-					group_sizes[seq_len(remainder)] <- group_sizes[seq_len(remainder)] + 1L
-				}
-				if (any(group_sizes <= 0L)) {
-					if (verbose) {
-						message(sprintf("Skipping size %dx%d, n = %d, contam = %d because a Gaussian group would be empty.", r, p, n_obs, n_contam))
-					}
-					next
-				}
-
-				for (sim_idx in seq_len(n_sim)) {
-					if (verbose && sim_idx %% 5L == 0L) {
-						message(sprintf("Testing %dx%d | n = %d | contam = %d | sim %d/%d", r, p, n_obs, n_contam, sim_idx, n_sim))
-					}
-
-					dataset <- simulate_optimal_k_dataset(
-						r = r,
-						p = p,
-						group_sizes = group_sizes,
-						n_contam = n_contam,
-						signal_shift = signal_shift,
-						row_sd = row_sd,
-						col_sd = col_sd,
-						contam_low = contam_low,
-						contam_high = contam_high
-					)
-
-					fit <- matrix_variate_noise_fit(
-						x_list = dataset$x_list,
-						g = g,
-						noise_type = "hc",
-						select_noise_k = TRUE,
-						noise_k_grid = noise_k_grid,
-						nstart = nstart,
-						max_iter = max_iter,
-						tol = tol,
-						verbose = verbose
-					)
-
-					result_idx <- result_idx + 1L
-					selected_k <- fit$noise$search$selected_k
-					results[[result_idx]] <- data.frame(
-						sim = sim_idx,
-						r = r,
-						p = p,
-						dimension = dimension,
-						n_obs = n_obs,
-						n_clean = n_clean,
-						n_contam = n_contam,
-						contam_rate = n_contam / n_obs,
-						selected_k = selected_k,
-						log10_selected_k = log10(selected_k),
-						selected_k_per_entry = selected_k^(1 / dimension),
-						log10_selected_k_per_entry = log10(selected_k) / dimension,
-						ks_statistic = fit$noise$search$ks_statistic,
-						ks_p_value = fit$noise$search$ks_p_value,
-						noise_rate = mean(fit$cluster == 0L),
-						stringsAsFactors = FALSE
-					)
 				}
 			}
+			NULL
+		},
+		error = function(e) {
+			partial_results <- if (result_idx > 0L) {
+				do.call(rbind, results[seq_len(result_idx)])
+			} else {
+				NULL
+			}
+			write_optimal_k_results_csv(partial_results, csv_file, verbose = verbose, completed = FALSE)
+			stop(e)
 		}
-	}
+	)
 
 	results <- do.call(rbind, results[seq_len(result_idx)])
 	if (is.null(results) || nrow(results) == 0L) {
@@ -189,6 +240,10 @@ run_optimal_k_test_scheme <- function(size_grid = default_optimal_k_size_grid(),
 		stats::lm(log10_selected_k ~ log10(dimension) + log10(n_obs) + contam_rate, data = results),
 		error = function(e) NULL
 	)
+
+	if (!is.null(csv_file)) {
+		write_optimal_k_results_csv(results, csv_file, verbose = verbose, completed = TRUE)
+	}
 
 	list(
 		results = results,
