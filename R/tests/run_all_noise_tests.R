@@ -58,16 +58,16 @@ cat("1) Tomarchio — Clean (N_sim=50, n=100)\n")
 tom_clean <- run_tomarchio_noise_simulation(N_sim = 50, n = 100, contam_n = 0, verbose = TRUE, methods = "hc")
 saveRDS(tom_clean, file = file.path(temp_dir, "tomarchio_noise_clean.rds"))
 
-cat("2) Tomarchio — Contaminated (N_sim=10, n=100, contam_n=30)\n")
+cat("2) Tomarchio — Contaminated (N_sim=50, n=100, contam_n=30)\n")
 tom_contam <- run_tomarchio_noise_simulation(N_sim = 10, n = 100, contam_n = 30, verbose = TRUE, methods = "hc")
 saveRDS(tom_contam, file = file.path(temp_dir, "tomarchio_noise_contam.rds"))
 
-cat("3) Viroli — Clean (N_sim=10, n=100)\n")
-viro_clean <- run_viroli_noise_simulation(N_sim = 10, n = 100, contam_n = 0, verbose = TRUE, methods = "hc")
+cat("3) Viroli — Clean (N_sim=50, n=100)\n")
+viro_clean <- run_viroli_noise_simulation(N_sim = 50, n = 100, contam_n = 0, verbose = TRUE, methods = "hc")
 saveRDS(viro_clean, file = file.path(temp_dir, "viroli_noise_clean.rds"))
 
-cat("4) Viroli — Contaminated (N_sim=10, n=30, contam_n=15)\n")
-viro_contam <- run_viroli_noise_simulation(N_sim = 10, n = 30, contam_n = 15, verbose = TRUE, methods = "hc")
+cat("4) Viroli — Contaminated (N_sim=50, n=100, contam_n=30)\n")
+viro_contam <- run_viroli_noise_simulation(N_sim = 50, n = 100, contam_n = 30, verbose = TRUE, methods = "hc")
 saveRDS(viro_contam, file = file.path(temp_dir, "viroli_noise_contam.rds"))
 
 # Combine summaries
