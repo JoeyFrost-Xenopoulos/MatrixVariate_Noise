@@ -6,8 +6,8 @@
 if (!dir.exists("R")) stop("R/ directory not found. Run this script from the project root.")
 
 # Source package R files (except this runner) so helpers are available
-r_files <- list.files("R", pattern = "\\.R$", full.names = TRUE)
-runner_path <- normalizePath("R/run_all_noise_tests.R", winslash = "/", mustWork = FALSE)
+r_files <- list.files(pattern = "\\.R$", full.names = TRUE)
+runner_path <- normalizePath("run_all_noise_tests.R", winslash = "/", mustWork = FALSE)
 helpers <- setdiff(r_files, runner_path)
 for (f in helpers) {
   tryCatch(source(f), error = function(e) stop("Error sourcing ", f, ": ", conditionMessage(e)))
