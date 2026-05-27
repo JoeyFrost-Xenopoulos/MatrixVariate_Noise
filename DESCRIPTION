@@ -3,7 +3,7 @@ Title: Matrix-Variate Clustering
 Version: 0.0.0.9000
 Authors@R: 
     person("Joey", "Frost-Xenopoulos", , "joeyfrostxenopoulos@trentu.ca", role = c("aut", "cre"))
-Description: Basic matrix variate clustering algorithms.
+Description: Matrix-variate clustering algorithms with noise. 
 License: `use_mit_license()`
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
