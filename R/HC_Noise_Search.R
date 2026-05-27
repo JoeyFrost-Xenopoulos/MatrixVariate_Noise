@@ -1,11 +1,3 @@
-#' HC Noise-k Search Helpers
-#'
-#' Internal helpers for selecting the HC noise height by grid search and
-#' scoring candidate fits with a matrix-KS criterion.
-#'
-#' @keywords internal
-NULL
-
 #' Select an HC Noise-k Fit
 #'
 #' @param x_list List of matrices used for fitting.

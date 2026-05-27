@@ -182,16 +182,29 @@ run_tomarchio_noise_simulation <- function(N_sim = 100, n = 200, contam_n = 0, v
 		}
 
 		for (method in c("hc", "br")) {
-			fit <- matrix_variate_noise_fit(
-				x_list = dataset$X,
-				g = 2,
-				noise_type = method,
-				noise_k = 1e-06,
-				noise_jitter = 1e-08,
-				nstart = 50,
-				max_iter = 50,
-				verbose = FALSE
-			)
+			if (method == "hc") {
+				fit <- matrix_variate_noise_fit(
+					x_list = dataset$X,
+					g = 2,
+					noise_type = method,
+					select_noise_k = TRUE,
+					noise_jitter = 1e-08,
+					nstart = 50,
+					max_iter = 50,
+					verbose = FALSE
+				)
+			} else {
+				fit <- matrix_variate_noise_fit(
+					x_list = dataset$X,
+					g = 2,
+					noise_type = method,
+					noise_k = 1e-06,
+					noise_jitter = 1e-08,
+					nstart = 50,
+					max_iter = 50,
+					verbose = FALSE
+				)
+			}
 
 			keep_idx <- which(fit$cluster > 0)
 			if (length(keep_idx) > 0) {
@@ -403,16 +416,29 @@ run_viroli_noise_simulation <- function(N_sim = 100, n = 300, contam_n = 0, verb
 		}
 
 		for (method in c("hc", "br")) {
-			fit <- matrix_variate_noise_fit(
-				x_list = dataset$X,
-				g = 3,
-				noise_type = method,
-				noise_k = 1e-06,
-				noise_jitter = 1e-08,
-				nstart = 50,
-				max_iter = 50,
-				verbose = FALSE
-			)
+			if (method == "hc") {
+				fit <- matrix_variate_noise_fit(
+					x_list = dataset$X,
+					g = 3,
+					noise_type = method,
+					select_noise_k = TRUE,
+					noise_jitter = 1e-08,
+					nstart = 50,
+					max_iter = 50,
+					verbose = FALSE
+				)
+			} else {
+				fit <- matrix_variate_noise_fit(
+					x_list = dataset$X,
+					g = 3,
+					noise_type = method,
+					noise_k = 1e-06,
+					noise_jitter = 1e-08,
+					nstart = 50,
+					max_iter = 50,
+					verbose = FALSE
+				)
+			}
 
 			noise_rate <- mean(fit$cluster == 0)
 			false_noise_rate <- if (contam_n > 0) {

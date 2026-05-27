@@ -49,6 +49,8 @@
 #' }
 #'
 #' @export
+.matrix_noise_source_dir <- tryCatch(dirname(normalizePath(sys.frame(1)$ofile)), error = function(e) NA_character_)
+
 matrix_noise_load_helpers <- function() {
 	required_functions <- c(
 		"make_spd",
@@ -68,7 +70,11 @@ matrix_noise_load_helpers <- function() {
 		return(invisible(TRUE))
 	}
 
-	candidate_directories <- c(system.file("R", package = "Ampharos"), "R")
+	candidate_directories <- c(
+		if (exists(".matrix_noise_source_dir", inherits = FALSE) && nzchar(.matrix_noise_source_dir)) .matrix_noise_source_dir else character(0),
+		system.file("R", package = "Ampharos"),
+		"R"
+	)
 	candidate_directories <- candidate_directories[nzchar(candidate_directories) & dir.exists(candidate_directories)]
 	if (length(candidate_directories) == 0) {
 		stop("Could not locate the R/ directory needed to auto-load matrix noise helpers.")
@@ -383,7 +389,7 @@ matrix_noise_convex_hull_support <- function(x_list, jitter = 1e-08) {
 #' Log Density for BR Matrix Noise
 #'
 #' @param x_list List of matrices to evaluate.
-#' @param support Convex-hull support from [matrix_noise_convex_hull_support()].
+#' @param support Convex-hull support from `matrix_noise_convex_hull_support()`.
 #'
 #' @return Numeric vector of log-densities.
 #'

@@ -25,7 +25,7 @@
 #'   simulation.
 #' @param contam_low Numeric: lower bound for contaminated matrix entries.
 #' @param contam_high Numeric: upper bound for contaminated matrix entries.
-#' @param noise_k_grid Numeric vector passed to [matrix_variate_noise_fit()] when
+#' @param noise_k_grid Numeric vector passed to `matrix_variate_noise_fit()` when
 #'   `select_noise_k = TRUE`.
 #' @param max_iter Integer: maximum EM iterations.
 #' @param tol Numeric: EM convergence tolerance.
@@ -340,7 +340,7 @@ simulate_optimal_k_dataset <- function(r, p, group_sizes, n_contam,
 
 #' Summarize the Optimal-k Test Scheme
 #'
-#' @param results Data frame returned by [run_optimal_k_test_scheme()].
+#' @param results Data frame returned by `run_optimal_k_test_scheme()`.
 #'
 #' @return A scenario-level summary data frame.
 #'

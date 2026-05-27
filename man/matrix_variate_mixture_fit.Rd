@@ -28,15 +28,17 @@ matrix_variate_mixture_fit(
 }
 \value{
 A list containing:
-\item{pi}{Numeric vector of length g: final mixing proportions}
-\item{M}{List of g matrices: final component mean matrices}
-\item{U}{List of g matrices: final row covariance matrices}
-\item{V}{List of g matrices: final column covariance matrices}
-\item{z}{Numeric matrix (n × g): posterior responsibilities
-\item{cluster}{Integer vector of length n: hard cluster assignments}
-\item{logLik}{Numeric vector: log-likelihood trace across iterations}
-\item{iterations}{Integer: number of EM iterations performed}
-\item{converged}{Logical: whether algorithm converged within max_iter}
+\itemize{
+\item \code{pi}: numeric vector of length g with final mixing proportions.
+\item \code{M}: list of g final component mean matrices.
+\item \code{U}: list of g final row covariance matrices.
+\item \code{V}: list of g final column covariance matrices.
+\item \code{z}: numeric matrix (n × g) of posterior responsibilities.
+\item \code{cluster}: integer vector of length n with hard cluster assignments.
+\item \code{logLik}: numeric vector with the log-likelihood trace across iterations.
+\item \code{iterations}: number of EM iterations performed.
+\item \code{converged}: logical indicating whether the algorithm converged within \code{max_iter}.
+}
 }
 \description{
 Estimates parameters of a matrix-variate Gaussian mixture model (MGMM)

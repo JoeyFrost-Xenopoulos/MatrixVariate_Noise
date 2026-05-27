@@ -15,11 +15,13 @@ matrix_mixture_kmeans_init(x_list, g, nstart = 10)
 }
 \value{
 A list containing:
-\item{pi}{Numeric vector of length g: mixing proportions}
-\item{M}{List of g matrices: component mean matrices}
-\item{U}{List of g matrices: row covariance matrices}
-\item{V}{List of g matrices: column covariance matrices}
-\item{cluster}{Integer vector: initial cluster assignments}
+\itemize{
+\item \code{pi}: numeric vector of length g with mixing proportions.
+\item \code{M}: list of g component mean matrices.
+\item \code{U}: list of g row covariance matrices.
+\item \code{V}: list of g column covariance matrices.
+\item \code{cluster}: integer vector with initial cluster assignments.
+}
 }
 \description{
 Initializes parameters for the EM algorithm using k-means clustering on

@@ -117,11 +117,11 @@ matrix_variate_log_density <- function(x, mean_matrix, row_cov, col_cov) {
 #' @param nstart Integer: number of k-means restarts (default: 10)
 #'
 #' @return A list containing:
-#'   \item{pi}{Numeric vector of length g: mixing proportions}
-#'   \item{M}{List of g matrices: component mean matrices}
-#'   \item{U}{List of g matrices: row covariance matrices}
-#'   \item{V}{List of g matrices: column covariance matrices}
-#'   \item{cluster}{Integer vector: initial cluster assignments}
+#' - `pi`: numeric vector of length g with mixing proportions.
+#' - `M`: list of g component mean matrices.
+#' - `U`: list of g row covariance matrices.
+#' - `V`: list of g column covariance matrices.
+#' - `cluster`: integer vector with initial cluster assignments.
 #'
 #' @details
 #' The initialization procedure:
@@ -210,15 +210,15 @@ matrix_mixture_kmeans_init <- function(x_list, g, nstart = 10) {
 #' @param verbose Logical: print iteration progress (default: FALSE)
 #'
 #' @return A list containing:
-#'   \item{pi}{Numeric vector of length g: final mixing proportions}
-#'   \item{M}{List of g matrices: final component mean matrices}
-#'   \item{U}{List of g matrices: final row covariance matrices}
-#'   \item{V}{List of g matrices: final column covariance matrices}
-#'   \item{z}{Numeric matrix (n × g): posterior responsibilities
-#'   \item{cluster}{Integer vector of length n: hard cluster assignments}
-#'   \item{logLik}{Numeric vector: log-likelihood trace across iterations}
-#'   \item{iterations}{Integer: number of EM iterations performed}
-#'   \item{converged}{Logical: whether algorithm converged within max_iter}
+#' - `pi`: numeric vector of length g with final mixing proportions.
+#' - `M`: list of g final component mean matrices.
+#' - `U`: list of g final row covariance matrices.
+#' - `V`: list of g final column covariance matrices.
+#' - `z`: numeric matrix (n × g) of posterior responsibilities.
+#' - `cluster`: integer vector of length n with hard cluster assignments.
+#' - `logLik`: numeric vector with the log-likelihood trace across iterations.
+#' - `iterations`: number of EM iterations performed.
+#' - `converged`: logical indicating whether the algorithm converged within `max_iter`.
 #'
 #' @details
 #' The EM algorithm alternates between:
