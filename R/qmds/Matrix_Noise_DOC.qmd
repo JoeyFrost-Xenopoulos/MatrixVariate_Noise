@@ -1,0 +1,101 @@
+---
+title: "Matrix_Noise"
+format: pdf
+---
+
+# Introduction
+We implement a matrix-variate Gaussian mixture fitter with a background noise component. Each observation is a whole matrix; the algorithm computes one posterior responsibility vector per matrix and therefore assigns entire matrices to the noise component.
+
+Two noise types are attempted:
+
+- `br` (Banfield–Raftery): a bounded uniform background defined on the convex hull of the vectorised observations (with a small jitter option to avoid degenerate hulls). Observations inside the hull receive a uniform density equal to $\frac{1}{V}$ where $V$ is volume, and observations outside receive $-\infty$ log-density.
+
+- `hc` (Hennig–Coretto): an improper constant background density of height $k$ (a small positive constant). The HC density does not integrate to one but provides a constant baseline likelihood across the whole vectorised space.
+
+Both types act at the matrix level: the posterior probability of the noise component for matrix $\mathbf{X}_i$ is proportional to $\pi_0 * h(\mathbf{X}_i)$, where $h(·)$ is either the uniform BR density or constant HC value. A single contaminated row/column or large deviation in a matrix can thus make the full matrix unlikely under all Gaussians and increase its posterior probability of being labeled noise.
+
+## Model and responsibilities
+The fitted mixture has the form
+
+$$
+f(\mathbf{X}) = \sum_{g=1}^{G} \pi_g \, \phi_{r\times p}(\mathbf{X} \,|\, \mathbf{M}_g, \mathbf{U}_g, \mathbf{V}_g) + \pi_0 \, h(\mathbf{X}),
+\qquad \sum_{g=0}^{G} \pi_g = 1
+$$
+
+The noise density $h(\mathbf{X})$ is either
+
+- HC: $h(\mathbf{X}) = k$ for all $\mathbf{X}$, or
+- BR: $h(\mathbf{X}) = \frac{1}{V(H)}$ for $vec(\mathbf{X}) \in H$ and $0$ otherwise, where $H = \text{conv}\{ \text{vec}(\mathbf{X}_i) \}$.
+
+Posterior responsibilities ($\hat z_{ig}$) are computed using log-sum-exp normalization: for each observation we build the vector of log-densities (one per Gaussian component plus one noise entry) and compute
+
+$$
+z_{ig} = \frac{\exp(\log \pi_g + \log f_g(\mathbf{X}_i))}{\sum_{g=1}^{G} \exp(\log \pi_g + \log f_g(\mathbf{X}_i)) + \exp(\log \pi_0 + \log h(\mathbf{X}_i))}
+$$
+
+The implementation stores the noise column as the last column of the log-density / responsibilities matrix; hard cluster labels use $0$ to denote noise-assigned observations.
+
+## Key implementation details
+
+- The main fitter is `matrix_variate_noise_fit()` which wraps the internal implementation `matrix_variate_noise_fit_impl()`. The noise mixing proportion is appended as the last component: the code sets params pi <- c((1 - noise_pi_init) * params`pi, noise_pi_init)` and names the last entry "noise".
+
+- Default parameter values in the current implementation:
+  - $noise_type = c("hc", "br")$ (choose one)
+  - $noise_k$ (HC default) = $1e-04$
+  - $noise_pi_init$ (initial noise mixing weight) = $0.05$
+  - $noise_jitter$ (convex-hull jitter for BR) = $1e-08$
+  - $select_noise_k$ (logical): when TRUE and noise_type = "hc" a grid search is performed to select $k$ automatically using the matrix-KS criterion.
+
+- Log-density computation:
+  - Gaussian log-densities are computed with `matrix_variate_log_density()`. The implemented formula is
+
+$$
+  \log \phi_{r\times p}(X\mid M,U,V) = -\tfrac{1}{2}\big(rp\log(2\pi) + p\log|U| + r\log|V| + \mathrm{trace}\big(U^{-1}(X-M)V^{-1}(X-M)^T\big)\big).
+$$
+
+  - HC noise log-density is `rep(log(noise_k), n)` (constant $\log(k)$ for all observations).
+  - BR noise delegates to `matrix_noise_br_log_density(x_list, noise_support)` which returns `-log(volume)` for points inside the hull and $-\infty$ for outside.
+
+- Numerical stability: responsibilities are computed by subtracting a per-row `log_sum_exp` normalizer; the fitter contains a small `log_sum_exp()` helper used across the EM loop.
+
+## HC $k$ selection (grid + heuristic)
+
+When `select_noise_k = TRUE` and `noise_type = "hc"` the search is performed by `matrix_noise_hc_select_fit()`. Important points:
+
+- The supplied noise_k_grid (default 10^seq(-8, -1, length.out = 15)) is combined with a dimension-aware log-scale heuristic produced by `matrix_noise_hc_search_grid()`.
+
+- The heuristic grid is built from the matrix dimension dimension = r * p as follows:
+  - center_log10 <- -0.75 * dimension
+  - half_width <- max(6, ceiling(dimension / 2))
+  - lower_log10 <- max(log10(.Machinedouble.xmin), center_log10 - half_width)
+  - upper_log10 <- center_log10 + half_width
+  - heuristic_grid <- 10^seq(lower_log10, upper_log10, length.out = max(9L, length(candidate_grid)))
+
+  This places the center of the heuristic on a log10 scale proportional to -0.75 * (r*p) and expands in log-space by a half-width that grows with the matrix dimension, allowing the search to reach very small k values for high-dimensional matrices.
+
+- `matrix_noise_hc_select_fit()` evaluates each candidate $k$ by fitting `matrix_variate_noise_fit_impl(..., noise_k = candidate_k)` and computing a matrix-KS goodness-of-fit score (see next section). The selection prefers candidates with lower KS statistic; if no valid KS-based winner exists, the routine falls back to the candidate with the most non-noise observations (largest $n_used$) and then to the highest finite log-likelihood among ties.
+
+## Matrix-KS goodness-of-fit used for $k$ selection
+
+- The KS score is implemented in `matrix_noise_ks_score()`. For a fitted model it:
+  - selects observations assigned to a Gaussian cluster (fit cluster > 0)
+  - computes the matrix Mahalanobis distance for each kept matrix to its assigned component using matrix_mahalanobis()
+  - compares the empirical distribution of these distances to a chi-square distribution with degrees of freedom df = r * p via stats::ks.test(distances, "pchisq", df = df)
+
+- The returned list contains statistic (KS statistic), p.value, and n_used (number of distances used). Candidates with Inf statistics or invalid tests are treated as worse than finite, valid KS results.
+
+## Noise and parameter updates in the EM
+
+- The EM E-step: build log_density matrix with $g$ Gaussian columns plus the noise column; set noise column to log(noise_k) or matrix_noise_br_log_density(...) as appropriate; normalize rows with log_sum_exp and exponentiate the stabilized differences to obtain responsibilities.
+
+- The M-step: only Gaussian parameters ($M$, $U$, $V$) and the mixing proportions are updated using the responsibilities. The noise density's functional form is fixed (HC: fixed $k$; BR: fixed support/volume), so only its mixing weight pi_noise changes.
+
+- After convergence the fitter returns a list containing $M$, $U$, $V$, $pi$ (with a "noise" entry), logLik trace, responsibilities (last column = noise), cluster (0 = noise), converged, and a noise sub-list with search metadata when select_noise_k = TRUE.
+
+## Notes and implementation caveats
+
+- noise_jitter is provided to avoid degenerate convex hulls for BR; it is passed into matrix_noise_convex_hull_support() when noise_type = "br". For BR the jitter perturbs vectorised points slightly before computing the hull.
+
+- Default sensible values (e.g. noise_k = 1e-04, noise_pi_init = 0.05) are chosen to give the noise component a small initial influence; users can override these when calling matrix_variate_noise_fit().
+
+- The code uses numerically stable patterns (log-sum-exp, precomputed log-densities) and falls back gracefully when KS-based selection cannot produce a winner.
