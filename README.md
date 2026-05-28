@@ -3,8 +3,8 @@
 <img src="data/mde_icon_2.png" align="right" width="140" alt="Drifloon hex sticker" />
 
 This repository contains R code for fitting matrix-variate Gaussian mixture
-models with an explicit background noise component (HC — Hennig–Coretto and
-BR — Banfield–Raftery styles). The implementation supports EM fitting,
+models with an explicit background noise component (HC; Hennig–Coretto and
+BR; Banfield–Raftery styles). The implementation supports EM fitting,
 HC noise `k` grid search and Mahalanobis-based diagnostics.
 
 Fit a model to a list of matrix observations (`x_list`):
