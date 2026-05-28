@@ -1,0 +1,144 @@
+---
+title: "Matrix_Noise_Writeup"
+format: pdf
+---
+
+# Introduction
+The point is to investigate adding an explicit background noise component to a matrix-variate Gaussian mixture model. Each element of the dataset is a single matrix-valued observation: the EM algorithm computes one posterior responsibility vector per whole matrix and therefore assigns or down-weights entire matrices (not individual entries) to the noise component.
+
+We implement two background types
+
+- BR (Banfield–Raftery): a bounded uniform background defined either on a simple axis-aligned bounding hyper-rectangle. The background density is uniform over the admissible region and zero outside; evaluation checks the vectorised matrix against the region.
+
+- HC (Hennig–Coretto): an improper constant background density $k$ that is treated as a small, fixed height over the whole vectorised space. The HC term does not integrate to one, but it provides a constant baseline likelihood that competes with the Gaussian components.
+
+Decision rule (both types) is at the observation (matrix) level: the posterior for the noise component for matrix $\mathbf{X}_i$ is proportional to $\pi_0 h(\mathbf{X}_i)$, where $h(\cdot)$ is either the uniform BR density or the constant HC value. In practice, a single contaminated column or large deviation in a matrix can make the full matrix unlikely under all Gaussians and therefore increase its posterior probability of being labeled noise.
+
+For HC we provide an optional grid search over candidate $k$ values (log-spaced by default) and select the value whose fitted matrix-KS goodness-of-fit score is best; this stabilizes the choice of $k$ compared with a single arbitrary setting.
+
+## Matrix Noise
+For matrix-valued observations, the noise term should play the same role as the Banfield-Raftery or Hennig-Coretto background component: it should absorb matrices that are not well explained by any Gaussian cluster, without forcing them to belong to a particular structured component.
+
+$$
+f(\mathbf{X}) = \sum_{g=1}^{G} \pi_g \, \phi_{r\times p}(\mathbf{X} \,|\, \mathbf{M}_g, \mathbf{U}_g, \mathbf{V}_g) + \pi_0 \, h(\mathbf{X}),
+\qquad \sum_{g=0}^{G} \pi_g = 1
+$$
+
+where $h(\mathbf{X})$ is a noise density and $\pi_0$ is the noise proportion.
+
+### Improper k matrix-HC-noise
+
+Let us define our improper noise $k$ as
+
+$$
+h(\mathbf{X}) = k, \qquad k > 0 \quad \forall \ \mathbf{X} \in \mathbb{R}^{rp}
+$$
+
+This is again going to be a pseudo-likelihood as $k$ will not integrate to 1 over the support $\mathbb{R}^{rp}$. 
+Then the mixture becomes
+$$
+f(\mathbf{X}) = \sum_{g=1}^{G} \pi_g \, \phi_{r\times p}(\mathbf{X} \,|\, \mathbf{M}_g, \mathbf{U}_g, \mathbf{V}_g) + \pi_0 k
+$$
+
+Thus, the noise responsibility becomes
+$$
+\hat z_{i0} = \frac{\hat\pi_0 h(\mathbf{X}_i)}{\hat\pi_0 k + \sum_{g=1}^{G} \hat\pi_g \phi_{r\times p}(\mathbf{X}_i \,|\, \hat{\mathbf{M}}_g, \hat{\mathbf{U}}_g, \hat{\mathbf{V}}_g)}
+$$
+
+To pick $k$ we can just start by picking a small enough $k$ and then going from there.
+
+### Uniform BR-noise
+
+For matrix observations we may define a bounded uniform background either exactly on the convex hull of the observed matrices (in vectorised space) or approximately on a simple bounding hyper-rectangle.
+
+Let $H = \mathrm{conv}\{\mathrm{vec}(\mathbf{X}_1),\dots,\mathrm{vec}(\mathbf{X}_n)\}\subset\mathbb{R}^{rp}$ be the convex hull of the vectorised data. The BR uniform noise is
+
+$$
+h_{\mathrm{BR}}(\mathbf{X}) = \frac{1(\mathrm{vec}(\mathbf{X})\in H)}{\mathrm{Vol}(H)}
+$$
+where $\mathrm{Vol}(H)$ is the $rp$-dimensional volume of the convex hull.
+
+Because computing $\mathrm{Vol}(H)$ can be expensive in high dimensions, we could use the entrywise bounding hyper-rectangle: for each matrix entry index $(a,b)$ compute
+
+$$
+m_{ab}=\min_{i} [\mathbf{X}_i]_{ab} \qquad M_{ab}=\max_{i} [\mathbf{X}_i]_{ab}
+$$
+and define the axis-aligned hyper-rectangle
+
+$$
+R = \prod_{a=1}^r\prod_{b=1}^p [m_{ab}, M_{ab}] \subset \mathbb{R}^{rp}
+$$
+Then set the uniform noise density over the convex hull of the vectorized observations
+
+$$
+h_{\mathrm{BR}}^{\mathrm{hull}}(\mathbf{X}) = \frac{1(\mathrm{vec}(\mathbf{X})\in \mathrm{conv}(\{\mathrm{vec}(\mathbf{X}_i)\}))}{\mathrm{vol}(\mathrm{conv}(\{\mathrm{vec}(\mathbf{X}_i)\}))}
+$$
+
+## Code
+
+- [R/Matrix_Noise.R](R/Matrix_Noise.R) — high-level noise-aware fitter and BR/HC helpers.
+- [R/Matrix.R](R/Matrix.R) — core matrix-variate utilities, EM initialization and base MGMM fitter.
+- [R/HC_Noise_Search.R](R/HC_Noise_Search.R) — grid search and selection utilities for HC noise `k`.
+
+Key implementation points
+- **Entry point:** `matrix_variate_noise_fit(x_list, g, noise_type = c("hc","br"), ...)` wraps `matrix_variate_noise_fit_impl()` and optionally runs an HC `k` grid search via `matrix_noise_hc_select_fit()`.
+- **Initialization:** `matrix_mixture_kmeans_init()` vectorizes matrices and runs `kmeans()` to produce initial `pi`, `M`, `U`, and `V` values.
+- **Numerical stability:** all covariance matrices are passed through `make_spd()` to enforce symmetry and positive-definiteness before Cholesky decompositions.
+- **Density evaluation:** Gaussian log-densities use `matrix_variate_log_density()` (Cholesky-based, avoids explicit inverses); the noise log-density column is computed separately:
+	- HC: constant `log(k)` for every observation.
+	- BR: `matrix_noise_convex_hull_support()` builds a convex hull of the vectorised data and returns `log_volume`; `matrix_noise_br_log_density()` returns `-log(volume)` inside the hull and `-Inf` outside.
+- **E-step:** assemble a log-density matrix with G Gaussian columns + 1 noise column; normalize rows with a numerically stable log-sum-exp to obtain posterior responsibilities.
+- **M-step:** update only the Gaussian component parameters (`pi`, `M`, `U`, `V`) using posterior weights. The noise component keeps its density (HC or BR); only its mixing proportion `pi_0` is updated from responsibilities.
+- **Identifiability:** after each row-covariance update the code rescales U and V so that `tr(U) = r` (row dimension) to remove the U–V scale ambiguity.
+- **Convergence:** checked on the observed-data log-likelihood trace with a `tol` threshold; hard assignments use `max.col()` and map the noise column to cluster `0`.
+
+Return value (common structure)
+- **`pi`**: numeric vector of length `G + 1` (last entry is noise proportion).
+- **`M, U, V`**: lists of length `G` with Gaussian parameters (noise has no `M/U/V`).
+- **`z`**: (n × (G + 1)) posterior responsibility matrix (last column = noise responsibilities).
+- **`cluster`**: integer vector of hard labels (noise observations set to `0`).
+- **`logLik, iterations, converged`**: EM diagnostics.
+- **`noise`**: sub-list with `type` (`"hc"`/`"br"`), `pi`, `k` (HC value or `NA`), `hull` (BR support) and, if selected, `search` details from the HC grid routine.
+
+Usage examples
+
+Basic HC fit (single `k`):
+
+```{r}
+fit_hc <- matrix_variate_noise_fit(x_list, g = 3, noise_type = "hc",
+																	noise_k = 1e-4, noise_pi_init = 0.05,
+																	max_iter = 200, tol = 1e-6)
+summary(fit_hc$noise)
+table(fit_hc$cluster)
+plot(fit_hc$logLik, type = "b", main = "HC fit log-likelihood")
+```
+
+HC with automatic `k` selection (matrix-KS criterion):
+
+```{r}
+# provide a log-spaced grid; the function augments this with a dimension-aware heuristic
+fit_hc_sel <- matrix_variate_noise_fit(x_list, g = 3, noise_type = "hc",
+																			select_noise_k = TRUE,
+																			noise_k_grid = 10^seq(-12, -2, length.out = 15))
+# selected k and search results
+fit_hc_sel$noise$search$selected_k
+head(fit_hc_sel$noise$search$results)
+```
+
+BR fit (convex hull support):
+
+```{r}
+fit_br <- matrix_variate_noise_fit(x_list, g = 3, noise_type = "br",
+																	 noise_pi_init = 0.05)
+summary(fit_br$noise)
+```
+
+Implementation notes & practical tips
+- Use a small `noise_k` for HC (e.g. between 1e-8 and 1e-3) relative to your Gaussian densities; too-large `k` will absorb structured data.
+- The HC `k` grid search (`select_noise_k = TRUE`) uses a matrix-KS goodness-of-fit on Mahalanobis distances (`matrix_noise_ks_score()`) to prefer fits where non-noise observations match the chi-square reference.
+- BR uses the `geometry` package for convex hulls; if `geometry::convhulln()` fails (too few unique points or degenerate geometry) the function raises an informative error.
+- The BR uniform support is exact (convex hull) and therefore scales badly with `r * p`; for high-dimensional matrices consider a bounding hyper-rectangle or reduce dimension first.
+- The functions `matrix_variate_log_density()`, `matrix_mahalanobis()` and `make_spd()` are centralized in [R/Matrix.R](R/Matrix.R) for clarity and numerical stability.
+
+If you want, I can also add an illustrated, runnable minimal example (small simulated `x_list`) into this document to demonstrate typical outputs and diagnostic plots.
+

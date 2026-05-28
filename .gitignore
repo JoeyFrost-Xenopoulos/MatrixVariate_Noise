@@ -12,3 +12,5 @@ sticker/
 MASTERS.Rproj
 .positai
 .Rbuildignore
+/temp
+/C
