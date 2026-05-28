@@ -117,9 +117,6 @@ matrix_variate_noise_fit_impl <- function(x_list, g,
 											 noise_pi_init = 0.05,
 											 verbose = FALSE) {
 	noise_type <- match.arg(noise_type)
-	if (noise_type == "hc" && (!is.finite(noise_k) || noise_k <= 0)) {
-		stop("noise_k must be a positive finite value when noise_type = \"hc\".")
-	}
 
 	n <- length(x_list)
 	r <- nrow(x_list[[1]])
@@ -189,12 +186,7 @@ matrix_variate_noise_fit_impl <- function(x_list, g,
 		for (i in seq_len(n)) {
 			row_log_densities <- log_density[i, ]
 			normalizer <- log_sum_exp(row_log_densities)
-			if (!is.finite(normalizer)) {
-				responsibilities[i, ] <- 0
-				responsibilities[i, g + 1] <- 1
-			} else {
-				responsibilities[i, ] <- exp(row_log_densities - normalizer)
-			}
+			responsibilities[i, ] <- exp(row_log_densities - normalizer)
 		}
 
 		# Observed-data log-likelihood

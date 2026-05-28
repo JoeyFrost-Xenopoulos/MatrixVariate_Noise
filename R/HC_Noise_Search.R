@@ -215,8 +215,7 @@ matrix_noise_hc_search_grid <- function(noise_k_grid, x_list) {
 		half_width <- max(6, ceiling(dimension / 2))
 		lower_log10 <- max(log10(.Machine$double.xmin), center_log10 - half_width)
 		upper_log10 <- center_log10 + half_width
-		heuristic_grid <- exp(seq(lower_log10, upper_log10, length.out = max(9L, length(candidate_grid))) * log(10))
-		heuristic_grid <- heuristic_grid[is.finite(heuristic_grid) & heuristic_grid > 0]
+		heuristic_grid <- 10^seq(lower_log10, upper_log10, length.out = max(9L, length(candidate_grid)))
 		candidate_grid <- c(candidate_grid, heuristic_grid)
 	}
 
