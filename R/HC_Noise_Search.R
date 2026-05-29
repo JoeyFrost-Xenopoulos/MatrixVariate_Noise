@@ -51,6 +51,13 @@ matrix_noise_hc_select_fit <- function(x_list, g,
 			break
 		}
 
+		round_best_k <- NA_real_
+		round_best_statistic <- Inf
+		round_best_p_value <- NA_real_
+		round_fallback_k <- NA_real_
+		round_fallback_n_used <- -Inf
+		round_fallback_loglik <- -Inf
+
 		for (candidate_k in round_grid) {
 			candidate_key <- format(candidate_k, scientific = TRUE, digits = 16)
 			seen_keys <- c(seen_keys, candidate_key)
@@ -92,6 +99,15 @@ matrix_noise_hc_select_fit <- function(x_list, g,
 				fallback_loglik <- candidate_loglik
 			}
 
+			if (is.finite(score$n_used) && (
+				score$n_used > round_fallback_n_used ||
+				(score$n_used == round_fallback_n_used && is.finite(candidate_loglik) && candidate_loglik > round_fallback_loglik)
+			)) {
+				round_fallback_k <- candidate_k
+				round_fallback_n_used <- score$n_used
+				round_fallback_loglik <- candidate_loglik
+			}
+
 			if (is.finite(score$statistic) && (
 				score$statistic < best_statistic ||
 				(identical(score$statistic, best_statistic) && (!is.finite(best_p_value) || score$p.value > best_p_value))
@@ -100,6 +116,15 @@ matrix_noise_hc_select_fit <- function(x_list, g,
 				best_k <- candidate_k
 				best_statistic <- score$statistic
 				best_p_value <- score$p.value
+			}
+
+			if (is.finite(score$statistic) && (
+				score$statistic < round_best_statistic ||
+				(identical(score$statistic, round_best_statistic) && (!is.finite(round_best_p_value) || score$p.value > round_best_p_value))
+			)) {
+				round_best_k <- candidate_k
+				round_best_statistic <- score$statistic
+				round_best_p_value <- score$p.value
 			}
 		}
 
@@ -120,21 +145,13 @@ matrix_noise_hc_select_fit <- function(x_list, g,
 			stop("HC noise_k selection failed: no candidate fit could be retained.")
 		}
 
-		candidate_grid <- sanitize_noise_grid(candidate_grid)
-		if (length(candidate_grid) == 0) {
+		pivot_k <- if (is.finite(round_best_k)) round_best_k else round_fallback_k
+		if (!is.finite(pivot_k) || pivot_k <= 0) {
 			break
 		}
 
-		current_min <- min(candidate_grid)
-		current_max <- max(candidate_grid)
-		log10_grid <- log10(candidate_grid)
-		log10_grid <- log10_grid[is.finite(log10_grid)]
-		current_span <- if (length(log10_grid) > 0) diff(range(log10_grid)) else NA_real_
-		if (!is.finite(current_span) || current_span <= 0) {
-			current_span <- 1
-		}
-
-		if (best_k > current_min && best_k < current_max) {
+		candidate_grid <- sanitize_noise_grid(candidate_grid)
+		if (length(candidate_grid) == 0) {
 			break
 		}
 
@@ -142,29 +159,29 @@ matrix_noise_hc_select_fit <- function(x_list, g,
 			break
 		}
 
-		if (identical(best_k, current_min)) {
-			lower_log10 <- log10(current_min) - current_span
-			upper_log10 <- log10(current_min)
-			if (!is.finite(lower_log10) || !is.finite(upper_log10)) {
-				break
-			}
-			candidate_grid <- sort(unique(c(
-				candidate_grid,
-				10^seq(lower_log10, upper_log10, length.out = max(9L, length(candidate_grid)))
-			)))
-		} else if (identical(best_k, current_max)) {
-			lower_log10 <- log10(current_max)
-			upper_log10 <- log10(current_max) + current_span
-			if (!is.finite(lower_log10) || !is.finite(upper_log10)) {
-				break
-			}
-			candidate_grid <- sort(unique(c(
-				candidate_grid,
-				10^seq(lower_log10, upper_log10, length.out = max(9L, length(candidate_grid)))
-			)))
-		} else {
+		log10_round <- log10(round_grid)
+		log10_round <- log10_round[is.finite(log10_round)]
+		round_span <- if (length(log10_round) > 0) diff(range(log10_round)) else NA_real_
+		if (!is.finite(round_span) || round_span <= 0) {
+			round_span <- 1
+		}
+
+		pivot_log10 <- log10(pivot_k)
+		if (!is.finite(pivot_log10)) {
 			break
 		}
+
+		# Refine search around the best region and shrink the window each round.
+		refine_half_width <- max(round_span / 3, 0.5) / (2^(round_idx - 1))
+		lower_log10 <- max(log10(.Machine$double.xmin), pivot_log10 - refine_half_width)
+		upper_log10 <- pivot_log10 + refine_half_width
+		if (!is.finite(lower_log10) || !is.finite(upper_log10) || lower_log10 >= upper_log10) {
+			break
+		}
+
+		refine_count <- max(9L, min(21L, length(round_grid) + 2L))
+		refined_grid <- 10^seq(lower_log10, upper_log10, length.out = refine_count)
+		candidate_grid <- sanitize_noise_grid(c(candidate_grid, refined_grid))
 
 		candidate_grid <- sanitize_noise_grid(candidate_grid)
 	}

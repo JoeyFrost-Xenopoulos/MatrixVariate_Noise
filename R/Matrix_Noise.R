@@ -23,6 +23,10 @@
 #'   convex-hull support.
 #' @param noise_pi_init Numeric: initial mixing proportion for the noise
 #'   component.
+#' @param use_parallel Logical: if `TRUE`, evaluate HC candidate noise heights
+#'   in parallel during selection.
+#' @param n_cores Integer: number of worker processes to use when
+#'   `use_parallel = TRUE`.
 #' @param verbose Logical: print iteration progress.
 #'
 #' @return A list containing the fitted mixture parameters, posterior
@@ -60,6 +64,8 @@ matrix_variate_noise_fit <- function(x_list, g,
 											 noise_k_grid = 10^seq(-8, -1, length.out = 15),
 											 noise_jitter = 1e-08,
 											 noise_pi_init = 0.05,
+											 use_parallel = FALSE,
+											 n_cores = NULL,
 											 verbose = FALSE) {
 										
 	noise_type <- match.arg(noise_type)
@@ -78,6 +84,8 @@ matrix_variate_noise_fit <- function(x_list, g,
 			noise_k_grid = noise_k_grid,
 			noise_jitter = noise_jitter,
 			noise_pi_init = noise_pi_init,
+			use_parallel = use_parallel,
+			n_cores = n_cores,
 			verbose = verbose
 		))
 	}

@@ -13,6 +13,8 @@ matrix_noise_hc_select_fit(
   noise_k_grid = 10^seq(-8, -1, length.out = 15),
   noise_jitter = 1e-08,
   noise_pi_init = 0.05,
+  use_parallel = FALSE,
+  n_cores = NULL,
   verbose = FALSE
 )
 }
@@ -32,6 +34,12 @@ matrix_noise_hc_select_fit(
 \item{noise_jitter}{Numeric: retained for compatibility with the fitter.}
 
 \item{noise_pi_init}{Numeric: initial noise mixing proportion.}
+
+\item{use_parallel}{Logical: if \code{TRUE}, evaluate candidate \code{k} values in
+parallel using a PSOCK cluster.}
+
+\item{n_cores}{Integer: number of worker processes to use when
+\code{use_parallel = TRUE}. Defaults to one less than the detected core count.}
 
 \item{verbose}{Logical: print progress messages.}
 }
