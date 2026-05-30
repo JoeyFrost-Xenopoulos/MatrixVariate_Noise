@@ -19,6 +19,17 @@ noise_pi_init <- 0.05
 verbose <- FALSE
 
 repo_root <- normalizePath(getwd())
+script_args <- commandArgs(trailingOnly = FALSE)
+script_file <- sub("^--file=", "", script_args[grep("^--file=", script_args)])
+if (length(script_file) > 0) {
+  repo_root <- normalizePath(file.path(dirname(script_file[1]), ".."))
+} else if (file.exists(file.path(repo_root, "R"))) {
+  repo_root <- normalizePath(repo_root)
+} else if (file.exists(file.path(dirname(repo_root), "R"))) {
+  repo_root <- normalizePath(file.path(repo_root, ".."))
+} else {
+  stop("Could not determine the repository root containing the R/ directory.")
+}
 r_dir <- file.path(repo_root, "R")
 r_files <- sort(list.files(r_dir, pattern = "\\.R$", full.names = TRUE))
 if (length(r_files) == 0) {
