@@ -12,6 +12,8 @@ row_sd <- 0.5
 col_sd <- 0.5
 g <- 2
 n_grid <- 50
+fine_half_width_log10 <- 1
+fine_grid_n <- 31
 max_iter <- 100
 tol <- 1e-06
 nstart <- 10
@@ -115,8 +117,10 @@ for (size_idx in seq_along(size_grid)) {
     selected_idx <- NA_integer_
     selected_k <- NA_real_
     selected_ks <- NA_real_
-    plot_file <- file.path(output_dir, paste0("ks_curve_", run_label, ".png"))
-    curve_file <- file.path(output_dir, paste0("ks_curve_", run_label, ".csv"))
+    coarse_plot_file <- file.path(output_dir, paste0("ks_curve_coarse_", run_label, ".png"))
+    coarse_curve_file <- file.path(output_dir, paste0("ks_curve_coarse_", run_label, ".csv"))
+    refined_plot_file <- file.path(output_dir, paste0("ks_curve_refined_", run_label, ".png"))
+    refined_curve_file <- file.path(output_dir, paste0("ks_curve_refined_", run_label, ".csv"))
 
     status <- "ok"
     error_message <- NA_character_
@@ -129,33 +133,116 @@ for (size_idx in seq_along(size_grid)) {
       selected_k <- results$noise_k[selected_idx]
       selected_ks <- results$ks_statistic[selected_idx]
 
-      results$selected <- FALSE
-      results$selected[selected_idx] <- TRUE
-      results$nrow_matrix <- r
-      results$ncol_matrix <- p
-      results$n_contam <- n_contam
-      results$run_label <- run_label
+      fine_lower <- max(.Machine$double.xmin, selected_k / (10^fine_half_width_log10))
+      fine_upper <- selected_k * (10^fine_half_width_log10)
+      fine_noise_k_grid <- exp(seq(log(fine_lower), log(fine_upper), length.out = fine_grid_n))
 
-      grDevices::png(plot_file, width = 900, height = 650, res = 120)
-      plot_title <- paste0("HC noise_k vs KS statistic (", r, " x ", p, ", contam = ", n_contam, ")")
-      plot(
-        results$noise_k,
-        results$ks_statistic,
-        log = "x",
-        type = "b",
-        pch = 19,
-        col = "steelblue4",
-        ylim = range(finite_ks),
-        xlab = expression(noise[k]),
-        ylab = "KS statistic",
-        main = plot_title
+      fine_results <- data.frame(
+        noise_k = fine_noise_k_grid,
+        ks_statistic = NA_real_,
+        converged = NA,
+        stringsAsFactors = FALSE
       )
-      points(selected_k, selected_ks, col = "red", pch = 19, cex = 1.4)
-      legend("topright", legend = "Selected k", col = "red", pch = 19, bty = "n")
-      grid()
-      grDevices::dev.off()
 
-      write.csv(results, curve_file, row.names = FALSE)
+      fine_run_error <- NA_character_
+      for (i in seq_along(fine_noise_k_grid)) {
+        candidate_k <- fine_noise_k_grid[i]
+        fit <- tryCatch(
+          matrix_variate_noise_fit(
+            x_list = x_list,
+            g = g,
+            noise_type = "hc",
+            noise_k = candidate_k,
+            max_iter = max_iter,
+            tol = tol,
+            nstart = nstart,
+            noise_pi_init = noise_pi_init,
+            verbose = verbose
+          ),
+          error = function(e) e
+        )
+
+        if (inherits(fit, "error")) {
+          fine_run_error <- conditionMessage(fit)
+          fine_results$ks_statistic[i] <- NA_real_
+          fine_results$converged[i] <- NA
+        } else {
+          fine_results$ks_statistic[i] <- matrix_noise_ks_score(fit, x_list)$statistic
+          fine_results$converged[i] <- isTRUE(fit$converged)
+        }
+      }
+
+      fine_finite_ks <- fine_results$ks_statistic[is.finite(fine_results$ks_statistic)]
+      if (length(fine_finite_ks) == 0) {
+        status <- "no_finite_ks_refined"
+        error_message <- if (!is.na(fine_run_error)) fine_run_error else "No finite KS statistics were produced in the refined grid."
+      } else {
+        fine_selected_idx <- which.min(ifelse(is.finite(fine_results$ks_statistic), fine_results$ks_statistic, Inf))
+        fine_selected_k <- fine_results$noise_k[fine_selected_idx]
+        fine_selected_ks <- fine_results$ks_statistic[fine_selected_idx]
+
+        fine_results$selected <- FALSE
+        fine_results$selected[fine_selected_idx] <- TRUE
+        fine_results$nrow_matrix <- r
+        fine_results$ncol_matrix <- p
+        fine_results$n_contam <- n_contam
+        fine_results$run_label <- run_label
+        fine_results$grid_type <- "fine"
+
+        selected_k <- fine_selected_k
+        selected_ks <- fine_selected_ks
+
+        results$selected <- FALSE
+        results$selected[selected_idx] <- TRUE
+        results$nrow_matrix <- r
+        results$ncol_matrix <- p
+        results$n_contam <- n_contam
+        results$run_label <- run_label
+        results$grid_type <- "coarse"
+
+        grDevices::png(coarse_plot_file, width = 900, height = 650, res = 120)
+        coarse_plot_title <- paste0("Coarse HC noise_k vs KS statistic (", r, " x ", p, ", contam = ", n_contam, ")")
+        plot(
+          results$noise_k,
+          results$ks_statistic,
+          log = "x",
+          type = "b",
+          pch = 19,
+          col = "steelblue4",
+          ylim = range(finite_ks),
+          xlab = expression(noise[k]),
+          ylab = "KS statistic",
+          main = coarse_plot_title
+        )
+        points(selected_k, selected_ks, col = "red", pch = 19, cex = 1.4)
+        legend("topright", legend = "Selected k", col = "red", pch = 19, bty = "n")
+        grid()
+        grDevices::dev.off()
+
+        write.csv(results, coarse_curve_file, row.names = FALSE)
+
+        grDevices::png(refined_plot_file, width = 900, height = 650, res = 120)
+        plot_title <- paste0("Refined HC noise_k vs KS statistic (", r, " x ", p,", contam = ", n_contam, ")")
+        plot(
+          fine_results$noise_k,
+          fine_results$ks_statistic,
+          log = "x",
+          type = "b",
+          pch = 19,
+          col = "steelblue4",
+          ylim = range(fine_finite_ks),
+          xlab = expression(noise[k]),
+          ylab = "KS statistic",
+          main = plot_title
+        )
+        points(fine_selected_k, fine_selected_ks, col = "red", pch = 19, cex = 1.4)
+        legend("topright", legend = "Selected k", col = "red", pch = 19, bty = "n")
+        grid()
+        grDevices::dev.off()
+
+        write.csv(fine_results, refined_curve_file, row.names = FALSE)
+        all_curve_rows[[length(all_curve_rows) + 1L]] <- fine_results
+      }
       all_curve_rows[[length(all_curve_rows) + 1L]] <- results
     }
 
@@ -169,8 +256,10 @@ for (size_idx in seq_along(size_grid)) {
       selected_ks = selected_ks,
       status = status,
       error_message = error_message,
-      plot_file = if (status == "ok") plot_file else NA_character_,
-      curve_file = if (status == "ok") curve_file else NA_character_,
+      coarse_plot_file = if (status == "ok") coarse_plot_file else NA_character_,
+      coarse_curve_file = if (status == "ok") coarse_curve_file else NA_character_,
+      refined_plot_file = if (status == "ok") refined_plot_file else NA_character_,
+      refined_curve_file = if (status == "ok") refined_curve_file else NA_character_,
       stringsAsFactors = FALSE
     )
   }
