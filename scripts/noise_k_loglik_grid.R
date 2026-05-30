@@ -4,9 +4,24 @@ n_group1 <- 20
 n_group2 <- 20
 n_contam_grid <- 2:15
 size_grid <- list(
-  c(3, 5),
-  c(4, 6),
-  c(5, 8)
+  c(2, 2),
+  c(2,3),
+  c(2, 4),
+  c(2, 5),
+  c(2, 6),
+  c(2, 7),
+  c(2, 8),
+  c(2, 9),
+  c(2, 10),
+  c(5,2),
+  c(5,3),
+  c(5,4),
+  c(5,5),
+  c(5,6),
+  c(5,7),
+  c(5,8),
+  c(5,9),
+  c(5,10),
 )
 row_sd <- 0.5
 col_sd <- 0.5
@@ -134,7 +149,7 @@ for (size_idx in seq_along(size_grid)) {
       selected_ks <- results$ks_statistic[selected_idx]
 
       fine_center_k <- selected_k
-      fine_lower <- max(.Machine$double.xmin, fine_center_k / (10^fine_half_width_log10))
+      fine_lower <- max(.Machine$double.xmin, fine_center_k)
       fine_upper <- fine_center_k * (10^fine_half_width_log10)
       fine_noise_k_grid <- exp(seq(log(fine_lower), log(fine_upper), length.out = fine_grid_n))
 
@@ -237,7 +252,7 @@ for (size_idx in seq_along(size_grid)) {
         points(fine_selected_k, fine_selected_ks, col = "darkorange", pch = 19, cex = 1.4)
         legend(
           "topright",
-          legend = c("Coarse center k", "Refined minimum k"),
+          legend = c("Coarse selected k", "Refined minimum k"),
           col = c("red", "darkorange"),
           pch = 19,
           bty = "n"

@@ -1,0 +1,180 @@
+---
+title: "KS Tests"
+format: html
+execute:
+	warning: false
+	message: false
+---
+
+```{r}
+library(knitr)
+
+find_repo_root <- function() {
+	candidates <- normalizePath(
+		c(getwd(), file.path(getwd(), ".."), file.path(getwd(), "..", "..")),
+		winslash = "/",
+		mustWork = FALSE
+	)
+	candidates <- unique(candidates[file.exists(file.path(candidates, "R"))])
+	candidates <- candidates[file.exists(file.path(candidates, "results"))]
+	if (length(candidates) == 0) {
+		stop("Could not locate the repository root with both R/ and results/ directories.")
+	}
+	candidates[1]
+}
+
+repo_root <- find_repo_root()
+results_root <- file.path(repo_root, "results")
+batch_dirs <- list.dirs(results_root, recursive = FALSE, full.names = TRUE)
+batch_dirs <- batch_dirs[grepl("^noise_k_batch_", basename(batch_dirs))]
+if (length(batch_dirs) == 0) {
+	stop("No noise_k batch results were found under results/.")
+}
+
+batch_info <- data.frame(
+	dir = batch_dirs,
+	mtime = file.info(batch_dirs)$mtime,
+	stringsAsFactors = FALSE
+)
+latest_dir <- batch_info$dir[which.max(batch_info$mtime)]
+summary_path <- file.path(latest_dir, "noise_k_summary.csv")
+curve_path <- file.path(latest_dir, "noise_k_all_curves.csv")
+
+if (!file.exists(summary_path)) {
+	stop(paste("Missing summary CSV:", summary_path))
+}
+
+summary_results <- read.csv(summary_path, stringsAsFactors = FALSE)
+curve_results <- if (file.exists(curve_path)) read.csv(curve_path, stringsAsFactors = FALSE) else data.frame()
+
+summary_results$size_label <- paste0(summary_results$nrow_matrix, " x ", summary_results$ncol_matrix)
+summary_results$status <- factor(summary_results$status)
+ok_results <- summary_results[summary_results$status == "ok", , drop = FALSE]
+
+size_levels <- unique(summary_results$size_label)
+size_levels <- size_levels[order(match(size_levels, unique(summary_results$size_label)))]
+ok_results$size_label <- factor(ok_results$size_label, levels = size_levels)
+
+summary_table <- do.call(
+	rbind,
+	lapply(split(ok_results, ok_results$size_label), function(df) {
+		data.frame(
+			size = unique(df$size_label),
+			n_runs = nrow(df),
+			contam_min = min(df$n_contam),
+			contam_max = max(df$n_contam),
+			selected_k_mean = mean(df$selected_k, na.rm = TRUE),
+			selected_k_median = median(df$selected_k, na.rm = TRUE),
+			ks_mean = mean(df$selected_ks, na.rm = TRUE),
+			ks_median = median(df$selected_ks, na.rm = TRUE),
+			stringsAsFactors = FALSE
+		)
+	})
+)
+
+failure_table <- do.call(
+	rbind,
+	lapply(split(summary_results, summary_results$size_label), function(df) {
+		data.frame(
+			size = unique(df$size_label),
+			n_runs = nrow(df),
+			failures = sum(df$status != "ok"),
+			failure_rate = mean(df$status != "ok"),
+			stringsAsFactors = FALSE
+		)
+	})
+)
+
+contam_table <- aggregate(
+	cbind(selected_k, selected_ks) ~ size_label + n_contam,
+	data = ok_results,
+	FUN = function(x) c(mean = mean(x, na.rm = TRUE), median = median(x, na.rm = TRUE))
+)
+
+selected_k_by_contam <- aggregate(selected_k ~ size_label + n_contam, data = ok_results, FUN = median)
+selected_ks_by_contam <- aggregate(selected_ks ~ size_label + n_contam, data = ok_results, FUN = median)
+
+example_run <- ok_results[which.min(ok_results$selected_ks), , drop = FALSE]
+example_curve <- if (nrow(example_run) == 1 && file.exists(example_run$refined_curve_file)) {
+	read.csv(example_run$refined_curve_file, stringsAsFactors = FALSE)
+} else {
+	data.frame()
+}
+
+if (nrow(example_curve) > 0) {
+	example_curve$selected <- FALSE
+	example_curve$selected[which.min(example_curve$ks_statistic)] <- TRUE
+}
+```
+
+## Latest Batch
+
+The report reads the most recent batch output under `results/noise_k_batch_*`.
+
+```{r}
+cat("Latest results folder:", latest_dir, "\n")
+cat("Rows in summary:", nrow(summary_results), "\n")
+cat("Successful runs:", nrow(ok_results), "\n")
+cat("Failed runs:", sum(summary_results$status != "ok"), "\n")
+```
+
+## Summary Tables
+
+### Selected k and KS by matrix size
+
+```{r}
+kable(summary_table, digits = 4)
+```
+
+### Failure rate by matrix size
+
+```{r}
+kable(failure_table, digits = 4)
+```
+
+## Selected k by Contamination
+
+```{r}
+op <- par(mar = c(4.5, 4.5, 3.5, 1), mfrow = c(1, 1))
+on.exit(par(op), add = TRUE)
+
+plot(
+	NA,
+	xlim = range(selected_k_by_contam$n_contam),
+	ylim = range(log10(selected_k_by_contam$selected_k)),
+	xlab = "Contamination count",
+	ylab = expression(log[10](selected[k])),
+	main = "Median selected k by contamination"
+)
+
+cols <- seq_along(size_levels)
+for (i in seq_along(size_levels)) {
+	size_i <- size_levels[i]
+	df_i <- selected_k_by_contam[selected_k_by_contam$size_label == size_i, , drop = FALSE]
+	if (nrow(df_i) == 0) next
+	lines(df_i$n_contam, log10(df_i$selected_k), col = cols[i], lwd = 2, type = "b", pch = 19)
+}
+legend("topleft", legend = size_levels, col = cols, lty = 1, pch = 19, bty = "n")
+```
+
+## KS Statistic by Contamination
+
+```{r}
+plot(
+	NA,
+	xlim = range(selected_ks_by_contam$n_contam),
+	ylim = range(selected_ks_by_contam$selected_ks, na.rm = TRUE),
+	xlab = "Contamination count",
+	ylab = "Median KS statistic",
+	main = "Median KS statistic by contamination"
+)
+
+for (i in seq_along(size_levels)) {
+	size_i <- size_levels[i]
+	df_i <- selected_ks_by_contam[selected_ks_by_contam$size_label == size_i, , drop = FALSE]
+	if (nrow(df_i) == 0) next
+	lines(df_i$n_contam, df_i$selected_ks, col = cols[i], lwd = 2, type = "b", pch = 19)
+}
+legend("topleft", legend = size_levels, col = cols, lty = 1, pch = 19, bty = "n")
+```
+
