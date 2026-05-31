@@ -19,6 +19,8 @@
 #'   `select_noise_k = TRUE`. The search also augments this grid with a
 #'   matrix-dimension-aware log-scale heuristic so it can reach much smaller
 #'   densities when the data dimension grows.
+#' @param adaptive Logical: if `TRUE`, let the HC selector expand the grid when
+#'   the best candidate lands on a boundary.
 #' @param noise_jitter Numeric: retained for compatibility; unused by the BR
 #'   convex-hull support.
 #' @param noise_pi_init Numeric: initial mixing proportion for the noise
@@ -62,6 +64,7 @@ matrix_variate_noise_fit <- function(x_list, g,
 											 noise_k = 1e-04,
 											 select_noise_k = FALSE,
 											 noise_k_grid = 10^seq(-8, -1, length.out = 15),
+											 adaptive = TRUE,
 											 noise_jitter = 1e-08,
 											 noise_pi_init = 0.05,
 											 use_parallel = FALSE,
@@ -80,6 +83,7 @@ matrix_variate_noise_fit <- function(x_list, g,
 			tol = tol,
 			nstart = nstart,
 			noise_k_grid = noise_k_grid,
+			adaptive = adaptive,
 			noise_jitter = noise_jitter,
 			noise_pi_init = noise_pi_init,
 			use_parallel = use_parallel,
@@ -107,6 +111,7 @@ matrix_variate_noise_fit <- function(x_list, g,
 
 	fit$noise$search <- list(
 		enabled = FALSE,
+		adaptive = isTRUE(adaptive),
 		criterion = "matrix_ks",
 		selected_k = if (noise_type == "hc") noise_k else NA_real_
 	)

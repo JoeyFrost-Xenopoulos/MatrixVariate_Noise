@@ -10,9 +10,10 @@ matrix_noise_hc_select_fit(
   max_iter = 100,
   tol = 1e-06,
   nstart = 10,
-  noise_k_grid = 10^seq(-8, -1, length.out = 15),
+  noise_k_grid = 10^seq(-8, -1, length.out = 50),
   noise_jitter = 1e-08,
   noise_pi_init = 0.05,
+  adaptive = TRUE,
   verbose = FALSE,
   use_parallel = FALSE,
   n_cores = NULL

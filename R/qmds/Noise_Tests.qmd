@@ -15,7 +15,7 @@ simulate_group <- function(n, mean_matrix, row_sd = 0.5, col_sd = 0.5) {
 }
 
 M1 <- matrix(1, r, p)
-M2 <- matrix(-1, r, p)
+M2 <- matrix(-2, r, p)
 x_list <- c(simulate_group(20, M1), simulate_group(20, M2))
 
 contam <- lapply(seq_len(5), function(i) matrix(runif(r * p, -15, 15), r, p))
@@ -28,7 +28,8 @@ x_list <- c(x_list, contam)
 ```{r}
 library(Ampharos)
 fit_hc <- matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc", select_noise_k = TRUE,
-                                   nstart = 100, max_iter = 10, verbose = TRUE)
+                                   nstart = 100, max_iter = 100, verbose = TRUE, tol = 1e-06,
+                                   adaptive = TRUE)
 
 cat('HC fit mixing proportions:\n')
 print(fit_hc$pi)

@@ -14,6 +14,7 @@ matrix_variate_noise_fit(
   noise_k = 1e-04,
   select_noise_k = FALSE,
   noise_k_grid = 10^seq(-8, -1, length.out = 15),
+  adaptive = TRUE,
   noise_jitter = 1e-08,
   noise_pi_init = 0.05,
   use_parallel = FALSE,
@@ -45,6 +46,9 @@ statistic on fitted Mahalanobis distances.}
 \code{select_noise_k = TRUE}. The search also augments this grid with a
 matrix-dimension-aware log-scale heuristic so it can reach much smaller
 densities when the data dimension grows.}
+
+\item{adaptive}{Logical: if \code{TRUE}, let the HC selector expand the grid when
+the best candidate lands on a boundary.}
 
 \item{noise_jitter}{Numeric: retained for compatibility; unused by the BR
 convex-hull support.}

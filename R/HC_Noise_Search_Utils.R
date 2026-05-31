@@ -45,9 +45,11 @@ matrix_noise_ks_score <- function(fit, x_list) {
 #'
 #' @param noise_k_grid Candidate HC noise heights supplied by the caller.
 #' @param x_list List of matrices used to infer a dimension-aware heuristic.
+#' @param adaptive Logical: if `TRUE`, augment the grid with a dimension-aware
+#'   heuristic before selection.
 #' @return A sorted unique numeric vector of positive candidate noise heights.
 #' @keywords internal
-matrix_noise_hc_search_grid <- function(noise_k_grid, x_list) {
+matrix_noise_hc_search_grid <- function(noise_k_grid, x_list, adaptive = TRUE) {
 	x_list <- matrix_validate_x_list(x_list)
 
 	sanitize_noise_grid <- function(values) {
@@ -61,6 +63,9 @@ matrix_noise_hc_search_grid <- function(noise_k_grid, x_list) {
 	candidate_grid <- sanitize_noise_grid(noise_k_grid)
 	if (length(candidate_grid) == 0) {
 		stop("noise_k_grid must contain at least one positive finite value.")
+	}
+	if (!isTRUE(adaptive)) {
+		return(candidate_grid)
 	}
 
 	dimension <- nrow(x_list[[1]]) * ncol(x_list[[1]])

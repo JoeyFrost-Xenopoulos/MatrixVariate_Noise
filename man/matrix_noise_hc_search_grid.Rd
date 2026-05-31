@@ -4,14 +4,17 @@
 \alias{matrix_noise_hc_search_grid}
 \title{Build an HC Noise Search Grid}
 \usage{
-matrix_noise_hc_search_grid(noise_k_grid, x_list)
+matrix_noise_hc_search_grid(noise_k_grid, x_list, adaptive = TRUE)
 
-matrix_noise_hc_search_grid(noise_k_grid, x_list)
+matrix_noise_hc_search_grid(noise_k_grid, x_list, adaptive = TRUE)
 }
 \arguments{
 \item{noise_k_grid}{Candidate HC noise heights supplied by the caller.}
 
 \item{x_list}{List of matrices used to infer a dimension-aware heuristic.}
+
+\item{adaptive}{Logical: if \code{TRUE}, augment the grid with a dimension-aware
+heuristic before selection.}
 }
 \value{
 A sorted unique numeric vector of positive candidate noise heights.
