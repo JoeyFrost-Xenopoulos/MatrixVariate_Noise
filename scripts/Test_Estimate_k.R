@@ -20,55 +20,65 @@ if (!require(mclust, quietly = TRUE)) {
 #'   are in the current working directory.
 #' @return Logical indicating success
 source_all_scripts <- function(script_dir = NULL) {
-  
-  # List of required script files in order of dependencies
+
+  # Prefer the project's R/ directory and known filename patterns
   script_files <- c(
-    "matrix_validation_helpers.R",  # Basic validation functions
-    "matrix_utility_functions.R",   # Utility functions (log_sum_exp, make_spd, etc.)
-    "matrix_mahalanobis.R",         # Mahalanobis distance for matrix-variate
-    "matrix_variate_density.R",     # Matrix-variate normal density
-    "matrix_mixture_init.R",        # K-means initialization
-    "matrix_noise_components.R",    # Noise component functions (HC, BR, KS test)
-    "matrix_variate_noise_fit.R"    # Main fitting function
+    "Matrix_Utils.R",
+    "Matrix.R",
+    "Matrix_Noise.R",
+    "Matrix_Noise_BR.R",
+    "Matrix_KS_Score.R",
+    "Matrix_Init.R"
   )
-  
-  # If script_dir is provided, prepend it to file paths
-  if (!is.null(script_dir)) {
+
+  # Auto-detect a sensible R/ directory when script_dir is not provided
+  if (is.null(script_dir)) {
+    candidate_dirs <- c("R", "./R", "../R")
+    found <- NULL
+    for (d in candidate_dirs) {
+      if (dir.exists(d)) { found <- d; break }
+    }
+    if (!is.null(found)) {
+      script_files <- file.path(found, script_files)
+    } else {
+      # Fall back to current working directory files if no R/ directory
+      script_files <- script_files
+    }
+  } else {
     script_files <- file.path(script_dir, script_files)
   }
-  
-  # Source each script
+
+  # Source each script if present; otherwise try to source any nearby R files
+  sourced_any <- FALSE
   for (script in script_files) {
     if (file.exists(script)) {
       cat(sprintf("Sourcing: %s\n", basename(script)))
       tryCatch({
         source(script)
+        sourced_any <- TRUE
       }, error = function(e) {
         stop(sprintf("Error sourcing %s: %s\n", script, e$message))
       })
-    } else {
-      # Try to find alternative location or define inline
-      cat(sprintf("Warning: %s not found. Looking for alternative...\n", script))
-      
-      # Look for any R file in current directory that might contain the functions
-      r_files <- list.files(pattern = "\\.R$")
-      if (length(r_files) > 0) {
-        cat(sprintf("Found %d R files. Attempting to source all...\n", length(r_files)))
-        for (rf in r_files) {
-          cat(sprintf("  Sourcing: %s\n", rf))
-          tryCatch({
-            source(rf)
-          }, error = function(e) {
-            cat(sprintf("    Warning: %s\n", e$message))
-          })
-        }
-      } else {
-        stop("No R script files found. Please ensure the algorithm scripts are in the working directory.")
-      }
-      break  # Stop trying individual files once we source all
     }
   }
-  
+
+  if (!sourced_any) {
+    cat("No expected script files found; attempting to source any R files in the project root or script directory.\n")
+    r_files <- list.files(path = ifelse(is.null(script_dir), ".", script_dir), pattern = "\\.R$", recursive = FALSE)
+    if (length(r_files) > 0) {
+      for (rf in r_files) {
+        cat(sprintf("  Sourcing: %s\n", rf))
+        tryCatch({
+          source(rf)
+        }, error = function(e) {
+          cat(sprintf("    Warning sourcing %s: %s\n", rf, e$message))
+        })
+      }
+    } else {
+      stop("No R script files found. Please ensure the algorithm scripts are in the project's R/ directory or working directory.")
+    }
+  }
+
   # Verify key functions are available
   required_functions <- c(
     "matrix_variate_noise_fit",
@@ -76,14 +86,13 @@ source_all_scripts <- function(script_dir = NULL) {
     "matrix_log_sum_exp",
     "matrix_variate_log_density"
   )
-  
+
   missing_functions <- required_functions[!sapply(required_functions, exists)]
-  
+
   if (length(missing_functions) > 0) {
-    stop(sprintf("Missing required functions: %s\n", 
-                 paste(missing_functions, collapse = ", ")))
+    stop(sprintf("Missing required functions after sourcing: %s\n", paste(missing_functions, collapse = ", ")))
   }
-  
+
   cat("All required functions loaded successfully!\n")
   return(TRUE)
 }
@@ -102,9 +111,8 @@ if (!exists("matrix_variate_noise_fit")) {
   } 
   # Option 2: If functions are split across multiple files
   else {
-    # Try to source from a specific directory (change this to your actual path)
-    script_dir <- getwd()  # or e.g., "./R" or "../R"
-    source_all_scripts(script_dir)
+    # Auto-detect the project's R/ directory and source files from there
+    source_all_scripts(NULL)
   }
 }
 
