@@ -2,12 +2,12 @@
 # Tests the automatic noise parameter (k) selection scheme for HC noise type
 
 library(testthat)
-source("R/Matrix_Init.R")
-source("R/Matrix.R")
-source("R/Matrix_KS_Score.R")
-source("R/Matrix_Noise.R")
-source("R/Matrix_Noise_BR.R")
-source("R/Matrix_Utils.R")
+source("..R/Matrix_Init.R")
+source("..R/Matrix.R")
+source("..R/Matrix_KS_Score.R")
+source("..R/Matrix_Noise.R")
+source("..R/Matrix_Noise_BR.R")
+source("..R/Matrix_Utils.R")
 
 # Helper function to generate synthetic matrix-variate data
 generate_test_data <- function(n_per_group, rows, cols, 

@@ -1,12 +1,12 @@
 # test_edge_cases.R
 # Tests the algorithm on various edge cases
 
-source("R/Matrix_Init.R")
-source("R/Matrix.R")
-source("R/Matrix_KS_Score.R")
-source("R/Matrix_Noise.R")
-source("R/Matrix_Noise_BR.R")
-source("R/Matrix_Utils.R")
+source("..R/Matrix_Init.R")
+source("..R/Matrix.R")
+source("..R/Matrix_KS_Score.R")
+source("..R/Matrix_Noise.R")
+source("..R/Matrix_Noise_BR.R")
+source("..R/Matrix_Utils.R")
 
 test_edge_cases <- function() {
   cat("\n=== Testing Edge Cases ===\n")

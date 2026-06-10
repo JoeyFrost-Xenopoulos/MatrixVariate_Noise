@@ -1,12 +1,12 @@
 # test_noise_types.R
 # Tests the algorithm against different types of noise structures
 
-source("R/Matrix_Init.R")
-source("R/Matrix.R")
-source("R/Matrix_KS_Score.R")
-source("R/Matrix_Noise.R")
-source("R/Matrix_Noise_BR.R")
-source("R/Matrix_Utils.R")
+source("..R/Matrix_Init.R")
+source("..R/Matrix.R")
+source("..R/Matrix_KS_Score.R")
+source("..R/Matrix_Noise.R")
+source("..R/Matrix_Noise_BR.R")
+source("..R/Matrix_Utils.R")
 
 # Generate data with different noise patterns
 generate_noisy_data <- function(n_clean_per_group, n_noise, rows, cols,
