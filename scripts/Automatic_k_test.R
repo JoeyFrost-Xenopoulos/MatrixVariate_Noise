@@ -95,27 +95,36 @@ save_results_to_csv <- function(results_list, filename) {
   return(df)
 }
 
-# Save detailed grid search results
+# Save detailed grid search results - FIXED VERSION
 save_grid_results <- function(result, filename) {
   if (!is.null(result) && !is.null(result$k_selection)) {
     # Extract data with proper length checking
     k_grid <- result$k_selection$k_grid
     ks_scores <- result$k_selection$ks_scores
     ks_pvalues <- result$k_selection$ks_pvalues
-    n_used <- result$k_selection$n_used
+    n_used_raw <- result$k_selection$n_used
+    
+    # Convert n_used from list to numeric if necessary
+    if (is.list(n_used_raw)) {
+      n_used <- unlist(n_used_raw)
+    } else {
+      n_used <- n_used_raw
+    }
     
     # Ensure all vectors have the same length
     min_len <- min(length(k_grid), length(ks_scores), length(ks_pvalues), length(n_used))
     
     if (min_len > 0) {
+      # Create data frame with properly converted types
       grid_df <- data.frame(
-        k = k_grid[1:min_len],
-        ks_score = ks_scores[1:min_len],
-        ks_pvalue = ks_pvalues[1:min_len],
-        n_used = as.numeric(n_used[1:min_len])  # Convert to numeric
+        k = as.numeric(k_grid[1:min_len]),
+        ks_score = as.numeric(ks_scores[1:min_len]),
+        ks_pvalue = as.numeric(ks_pvalues[1:min_len]),
+        n_used = as.numeric(n_used[1:min_len])
       )
       write.csv(grid_df, filename, row.names = FALSE)
       cat("Grid search results saved to:", filename, "\n")
+      cat("  Saved", nrow(grid_df), "grid points\n")
       return(grid_df)
     } else {
       cat("No valid grid data to save for:", filename, "\n")
@@ -183,12 +192,15 @@ if (!is.null(result1)) {
     cat("✓ Selected k:", result1$k_selection$selected_k, "\n")
     cat("✓ KS scores range:", range(result1$k_selection$ks_scores, na.rm = TRUE), "\n")
     cat("✓ Grid size:", length(result1$k_selection$k_grid), "\n")
-    # Fix n_used if it's a list
+    
+    # Fix n_used if it's a list for display
     if (is.list(result1$k_selection$n_used)) {
-      result1$k_selection$n_used <- unlist(result1$k_selection$n_used)
+      n_used_display <- unlist(result1$k_selection$n_used)
+    } else {
+      n_used_display <- result1$k_selection$n_used
     }
     cat("✓ n_used values (first 5):", 
-        paste(result1$k_selection$n_used[1:min(5, length(result1$k_selection$n_used))], 
+        paste(n_used_display[1:min(5, length(n_used_display))], 
               collapse=", "), "\n")
   }
   cat("✓ Noise proportion:", result1$noise$pi, "\n")
