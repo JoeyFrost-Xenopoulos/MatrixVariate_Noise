@@ -1,0 +1,110 @@
+---
+title: "Matrix Noise Tests"
+format: html
+---
+
+```{r}
+repo_candidates <- c(
+  normalizePath(".", winslash = "/", mustWork = FALSE),
+  normalizePath("..", winslash = "/", mustWork = FALSE),
+  normalizePath("../..", winslash = "/", mustWork = FALSE)
+)
+repo_root <- repo_candidates[vapply(repo_candidates, function(path) {
+  file.exists(file.path(path, "scripts", "matrix_noise_test_cases.R"))
+}, logical(1))][1]
+
+if (is.na(repo_root) || !nzchar(repo_root)) {
+  stop("Could not find the repository root for the matrix noise tests.")
+}
+
+r_files <- sort(list.files(file.path(repo_root, "R"), pattern = "\\.R$", full.names = TRUE, recursive = TRUE))
+r_files <- r_files[!grepl("[\\/]legacy[\\/]", r_files)]
+invisible(lapply(r_files, source, local = globalenv()))
+source(file.path(repo_root, "scripts", "matrix_noise_test_cases.R"), local = globalenv())
+
+cases <- matrix_noise_test_cases()
+fit_case <- function(case, noise_type) {
+  if (noise_type == "hc") {
+    matrix_variate_noise_fit(
+      x_list = case$x_list,
+      g = 2,
+      noise_type = "hc",
+      noise_k = 1e-06,
+      noise_pi_init = 0.08,
+      max_iter = 200,
+      tol = 1e-06,
+      nstart = 10,
+      verbose = FALSE
+    )
+  } else {
+    matrix_variate_noise_fit(
+      x_list = case$x_list,
+      g = 2,
+      noise_type = "br",
+      noise_pi_init = 0.08,
+      max_iter = 200,
+      tol = 1e-06,
+      nstart = 10,
+      verbose = FALSE
+    )
+  }
+}
+
+fits <- lapply(cases, function(case) {
+  list(
+    hc = fit_case(case, "hc"),
+    br = fit_case(case, "br")
+  )
+})
+
+summaries <- do.call(rbind, lapply(names(cases), function(case_name) {
+  case <- cases[[case_name]]
+  hc_fit <- fits[[case_name]]$hc
+  br_fit <- fits[[case_name]]$br
+  data.frame(
+    case = case_name,
+    r = case$r,
+    p = case$p,
+    total_matrices = length(case$x_list),
+    contamination = case$contam_n,
+    hc_noise_count = sum(hc_fit$cluster == 0L),
+    br_noise_count = sum(br_fit$cluster == 0L),
+    hc_iterations = hc_fit$iterations,
+    br_iterations = br_fit$iterations,
+    hc_logLik = tail(hc_fit$logLik, 1),
+    br_logLik = tail(br_fit$logLik, 1),
+    stringsAsFactors = FALSE
+  )
+}))
+
+knitr::kable(summaries, caption = "Reproducible matrix noise test summary")
+```
+
+## Case Details
+
+```{r}
+case_details <- do.call(rbind, lapply(names(cases), function(case_name) {
+  case <- cases[[case_name]]
+  data.frame(
+    case = case_name,
+    dimensions = paste0(case$r, " x ", case$p),
+    contamination = case$contam_n,
+    seed = case$seed,
+    stringsAsFactors = FALSE
+  )
+}))
+
+knitr::kable(case_details, caption = "Test case sizes and contamination settings")
+```
+
+## Cluster Counts
+
+```{r}
+for (case_name in names(fits)) {
+  cat("\n### ", case_name, "\n", sep = "")
+  cat("HC cluster counts:\n")
+  print(table(fits[[case_name]]$hc$cluster))
+  cat("BR cluster counts:\n")
+  print(table(fits[[case_name]]$br$cluster))
+}
+```

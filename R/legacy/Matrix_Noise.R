@@ -1,8 +1,8 @@
 #' Matrix-Variate Noise Mixture Clustering
 #'
-#' Fits a matrix-variate Gaussian mixture model with a basic noise component.
-#' The noise component can be either Hennig-Coretto style improper constant
-#' noise (`hc`) or Banfield-Raftery style bounded uniform noise (`br`).
+#' Fits a matrix-variate Gaussian mixture model with an additional noise
+#' component. The noise component can be either Hennig-Coretto style improper
+#' constant noise (`hc`) or Banfield-Raftery style bounded uniform noise (`br`).
 #'
 #' @param x_list A non-empty list of numeric matrices, each of the same size.
 #' @param g Integer: number of Gaussian mixture components.
@@ -12,9 +12,23 @@
 #' @param tol Numeric: convergence tolerance on the log-likelihood trace.
 #' @param nstart Integer: number of k-means restarts for initialization.
 #' @param noise_k Numeric: constant noise height used when `noise_type = "hc"`.
-#' @param noise_jitter Numeric: retained for BR support construction.
+#' @param select_noise_k Logical: if `TRUE` and `noise_type = "hc"`, grid
+#'   search `noise_k_grid` and select the fit with the smallest matrix-KS
+#'   statistic on fitted Mahalanobis distances.
+#' @param noise_k_grid Numeric vector of candidate HC noise heights to try when
+#'   `select_noise_k = TRUE`. The search also augments this grid with a
+#'   matrix-dimension-aware log-scale heuristic so it can reach much smaller
+#'   densities when the data dimension grows.
+#' @param adaptive Logical: if `TRUE`, let the HC selector expand the grid when
+#'   the best candidate lands on a boundary.
+#' @param noise_jitter Numeric: retained for compatibility; unused by the BR
+#'   convex-hull support.
 #' @param noise_pi_init Numeric: initial mixing proportion for the noise
 #'   component.
+#' @param use_parallel Logical: if `TRUE`, evaluate HC candidate noise heights
+#'   in parallel during selection.
+#' @param n_cores Integer: number of worker processes to use when
+#'   `use_parallel = TRUE`.
 #' @param verbose Logical: print iteration progress.
 #'
 #' @return A list containing the fitted mixture parameters, posterior
@@ -28,7 +42,7 @@
 #' during the M-step and only its mixing proportion is updated.
 #'
 #' @examples
-#' \\dontrun{
+#' \dontrun{
 #' set.seed(1)
 #' x_list <- list(
 #'   matrix(rnorm(12), 3, 4),
@@ -42,20 +56,47 @@
 #'
 #' @export
 
-matrix_variate_noise_fit <- function(x_list,
-									 g,
-									 noise_type = c("hc", "br"),
-									 max_iter = 1000,
-									 tol = 1e-06,
-									 nstart = 10,
-									 noise_k = 1e-04,
-									 noise_jitter = 1e-08,
-									 noise_pi_init = 0.05,
-									 verbose = FALSE) {
+matrix_variate_noise_fit <- function(x_list, g,
+											 noise_type = c("hc", "br"),
+											 max_iter = 1000,
+											 tol = 1e-06,
+											 nstart = 10,
+											 noise_k = 1e-04,
+											 select_noise_k = FALSE,
+											 noise_k_grid = 10^seq(-8, -1, length.out = 15),
+											 adaptive = TRUE,
+											 noise_jitter = 1e-08,
+											 noise_pi_init = 0.05,
+											 use_parallel = FALSE,
+											 n_cores = NULL,
+											 verbose = FALSE) {
+										
 	noise_type <- match.arg(noise_type)
+
 	x_list <- matrix_validate_x_list(x_list)
 
-	matrix_variate_noise_fit_impl(
+	if (noise_type == "hc" && isTRUE(select_noise_k)) {
+		return(matrix_noise_hc_select_fit(
+			x_list = x_list,
+			g = g,
+			max_iter = max_iter,
+			tol = tol,
+			nstart = nstart,
+			noise_k_grid = noise_k_grid,
+			adaptive = adaptive,
+			noise_jitter = noise_jitter,
+			noise_pi_init = noise_pi_init,
+			use_parallel = use_parallel,
+			n_cores = n_cores,
+			verbose = verbose
+		))
+	}
+
+	if (isTRUE(select_noise_k) && noise_type != "hc") {
+		stop("select_noise_k is only supported when noise_type = \"hc\".")
+	}
+
+	fit <- matrix_variate_noise_fit_impl(
 		x_list = x_list,
 		g = g,
 		noise_type = noise_type,
@@ -67,6 +108,14 @@ matrix_variate_noise_fit <- function(x_list,
 		noise_pi_init = noise_pi_init,
 		verbose = verbose
 	)
+
+	fit$noise$search <- list(
+		enabled = FALSE,
+		adaptive = isTRUE(adaptive),
+		criterion = "matrix_ks",
+		selected_k = if (noise_type == "hc") noise_k else NA_real_
+	)
+	fit
 }
 
 matrix_variate_noise_fit_impl <- function(x_list, g,
