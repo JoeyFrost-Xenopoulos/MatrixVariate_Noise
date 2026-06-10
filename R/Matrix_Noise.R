@@ -80,15 +80,13 @@ matrix_variate_noise_fit <- function(x_list,
       best_ks_stat <- Inf
       best_ks_result <- NULL
       
-      # Multiple restarts for each k
-      for (restart in seq_len(min(nstart, 5))) {  # Keep reasonable limit
         fit <- matrix_variate_noise_fit_impl(
           x_list = x_list,
           g = g,
           noise_type = "hc",
           max_iter = max_iter,
           tol = tol,
-          nstart = max(1, floor(nstart / 5)),
+          nstart = 100,
           noise_k = k_grid[i],
           noise_jitter = NULL,
           noise_pi_init = noise_pi_init,
@@ -104,7 +102,6 @@ matrix_variate_noise_fit <- function(x_list,
           best_fit <- fit
           best_ks_result <- ks_result
         }
-      }
       
       ks_scores[i] <- best_ks_stat
       all_fits[[i]] <- best_fit
