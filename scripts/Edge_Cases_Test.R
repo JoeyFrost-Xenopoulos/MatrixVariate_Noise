@@ -359,4 +359,16 @@ edge_case_results[["br_noise"]] <- list(
   noise_proportion = result_br$noise$pi,
   iterations = result_br$iterations,
   converged = result_br$converged,
-  selected
+  selected_k = NA,  # BR doesn't use k
+  message = "BR noise type test"
+)
+
+# Save all edge case results
+cat("\n--- Saving Edge Case Results ---\n")
+edge_df <- save_edge_results(edge_case_results, "edge_case_results.csv")
+
+# Print summary
+cat("\n--- Edge Case Summary ---\n")
+print(edge_df)
+
+cat("\n=== Edge Case Testing Complete ===\n")
