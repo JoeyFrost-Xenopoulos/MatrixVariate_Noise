@@ -27,9 +27,10 @@ x_list <- c(x_list, contam)
 
 ```{r}
 library(Ampharos)
-fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc", estimate_k = TRUE, verbose = TRUE)
+fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc", 
+                                             estimate_k = TRUE, verbose = TRUE)
 
-#fit_hc <-  Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc", noise_k = 4.175319e-14, verbose = TRUE)
+#fit_hc <-  Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc", noise_k = 3.562248e-20, verbose = TRUE)
 
 cat('HC fit mixing proportions:\n')
 print(fit_hc$pi)
