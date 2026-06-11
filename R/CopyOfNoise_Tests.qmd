@@ -18,7 +18,7 @@ M1 <- matrix(1, r, p)
 M2 <- matrix(-1, r, p)
 x_list <- c(simulate_group(40, M1), simulate_group(20, M2))
 
-contam <- lapply(seq_len(10), function(i) matrix(runif(r * p, -5, 5), r, p))
+contam <- lapply(seq_len(5), function(i) matrix(runif(r * p, -2, 2), r, p))
 x_list <- c(x_list, contam)
 ```
 
