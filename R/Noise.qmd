@@ -237,3 +237,55 @@ $$
 $$
 Because both distances are estimated from the same sample, they must theoretically converge to the same distribution. Rejection of the null hypothesis indicates that a Kronecker product covariance structure is not present.
 Our distance measure in all of these is the matrix version of MSD the Manahalobis distance defined above. 
+
+## In the Style of Viroli
+
+A total of 100 datasets are created with n = 300 $3 \times 5$ matrices in three groups with proportions $\pi = (0.3, 0.4, 0.3)$ and means of the form
+
+$$
+M_g = \begin{pmatrix}
+      a & 0 & 0 & 0 & 0\\
+      b & 0 & 0 & 0 & 0\\
+      0 & 0 & 0 & 0 & 0
+      \end{pmatrix}
+$$
+
+with M_1 : $(a,b)$ = $(0.5, 0.5)$, M_2 : $(a,b)$ = $(0,0)$ and M_3 : $(a,b)$ = $(-0.5, 0.5)$. U_g and V_g matrices of dimensions $3\times 3 \ \text{and} \ 5\times 5$ are randomly generated using the rcorrmatrix function in the clusterGeneration package. Where our simulation differs is in the generation of outliers. To simulate potential outliers due to errors in data-entry, 15 matrices are randomly selected and the entries in each matrix are randomly permuted.
+
+## In the style of Tomarchio
+
+A total of 100 datasets are created with n = 200 $2 \times 4$ matrices in two groups of equal weight with parameters
+
+$$
+\begin{align}
+M_1 = \begin{pmatrix}
+        −2.60 & -1.10 & -0.50 & -0.20\\
+        1.30 & 0.60 & 0.30 & 0.10
+      \end{pmatrix}
+\qquad
+&M_2 = \begin{pmatrix}
+        1.50 & 1.70 & 1.90 & 2.20\\
+        -3.70 & -2.70 & -2.00 & -1.50
+      \end{pmatrix} \\
+      
+U_1 = \begin{pmatrix}
+        2 & 0 \\
+        0 & 1
+      \end{pmatrix}
+\qquad
+&U_2 = \begin{pmatrix}
+        1.70 & 0.5 \\
+        0.5 & 1.30
+      \end{pmatrix}
+\end{align}     
+\\
+      
+V_1 = V_2 = \begin{pmatrix}
+        1.00 & 0.50 & 0.25 & 0.13 \\
+        0.50 & 1.00 & 0.50 & 0.25 \\
+        0.25 & 0.50 & 1.00 & 0.50 \\
+        0.13 & 0.25 & 0.50 & 1.00
+      \end{pmatrix} \\
+$$
+Ten matrices are randomly selected, and then one column from each selected matrix is randomly replaced with data generated from Unif(−15, 15).
+
