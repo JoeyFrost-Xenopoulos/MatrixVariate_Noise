@@ -18,7 +18,7 @@ M1 <- matrix(1, r, p)
 M2 <- matrix(-1, r, p)
 x_list <- c(simulate_group(40, M1), simulate_group(20, M2))
 
-contam <- lapply(seq_len(5), function(i) matrix(runif(r * p, -1.5, 1.5), r, p))
+contam <- lapply(seq_len(15), function(i) matrix(runif(r * p, 6, 8), r, p))
 x_list <- c(x_list, contam)
 ```
 
@@ -27,12 +27,14 @@ x_list <- c(x_list, contam)
 ```{r}
 library(Ampharos)
 
-#k_grid <- 10^seq(-200, -1, length.out = 300)
-fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc", 
-                                             estimate_k = TRUE, 
+fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
+                                             estimate_k = TRUE,
                                              verbose = TRUE)
 
-#fit_hc <-  Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc", noise_k = 3.562248e-20, verbose = TRUE)
+#fit_hc <- Ampharos::matrix_noise_auto_k_robust(x_list, g = 2, verbose = TRUE)
+
+k_grid <- 10^seq(-12, -1, length.out = 300)
+fit_hc <-  Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc", noise_k = 1e-09, verbose = FALSE)
 
 cat('HC fit mixing proportions:\n')
 print(fit_hc$pi)
@@ -40,6 +42,21 @@ cat('\nHC cluster counts (0 indicates noise):\n')
 print(table(fit_hc$cluster))
 print(fit_hc$noise)
 ```
+
+```{r}
+k_grid <- 10^seq(-40, -1, length.out = 20)
+for(i in seq_along(k_grid)){
+  fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc", 
+                                             noise_k = k_grid[i], 
+                                             verbose = FALSE)
+Ampharos::matrix_noise_ecdf_vs_cdf_plot(
+  fit_hc,
+  x_list,
+  main = "HC Noise Fit: ECDF vs Chi-square CDF"
+)
+}
+```
+
 
 ### BR-noise
 
@@ -64,4 +81,48 @@ Likely causes for the BR behaviour
 Bounding-box volume is huge (because contamination inflates min/max), so the BR uniform density is extremely small and competes poorly with Gaussians; EM may then prefer to explain almost-all data with one Gaussian and use the other Gaussian only for a handful of points.
 Initialization sensitivity (kmeans nstart small) can let components merge.
 BR using the simple axis-aligned box is fragile when contamination sets wide margins.
+
+```{r}
+# Vectorize matrices
+X <- do.call(
+  rbind,
+  lapply(x_list, as.vector)
+)
+
+# Labels for plotting
+group <- c(
+  rep("Cluster 1", 40),
+  rep("Cluster 2", 20),
+  rep("Noise", 5)
+)
+
+# PCA
+pca <- prcomp(X, center = TRUE, scale. = TRUE)
+
+plot(
+  pca$x[, 1],
+  pca$x[, 2],
+  col = c(
+    "dodgerblue",
+    "firebrick",
+    "black"
+  )[factor(group)],
+  pch = c(
+    16,
+    17,
+    8
+  )[factor(group)],
+  xlab = "PC1",
+  ylab = "PC2",
+  main = "PCA of Matrix-Variate Data"
+)
+
+legend(
+  "topright",
+  legend = c("Cluster 1", "Cluster 2", "Noise"),
+  col = c("dodgerblue", "firebrick", "black"),
+  pch = c(16, 17, 8),
+  bty = "n"
+)
+```
 
