@@ -18,7 +18,7 @@ M1 <- matrix(1, r, p)
 M2 <- matrix(-1, r, p)
 x_list <- c(simulate_group(40, M1), simulate_group(20, M2))
 
-contam <- lapply(seq_len(15), function(i) matrix(runif(r * p, 6, 8), r, p))
+contam <- lapply(seq_len(15), function(i) matrix(runif(r * p, -6, 8), r, p))
 x_list <- c(x_list, contam)
 ```
 
@@ -26,15 +26,15 @@ x_list <- c(x_list, contam)
 
 ```{r}
 library(Ampharos)
-
+k_grid <- 10^seq(-200, -1, length.out = 30)
 fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
                                              estimate_k = TRUE,
+                                             k_grid = k_grid,
                                              verbose = TRUE)
 
 #fit_hc <- Ampharos::matrix_noise_auto_k_robust(x_list, g = 2, verbose = TRUE)
 
-k_grid <- 10^seq(-12, -1, length.out = 300)
-fit_hc <-  Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc", noise_k = 1e-09, verbose = FALSE)
+# fit_hc <-  Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc", noise_k = 1e-09, verbose = FALSE)
 
 cat('HC fit mixing proportions:\n')
 print(fit_hc$pi)
@@ -44,7 +44,7 @@ print(fit_hc$noise)
 ```
 
 ```{r}
-k_grid <- 10^seq(-40, -1, length.out = 20)
+k_grid <- 10^seq(-200, -1, length.out = 30)
 for(i in seq_along(k_grid)){
   fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc", 
                                              noise_k = k_grid[i], 
