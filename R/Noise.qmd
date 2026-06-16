@@ -13,12 +13,12 @@ Using the matrix-variate normal distribution can we define a noise component sim
 - p is the number of attributes
 
 $$
-\phi_{r\times c}(\mathbf{X} | \mathbf{M}, \mathbf{V}, \mathbf{U}) = \frac{1}{(2\pi)^{\frac{rp}{2}}|\mathbf{V}|^{\frac{r}{2}}|\mathbf{U}|^{\frac{p}{2}}} \exp \left\{-\frac{1}{2}\text{tr}\left(\mathbf{V}^{-1}(\mathbf{X}-\mathbf{M})^\top\mathbf{U}^{-1}(\mathbf{X}-\mathbf{M})\right) \right\}
+\phi_{r\times c}(\mathbf{X} | \mathbf{M}, \mathbf{V}, \mathbf{U}) = \frac{1}{(2\pi)^{\frac{rc}{2}}|\mathbf{V}|^{\frac{r}{2}}|\mathbf{U}|^{\frac{p}{2}}} \exp \left\{-\frac{1}{2}\text{tr}\left(\mathbf{V}^{-1}(\mathbf{X}-\mathbf{M})^\top\mathbf{U}^{-1}(\mathbf{X}-\mathbf{M})\right) \right\}
 $$
 
-- M is a r x p mean matrix
+- M is a r x c mean matrix
 - U is a r x r column covariance matrix
-- V is a p x p column row covariance matrix
+- V is a c x c column row covariance matrix
 
 Note 1: that there is an identifiability issue with regard to U and V. If $k$ is a strictly positive constant, that replacing U and V by $(1/k)\mathbf{U}$ and $k\mathbf{V}$ respectively, leaves the distribution unchanged. Solutions have been proposed including setting $\text{tr}(\mathbf{U}) = r$ or $\mathbf{U}_{11} = 1$.
 
@@ -29,7 +29,7 @@ $$
 Note 2: that the matrix-variate normal distribution is related to the multivariate normal distribution via the equivalence
 
 $$
-\mathbf{X} \sim \mathcal{N}_{r\times c} (\mathbf{M}, \mathbf{U}, \mathbf{V}) \iff \text{vec}({\mathbf{X}}) \sim \mathcal{N}_{rp}(\text{vec}(\mathbf{M}), \mathbf{V} \otimes \mathbf{U})
+\mathbf{X} \sim \mathcal{N}_{r\times c} (\mathbf{M}, \mathbf{U}, \mathbf{V}) \iff \text{vec}({\mathbf{X}}) \sim \mathcal{N}_{rc}(\text{vec}(\mathbf{M}), \mathbf{V} \otimes \mathbf{U})
 $$
 
 ## EM Updates
@@ -114,10 +114,10 @@ where $h(\mathbf{X})$ is a noise density and $\pi_0$ is the noise proportion.
 Let us define our improper noise $k$ as
 
 $$
-h(\mathbf{X}) = k, \qquad k > 0 \quad \forall \ \mathbf{X} \in \mathbb{R}^{rp}
+h(\mathbf{X}) = k, \qquad k > 0 \quad \forall \ \mathbf{X} \in \mathbb{R}^{rc}
 $$
 
-This is again going to be a pseudo-likelihood as $k$ will not integrate to 1 over the support $\mathbb{R}^{rp}$. 
+This is again going to be a pseudo-likelihood as $k$ will not integrate to 1 over the support $\mathbb{R}^{rc}$. 
 Then the mixture becomes
 $$
 f(\mathbf{X}) = \sum_{g=1}^{G} \pi_g \, \phi_{r\times c}(\mathbf{X} \,|\, \mathbf{M}_g, \mathbf{U}_g, \mathbf{V}_g) + \pi_0 k
@@ -132,7 +132,7 @@ To pick $k$ we can automate a grid search over candidate values and choose the o
 
 ### Uniform BR-noise
 
-For BR-noise, consider vectorizing the matrices and then computing the convex hull over the $\mathbb{R}^{RP}$ dimensional space. 
+For BR-noise, consider vectorizing the matrices and then computing the convex hull over the $\mathbb{R}^{rc}$ dimensional space. 
 
 The uniform density is then defined as
 $$
