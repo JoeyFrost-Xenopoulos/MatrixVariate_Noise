@@ -116,7 +116,8 @@ matrix_variate_log_density <- function(x, mean_matrix, row_cov, col_cov) {
 #' @param g Integer: number of mixture components
 #' @param max_iter Integer: maximum EM iterations (default: 100)
 #' @param tol Numeric: convergence tolerance for log-likelihood (default: 1e-6)
-#' @param nstart Integer: number of k-means restarts for initialization (default: 10)
+#' @param nstart Integer: number of k-means restarts for initialization (default: 10). Ignored unless `init = "kmeans"`.
+#' @param init Character: initialization scheme. `"kmeans"` (default), `"random"`, or `"ecme"`.
 #' @param verbose Logical: print iteration progress (default: FALSE)
 #'
 #' @return A list containing:
@@ -162,16 +163,23 @@ matrix_variate_log_density <- function(x, mean_matrix, row_cov, col_cov) {
 #'
 #' @export
 matrix_variate_mixture_fit <- function(x_list, g, max_iter = 100, tol = 1e-06,
-																			 nstart = 10, verbose = FALSE) {
+																			 nstart = 10, init = c("kmeans", "random", "ecme"),
+																			 verbose = FALSE) {
+	init <- match.arg(init)
 	x_list <- matrix_validate_x_list(x_list)
 	n <- length(x_list)
 	r <- nrow(x_list[[1]])
 	p <- ncol(x_list[[1]])
 
-	# Initialize parameters using k-means
-	params <- matrix_mixture_kmeans_init(x_list, g = g, nstart = nstart)
+	if (init == "random") {
+		params <- matrix_mixture_random_init(x_list, g = g)
+	} else if (init == "ecme") {
+		params <- matrix_mixture_ecme_init(x_list, g = g)
+	} else {
+		params <- matrix_mixture_kmeans_init(x_list, g = g, nstart = nstart)
+	}
 	loglik_trace <- numeric(0)
-	responsibilities <- matrix(0, n, g)  # Will hold posterior probabilities P(z_ig = 1 | X_i)
+	responsibilities <- matrix(0, n, g)
 
 	# EM loop
 	for (iteration in seq_len(max_iter)) {

@@ -10,7 +10,9 @@
 #'   for convex-hull uniform noise.
 #' @param max_iter Integer: maximum EM iterations.
 #' @param tol Numeric: convergence tolerance on the log-likelihood trace.
-#' @param nstart Integer: number of k-means restarts for initialization.
+#' @param init Character: initialization scheme. `"kmeans"` for k-means based
+#'   initialization (default), `"random"` for random cluster assignments, or
+#'   `"ecme"` for ECME-style pre-EM initialization.
 #' @param noise_k Numeric: constant noise height used when `noise_type = "hc"`.
 #'   If `estimate_k = TRUE`, this is ignored.
 #' @param estimate_k Logical: if TRUE, automatically select optimal noise_k
@@ -29,18 +31,20 @@
 #'
 #' @export
 matrix_variate_noise_fit <- function(x_list,
-                                     g,
-                                     noise_type = c("hc", "br"),
-                                     max_iter = 1000,
-                                     tol = 1e-06,
-                                     nstart = 100,
-                                     noise_k = 1e-04,
-                                     estimate_k = FALSE,
-                                     k_grid = NULL,
-                                     adaptive_grid = TRUE,
-                                     noise_pi_init = 0.05,
-                                     verbose = FALSE) {
+                                      g,
+                                      noise_type = c("hc", "br"),
+                                      max_iter = 1000,
+                                      tol = 1e-06,
+                                      nstart = 100,
+                                      noise_k = 1e-04,
+                                      estimate_k = FALSE,
+                                      k_grid = NULL,
+                                      adaptive_grid = TRUE,
+                                      noise_pi_init = 0.05,
+                                      init = c("kmeans", "random", "ecme"),
+                                      verbose = FALSE) {
   noise_type <- match.arg(noise_type)
+  init <- match.arg(init)
   x_list <- matrix_validate_x_list(x_list)
   
   # Automatic k selection for HC noise
@@ -95,6 +99,7 @@ matrix_variate_noise_fit <- function(x_list,
         noise_k = current_k,
         noise_jitter = NULL,
         noise_pi_init = noise_pi_init,
+        init = init,
         verbose = FALSE
       )
       
@@ -204,6 +209,7 @@ matrix_variate_noise_fit <- function(x_list,
       noise_k = selected_k,
       noise_jitter = NULL,
       noise_pi_init = noise_pi_init,
+      init = init,
       verbose = FALSE
     )
     
@@ -233,6 +239,7 @@ matrix_variate_noise_fit <- function(x_list,
     noise_k = noise_k,
     noise_jitter = NULL,
     noise_pi_init = noise_pi_init,
+    init = init,
     verbose = verbose
   )
 }
@@ -246,8 +253,10 @@ matrix_variate_noise_fit_impl <- function(x_list,
                                           noise_k = 1e-04,
                                           noise_jitter = 1e-08,
                                           noise_pi_init = 0.05,
+                                          init = c("kmeans", "random", "ecme"),
                                           verbose = FALSE) {
   noise_type <- match.arg(noise_type)
+  init <- match.arg(init)
   
   n <- length(x_list)
   r <- nrow(x_list[[1]])
@@ -259,8 +268,13 @@ matrix_variate_noise_fit_impl <- function(x_list,
     }
   }
   
-  # k-means init
-  params <- matrix_mixture_kmeans_init(x_list, g = g, nstart = nstart)
+  if (init == "random") {
+    params <- matrix_mixture_random_init(x_list, g = g)
+  } else if (init == "ecme") {
+    params <- matrix_mixture_ecme_init(x_list, g = g)
+  } else {
+    params <- matrix_mixture_kmeans_init(x_list, g = g, nstart = nstart)
+  }
   
   # For BR noise compute a convex hull over the vectorized matrices
   noise_support <- NULL

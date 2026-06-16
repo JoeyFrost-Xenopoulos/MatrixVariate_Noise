@@ -16,6 +16,7 @@ matrix_variate_noise_fit(
   k_grid = NULL,
   adaptive_grid = TRUE,
   noise_pi_init = 0.05,
+  init = c("kmeans", "random", "ecme"),
   verbose = FALSE
 )
 }
@@ -31,8 +32,6 @@ for convex-hull uniform noise.}
 
 \item{tol}{Numeric: convergence tolerance on the log-likelihood trace.}
 
-\item{nstart}{Integer: number of k-means restarts for initialization.}
-
 \item{noise_k}{Numeric: constant noise height used when \code{noise_type = "hc"}.
 If \code{estimate_k = TRUE}, this is ignored.}
 
@@ -47,6 +46,10 @@ dimension-aware heuristic grid based on matrix dimensions.}
 
 \item{noise_pi_init}{Numeric: initial mixing proportion for the noise
 component.}
+
+\item{init}{Character: initialization scheme. \code{"kmeans"} for k-means based
+initialization (default), \code{"random"} for random cluster assignments, or
+\code{"ecme"} for ECME-style pre-EM initialization.}
 
 \item{verbose}{Logical: print iteration progress.}
 }

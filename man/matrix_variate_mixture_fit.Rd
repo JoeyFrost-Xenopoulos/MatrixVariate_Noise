@@ -10,6 +10,7 @@ matrix_variate_mixture_fit(
   max_iter = 100,
   tol = 1e-06,
   nstart = 10,
+  init = c("kmeans", "random", "ecme"),
   verbose = FALSE
 )
 }
@@ -22,7 +23,9 @@ matrix_variate_mixture_fit(
 
 \item{tol}{Numeric: convergence tolerance for log-likelihood (default: 1e-6)}
 
-\item{nstart}{Integer: number of k-means restarts for initialization (default: 10)}
+\item{nstart}{Integer: number of k-means restarts for initialization (default: 10). Ignored unless \code{init = "kmeans"}.}
+
+\item{init}{Character: initialization scheme. \code{"kmeans"} (default), \code{"random"}, or \code{"ecme"}.}
 
 \item{verbose}{Logical: print iteration progress (default: FALSE)}
 }

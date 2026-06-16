@@ -50,6 +50,7 @@ ggplot(df, aes(PC1, PC2, color = group)) +
 ```{r}
 library(Ampharos)
 fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
+                                             init = "kmeans",
                                              estimate_k = TRUE,
                                              verbose = TRUE)
 
@@ -167,7 +168,8 @@ cat('Viroli simulation: n =', length(x_list_viroli), ', groups =', n1_viroli, n2
 
 ```{r}
 fit_hc_viroli <- Ampharos::matrix_variate_noise_fit(x_list_viroli, g = 3, noise_type = "hc",
-                                                     noise_k = TRUE,
+                                                    estimate_k = TRUE,
+                                                    init = "kmeans",
                                                      verbose = TRUE)
 
 
