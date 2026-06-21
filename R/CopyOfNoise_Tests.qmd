@@ -18,7 +18,7 @@ M1 <- matrix(1, r, p)
 M2 <- matrix(-1, r, p)
 x_list <- c(simulate_group(40, M1), simulate_group(20, M2))
 
-contam <- lapply(seq_len(15), function(i) matrix(runif(r * p, -5, 5), r, p))
+contam <- lapply(seq_len(15), function(i) matrix(runif(r*p, -1,1), r, p))
 x_list <- c(x_list, contam)
 ```
 
@@ -53,9 +53,12 @@ fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
                                              init = "kmeans",
                                              estimate_k = TRUE,
                                              verbose = TRUE)
+ 
+# fit_norm <- matrix_variate_mixture_fit(x_list, g = 3)
+# table(fit_norm$cluster)
 
-#fit_hc <- Ampharos::matrix_noise_auto_k_robust(x_list, g = 2, verbose = TRUE)
-# fit_hc <-  Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc", noise_k = 1e-09, verbose = FALSE)
+# fit_hc <- Ampharos::matrix_noise_auto_k_robust(x_list, g = 2, verbose = TRUE)
+fit_hc <-  Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc", noise_k = 4.893901e-08, verbose = FALSE)
 
 cat('HC fit mixing proportions:\n')
 print(fit_hc$pi)

@@ -203,3 +203,4 @@ matrix_mixture_ecme_init <- function(x_list, g, max_iter = 5) {
     cluster = max.col(responsibilities, ties.method = "first")
   )
 }
+

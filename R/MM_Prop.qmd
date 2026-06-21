@@ -3,12 +3,10 @@ title: "MM algorithm Matrix"
 format: pdf
 ---
 
-The objective
-
+The objective function
 $$
 \ell(\Theta) = \sum_{i=1}^n \log[\pi_0k+\sum_{g=1}^G\pi_g\phi_{r\times c}(\mathbf{X}_i|\mathbf{M}_g,\mathbf{U}_g, \mathbf{V}_g)]
 $$
-
 has exactly the same log-sum structure as an ordinary finite mixture likelihood.
 
 Let
@@ -18,7 +16,7 @@ $$
 
 where
 $$
-phi_g(\mathbf{X}_i) = \phi_{r\times c}(\mathbf{X}_i|\mathbf{M}_g,\mathbf{U}_g, \mathbf{V}_g)
+\phi_g(\mathbf{X}_i) = \phi_{r\times c}(\mathbf{X}_i|\mathbf{M}_g,\mathbf{U}_g, \mathbf{V}_g)
 $$
 
 then
@@ -54,7 +52,6 @@ Q(\Theta|\Theta^{(t)}) = \sum_{i=1}^n\sum_{g=0}^G\tau_{ig}^{(t)}\log s_{ig}(\The
 $$
 
 So our explicit surrogate is done by substituting $s_{ig} = \pi_g\phi_g(\mathbf{X}_i)$ and $s_{i0} = \pi_0k$. Gives
-
 $$
 Q = \sum_i\tau_{i0}^{(t)}\log(\pi_0k) + \sum_i\sum_{g=1}^G\tau_{ig}^{(t)}\left[\log\pi_g+\log\phi_g(\mathbf{X_i}) \right]
 $$
@@ -86,7 +83,6 @@ $$
 $$
 
 Means and Covariances
-
 $$
 \begin{align}
 {\mathbf{M}_g^{(t+1)}} &= \frac{\sum_i\tau_{ig}^{(t)}\mathbf{X}_i}{N_g^{(t)}} \\

@@ -14,7 +14,7 @@ matrix_mm_fit(
   nstart = 10,
   noise_k = 1e-04,
   noise_pi_init = 0.05,
-  init = c("kmeans", "random", "ecme"),
+  init = c("kmeans", "random", "ecme", "kmeans++"),
   verbose = FALSE
 )
 }
