@@ -10,7 +10,7 @@ matrix_variate_mixture_fit(
   max_iter = 100,
   tol = 1e-06,
   nstart = 10,
-  init = c("kmeans", "random", "ecme"),
+  init = c("kmeans", "random", "ecme", "kmeans++"),
   verbose = FALSE
 )
 }

@@ -16,7 +16,7 @@ matrix_variate_noise_fit(
   k_grid = NULL,
   adaptive_grid = TRUE,
   noise_pi_init = 0.05,
-  init = c("kmeans", "random", "ecme"),
+  init = c("kmeans", "random", "ecme", "kmeans++"),
   verbose = FALSE
 )
 }

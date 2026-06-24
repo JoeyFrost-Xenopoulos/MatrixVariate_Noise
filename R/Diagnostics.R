@@ -122,29 +122,19 @@ matrix_noise_ecdf_vs_cdf_plot <- function(fit, x_list,
                                           main = "ECDF vs Theoretical CDF (Chi-square)",
                                           xlab = "Mahalanobis distance",
                                           ylab = "CDF",
-                                          plot_type = "base") {
+                                          plot_type = c("base")) {
   
   plot_type <- match.arg(plot_type)
   x_list <- matrix_validate_x_list(x_list)
-  
-  keep_idx <- which(fit$cluster > 0)
-  if (length(keep_idx) < 2) {
-    stop("Not enough non-noise points to compute ECDF.")
+
+  if (is.null(fit$cluster) || is.null(fit$M) || is.null(fit$U) || is.null(fit$V)) {
+    stop("'fit' must contain 'cluster', 'M', 'U', and 'V' components.")
   }
   
-  # Recompute distances exactly as in KS scoring
-  distances <- vapply(keep_idx, function(i) {
-    comp <- fit$cluster[i]
-    
-    matrix_mahalanobis(
-      x = x_list[[i]],
-      mean_matrix = fit$M[[comp]],
-      row_cov = fit$U[[comp]],
-      col_cov = fit$V[[comp]]
-    )
-  }, numeric(1))
-  
-  distances <- distances[is.finite(distances)]
+  distances <- matrix_component_distances(fit, x_list)
+  if (length(distances) < 2) {
+    stop("Not enough non-noise points to compute ECDF.")
+  }
   distances <- sort(distances)
   
   r <- nrow(x_list[[1]])

@@ -53,12 +53,25 @@ fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
                                              init = "kmeans",
                                              estimate_k = TRUE,
                                              verbose = TRUE)
- 
-# fit_norm <- matrix_variate_mixture_fit(x_list, g = 3)
-# table(fit_norm$cluster)
+
+fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
+                                             init = "ecme",
+                                             estimate_k = TRUE,
+                                             verbose = TRUE)
+
+fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
+                                             init = "kmeans++",
+                                             estimate_k = TRUE,
+                                             verbose = TRUE)
+
+# fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
+#                                              init = "random",
+#                                              estimate_k = TRUE,
+#                                              verbose = TRUE)
+  
 
 # fit_hc <- Ampharos::matrix_noise_auto_k_robust(x_list, g = 2, verbose = TRUE)
-fit_hc <-  Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc", noise_k = 4.893901e-08, verbose = FALSE)
+#fit_hc <-  Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc", init = "kmeans++", noise_k = 1e-04, verbose = FALSE)
 
 cat('HC fit mixing proportions:\n')
 print(fit_hc$pi)
@@ -170,11 +183,15 @@ cat('Viroli simulation: n =', length(x_list_viroli), ', groups =', n1_viroli, n2
 ### Viroli: HC-noise with Automatic K
 
 ```{r}
-fit_hc_viroli <- Ampharos::matrix_variate_noise_fit(x_list_viroli, g = 3, noise_type = "hc",
+fit_hc_viroli_k <- Ampharos::matrix_variate_noise_fit(x_list_viroli, g = 3, noise_type = "hc",
                                                     estimate_k = TRUE,
-                                                    init = "kmeans",
+                                                    init = "kmeans++",
                                                      verbose = TRUE)
 
+fit_hc_viroli_ecme <- Ampharos::matrix_variate_noise_fit(x_list_viroli, g = 3, noise_type = "hc",
+                                                    estimate_k = TRUE,
+                                                    init = "ecme",
+                                                     verbose = TRUE)
 
 # fit_hc_viroli <- Ampharos::matrix_variate_noise_fit(x_list_viroli, g = 3, noise_type = "hc",
 #                                                      noise_k = 1.709065e-09,
@@ -182,10 +199,16 @@ fit_hc_viroli <- Ampharos::matrix_variate_noise_fit(x_list_viroli, g = 3, noise_
 # 
 
 cat('HC fit mixing proportions:\n')
-print(fit_hc_viroli$pi)
+print(fit_hc_viroli_k$pi)
 cat('\nHC cluster counts (0 indicates noise):\n')
-print(table(fit_hc_viroli$cluster))
-cat('\nSelected k:', fit_hc_viroli$k_selection$selected_k, '\n')
+print(table(fit_hc_viroli_k$cluster))
+cat('\nSelected k:', fit_hc_viroli_k$k_selection$selected_k, '\n')
+
+cat('HC fit mixing proportions:\n')
+print(fit_hc_viroli_ecme$pi)
+cat('\nHC cluster counts (0 indicates noise):\n')
+print(table(fit_hc_viroli_ecme$cluster))
+cat('\nSelected k:', fit_hc_viroli_ecme$k_selection$selected_k, '\n')
 ```
 
 ### Viroli: PCA Visualization

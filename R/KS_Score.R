@@ -5,22 +5,12 @@
 #' @return A list with `statistic`, `p.value`, and `n_used`.
 #' @keywords internal
 matrix_noise_ks_score <- function(fit, x_list) {
-  x_list <- matrix_validate_x_list(x_list)
-  keep_idx <- which(fit$cluster > 0)
-  if (length(keep_idx) < 2) {
-    return(list(statistic = Inf, p.value = NA_real_, n_used = length(keep_idx)))
+  if (is.null(fit$cluster) || is.null(fit$M) || is.null(fit$U) || is.null(fit$V)) {
+    stop("'fit' must contain 'cluster', 'M', 'U', and 'V' components.")
   }
+  x_list <- matrix_validate_x_list(x_list)
   
-  distances <- vapply(keep_idx, function(i) {
-    component <- fit$cluster[i]
-    matrix_mahalanobis(
-      x = x_list[[i]],
-      mean_matrix = fit$M[[component]],
-      row_cov = fit$U[[component]],
-      col_cov = fit$V[[component]]
-    )
-  }, numeric(1))
-  distances <- distances[is.finite(distances)]
+  distances <- matrix_component_distances(fit, x_list)
   if (length(distances) < 2 || length(unique(distances)) < 2) {
     return(list(statistic = Inf, p.value = NA_real_, n_used = length(distances)))
   }
@@ -33,7 +23,13 @@ matrix_noise_ks_score <- function(fit, x_list) {
   # One-sample KS test against Chi-squared distribution
   test <- tryCatch(
     suppressWarnings(stats::ks.test(distances, "pchisq", df = df)),
-    error = function(e) NULL
+    error = function(e) {
+      warning(sprintf(
+        "KS test failed (df = %d, n = %d): %s",
+        df, length(distances), conditionMessage(e)
+      ), call. = FALSE)
+      NULL
+    }
   )
   
   if (is.null(test)) {

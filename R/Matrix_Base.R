@@ -18,6 +18,12 @@
 #'
 #' @keywords internal
 make_spd <- function(mat, jitter = 1e-8, max_tries = 8) {
+	if (!is.matrix(mat) || !is.numeric(mat)) {
+		stop("'mat' must be a numeric matrix.")
+	}
+	if (nrow(mat) != ncol(mat)) {
+		stop("'mat' must be a square matrix.")
+	}
 	mat <- (mat + t(mat)) / 2
 	for (k in 0:max_tries) {
 		j <- jitter * (10^k)
@@ -52,6 +58,24 @@ make_spd <- function(mat, jitter = 1e-8, max_tries = 8) {
 #'
 #' @keywords internal
 matrix_mahalanobis <- function(x, mean_matrix, row_cov, col_cov) {
+	if (!is.matrix(x) || !is.numeric(x)) {
+		stop("'x' must be a numeric matrix.")
+	}
+	if (!is.matrix(mean_matrix) || !is.numeric(mean_matrix)) {
+		stop("'mean_matrix' must be a numeric matrix.")
+	}
+	if (!identical(dim(x), dim(mean_matrix))) {
+		stop(sprintf(
+			"'x' (%d x %d) and 'mean_matrix' (%d x %d) must have the same dimensions.",
+			nrow(x), ncol(x), nrow(mean_matrix), ncol(mean_matrix)
+		))
+	}
+	if (!is.matrix(row_cov) || nrow(row_cov) != ncol(row_cov) || nrow(row_cov) != nrow(x)) {
+		stop("'row_cov' must be a square matrix with dimension matching nrow(x).")
+	}
+	if (!is.matrix(col_cov) || nrow(col_cov) != ncol(col_cov) || nrow(col_cov) != ncol(x)) {
+		stop("'col_cov' must be a square matrix with dimension matching ncol(x).")
+	}
 	# U^{-1} and V^{-1}
 	row_cov <- make_spd(row_cov)
 	col_cov <- make_spd(col_cov)
@@ -83,6 +107,21 @@ matrix_mahalanobis <- function(x, mean_matrix, row_cov, col_cov) {
 #'
 #' @keywords internal
 matrix_variate_log_density <- function(x, mean_matrix, row_cov, col_cov) {
+	if (!is.matrix(x) || !is.numeric(x)) {
+		stop("'x' must be a numeric matrix.")
+	}
+	if (!is.matrix(mean_matrix) || !is.numeric(mean_matrix)) {
+		stop("'mean_matrix' must be a numeric matrix.")
+	}
+	if (!identical(dim(x), dim(mean_matrix))) {
+		stop("'x' and 'mean_matrix' must have the same dimensions.")
+	}
+	if (!is.matrix(row_cov) || nrow(row_cov) != ncol(row_cov) || nrow(row_cov) != nrow(x)) {
+		stop("'row_cov' must be a square matrix with dimension matching nrow(x).")
+	}
+	if (!is.matrix(col_cov) || nrow(col_cov) != ncol(col_cov) || nrow(col_cov) != ncol(x)) {
+		stop("'col_cov' must be a square matrix with dimension matching ncol(x).")
+	}
 	# Cholesky decomposition
 	row_cov <- make_spd(row_cov)
 	col_cov <- make_spd(col_cov)
@@ -163,7 +202,7 @@ matrix_variate_log_density <- function(x, mean_matrix, row_cov, col_cov) {
 #'
 #' @export
 matrix_variate_mixture_fit <- function(x_list, g, max_iter = 100, tol = 1e-06,
-																			 nstart = 10, init = c("kmeans", "random", "ecme"),
+																			 nstart = 10, init = c("kmeans", "random", "ecme", "kmeans++"),
 																			 verbose = FALSE) {
 	init <- match.arg(init)
 	x_list <- matrix_validate_x_list(x_list)
@@ -171,104 +210,65 @@ matrix_variate_mixture_fit <- function(x_list, g, max_iter = 100, tol = 1e-06,
 	r <- nrow(x_list[[1]])
 	p <- ncol(x_list[[1]])
 
-	if (init == "random") {
-		params <- matrix_mixture_random_init(x_list, g = g)
-	} else if (init == "ecme") {
-		params <- matrix_mixture_ecme_init(x_list, g = g)
-	} else {
-		params <- matrix_mixture_kmeans_init(x_list, g = g, nstart = nstart)
+	if (!is.numeric(g) || length(g) != 1 || g < 1) {
+		stop("'g' must be a positive integer specifying the number of mixture components.")
 	}
+	g <- as.integer(g)
+
+	if (n < g) {
+		stop(sprintf(
+			"Number of observations (%d) must be at least as large as the number of components (%d).",
+			n, g
+		))
+	}
+
+	params <- matrix_init_dispatch(x_list, g, init, nstart)
 	loglik_trace <- numeric(0)
 	responsibilities <- matrix(0, n, g)
 
 	# EM loop
 	for (iteration in seq_len(max_iter)) {
-		# E-step: Compute responsibilities
-		log_density <- matrix(NA_real_, nrow = n, ncol = g)
+		# E-step
+		log_density <- matrix_e_step_log_density(x_list, params, g, n)
+		responsibilities <- matrix_normalize_responsibilities(log_density)
 
-		for (component in seq_len(g)) {
-			for (i in seq_len(n)) {
-				# compute P(X_i | component)
-				log_density[i, component] <- log(params$pi[component]) +
-					matrix_variate_log_density(
-						x = x_list[[i]],
-						mean_matrix = params$M[[component]],
-						row_cov = params$U[[component]],
-						col_cov = params$V[[component]]
-					)
-			}
-		}
-
-		# Normalize log-densities to get responsibilities
-		for (i in seq_len(n)) {
-			row_log_densities <- log_density[i, ]
-			normalizer <- matrix_log_sum_exp(row_log_densities)  # numerically stable log-sum-exp
-			responsibilities[i, ] <- exp(row_log_densities - normalizer)  # z_hat_ig
-		}
-
-		# Compute observed data log-likelihood for convergence check
+		# Observed data log-likelihood
 		current_loglik <- sum(apply(log_density, 1, matrix_log_sum_exp))
 		loglik_trace <- c(loglik_trace, current_loglik)
 
-		# Check convergence
 		if (iteration > 1 && abs(loglik_trace[iteration] - loglik_trace[iteration - 1]) < tol) {
 			break
 		}
 
-		# M-step: Update parameters
-		component_sizes <- colSums(responsibilities)  # sum of z_hat_ig over all observations i
+		# M-step
+		component_sizes <- colSums(responsibilities)
 		new_params <- params
 
-		# Update each component's parameters
 		for (component in seq_len(g)) {
 			if (component_sizes[component] <= 0) {
+				warning(sprintf(
+					"Component %d has zero effective membership at iteration %d; skipping update.",
+					component, iteration
+				), call. = FALSE)
 				next
 			}
 
 			weights <- responsibilities[, component]
-			weights_sum <- component_sizes[component]  # effective sample size for this component
-			v_for_row <- make_spd(params$V[[component]])
+			weights_sum <- component_sizes[component]
 
-			# Update mean matrix (M-step: M_hat_g)
-			mean_matrix <- matrix(0, r, p)
-			for (i in seq_len(n)) {
-				mean_matrix <- mean_matrix + weights[i] * x_list[[i]]
-			}
-			mean_matrix <- mean_matrix / weights_sum
+			mean_matrix <- matrix_weighted_mean(x_list, weights, weights_sum, r, p)
+			row_cov <- matrix_update_row_cov(x_list, mean_matrix, params$V[[component]],
+			                                 weights, weights_sum, r, p)
+			col_cov <- matrix_update_col_cov(x_list, mean_matrix, row_cov,
+			                                 weights, weights_sum, r, p)
 
-			# Update row covariance U_hat_g
-			row_cov <- matrix(0, r, r)
-			for (i in seq_len(n)) {
-				centered <- x_list[[i]] - mean_matrix
-				row_cov <- row_cov + weights[i] * (centered %*% solve(v_for_row, t(centered)))
-			}
-			row_cov <- row_cov / (p * weights_sum)
-			row_cov <- make_spd(row_cov)
-
-			# Enforce tr(U) = r
-			row_scale <- r / sum(diag(row_cov))
-			row_cov <- row_cov * row_scale
-			row_cov <- make_spd(row_cov)
-
-			# Update column covariance V_hat_g
-			col_cov <- matrix(0, p, p)
-			for (i in seq_len(n)) {
-				centered <- x_list[[i]] - mean_matrix
-				col_cov <- col_cov + weights[i] * (t(centered) %*% solve(row_cov, centered))
-			}
-			col_cov <- col_cov / (r * weights_sum)
-			col_cov <- make_spd(col_cov)
-
-			# Store updated parameters
-			new_params$pi[component] <- weights_sum / n  # mixing proportion
+			new_params$pi[component] <- weights_sum / n
 			new_params$M[[component]] <- mean_matrix
 			new_params$U[[component]] <- row_cov
 			new_params$V[[component]] <- col_cov
 		}
 
-		# Normalize mixing proportions to sum to 1
 		new_params$pi <- new_params$pi / sum(new_params$pi)
-
 		params <- new_params
 
 		if (verbose) {
@@ -276,10 +276,8 @@ matrix_variate_mixture_fit <- function(x_list, g, max_iter = 100, tol = 1e-06,
 		}
 	}
 
-	# Assign each observation to its most likely component
 	cluster_membership <- max.col(responsibilities, ties.method = "first")
 
-	# Return fitted model with all parameters and diagnostics
 	list(
 		pi = params$pi,
 		M = params$M,

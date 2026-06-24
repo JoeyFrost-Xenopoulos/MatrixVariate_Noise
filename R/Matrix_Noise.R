@@ -41,12 +41,31 @@ matrix_variate_noise_fit <- function(x_list,
                                       k_grid = NULL,
                                       adaptive_grid = TRUE,
                                       noise_pi_init = 0.05,
-                                      init = c("kmeans", "random", "ecme"),
+                                      init = c("kmeans", "random", "ecme", "kmeans++"),
                                       verbose = FALSE) {
   noise_type <- match.arg(noise_type)
   init <- match.arg(init)
   x_list <- matrix_validate_x_list(x_list)
-  
+
+  if (!is.numeric(g) || length(g) != 1 || g < 1) {
+    stop("'g' must be a positive integer specifying the number of mixture components.")
+  }
+  g <- as.integer(g)
+
+  n <- length(x_list)
+  if (n < g) {
+    stop(sprintf(
+      "Number of observations (%d) must be at least as large as the number of components (%d).",
+      n, g
+    ))
+  }
+
+  if (noise_type == "hc" && !estimate_k) {
+    if (!is.numeric(noise_k) || length(noise_k) != 1 || noise_k <= 0) {
+      stop("'noise_k' must be a positive numeric scalar.")
+    }
+  }
+
   # Automatic k selection for HC noise
   if (noise_type == "hc" && estimate_k) {
     if (verbose)
@@ -134,8 +153,13 @@ matrix_variate_noise_fit <- function(x_list,
           tol = tol,
           verbose = FALSE
         ),
-        error = function(e)
+        error = function(e) {
+          warning(sprintf(
+            "Gaussian mixture refit failed for k = %e: %s",
+            current_k, conditionMessage(e)
+          ), call. = FALSE)
           NULL
+        }
       )
       
       if (is.null(fit_clean)) {
@@ -159,6 +183,10 @@ matrix_variate_noise_fit <- function(x_list,
       ks_result <- tryCatch(
         matrix_noise_ks_score(fit_clean, x_clean),
         error = function(e) {
+          warning(sprintf(
+            "KS scoring failed for k = %e: %s",
+            current_k, conditionMessage(e)
+          ), call. = FALSE)
           list(
             statistic = Inf,
             p.value = NA_real_,
@@ -253,28 +281,17 @@ matrix_variate_noise_fit_impl <- function(x_list,
                                           noise_k = 1e-04,
                                           noise_jitter = 1e-08,
                                           noise_pi_init = 0.05,
-                                          init = c("kmeans", "random", "ecme"),
+                                          init = c("kmeans", "random", "ecme", "kmeans++"),
                                           verbose = FALSE) {
   noise_type <- match.arg(noise_type)
   init <- match.arg(init)
+  x_list <- matrix_validate_x_list(x_list)
   
   n <- length(x_list)
   r <- nrow(x_list[[1]])
   p <- ncol(x_list[[1]])
   
-  for (x in x_list) {
-    if (!is.matrix(x) || nrow(x) != r || ncol(x) != p) {
-      stop("All elements of x_list must be matrices with the same dimensions.")
-    }
-  }
-  
-  if (init == "random") {
-    params <- matrix_mixture_random_init(x_list, g = g)
-  } else if (init == "ecme") {
-    params <- matrix_mixture_ecme_init(x_list, g = g)
-  } else {
-    params <- matrix_mixture_kmeans_init(x_list, g = g, nstart = nstart)
-  }
+  params <- matrix_init_dispatch(x_list, g, init, nstart)
   
   # For BR noise compute a convex hull over the vectorized matrices
   noise_support <- NULL
@@ -300,30 +317,11 @@ matrix_variate_noise_fit_impl <- function(x_list,
   }
   
   for (iteration in seq_len(max_iter)) {
-    log_density <- matrix(NA_real_, nrow = n, ncol = g + 1)
+    # E-step: Gaussian components
+    log_density_gauss <- matrix_e_step_log_density(x_list, params, g, n)
+    log_density <- cbind(log_density_gauss, log(params$pi[g + 1]) + noise_log_density)
     
-    # E-step
-    for (component in seq_len(g)) {
-      for (i in seq_len(n)) {
-        log_density[i, component] <- log(params$pi[component]) +
-          matrix_variate_log_density(
-            x = x_list[[i]],
-            mean_matrix = params$M[[component]],
-            row_cov = params$U[[component]],
-            col_cov = params$V[[component]]
-          )
-      }
-    }
-    
-    # Noise mixing proportion with noise log-density
-    log_density[, g + 1] <- log(params$pi[g + 1]) + noise_log_density
-    
-    # Normalize log-densities to posterior responsibilities using log-sum-exp
-    for (i in seq_len(n)) {
-      row_log_densities <- log_density[i, ]
-      normalizer <- matrix_log_sum_exp(row_log_densities)
-      responsibilities[i, ] <- exp(row_log_densities - normalizer)
-    }
+    responsibilities <- matrix_normalize_responsibilities(log_density)
     
     # Observed-data log-likelihood
     current_loglik <- sum(apply(log_density, 1, matrix_log_sum_exp))
@@ -334,7 +332,7 @@ matrix_variate_noise_fit_impl <- function(x_list,
       break
     }
     
-    # M-step: update Gaussian parameters using responsibilities
+    # M-step
     component_responsibilities <- responsibilities[, seq_len(g), drop = FALSE]
     component_sizes <- colSums(component_responsibilities)
     noise_size <- sum(responsibilities[, g + 1])
@@ -342,44 +340,22 @@ matrix_variate_noise_fit_impl <- function(x_list,
     
     for (component in seq_len(g)) {
       if (component_sizes[component] <= 0) {
+        warning(sprintf(
+          "Component %d has zero effective membership at iteration %d; skipping update.",
+          component, iteration
+        ), call. = FALSE)
         next
       }
       
-      # Effective weights for this component
       weights <- component_responsibilities[, component]
       weights_sum <- component_sizes[component]
-      v_for_row <- make_spd(params$V[[component]])
       
-      # Update mean matrix: weighted average
-      mean_matrix <- matrix(0, r, p)
-      for (i in seq_len(n)) {
-        mean_matrix <- mean_matrix + weights[i] * x_list[[i]]
-      }
-      mean_matrix <- mean_matrix / weights_sum
+      mean_matrix <- matrix_weighted_mean(x_list, weights, weights_sum, r, p)
+      row_cov <- matrix_update_row_cov(x_list, mean_matrix, params$V[[component]],
+                                       weights, weights_sum, r, p)
+      col_cov <- matrix_update_col_cov(x_list, mean_matrix, row_cov,
+                                       weights, weights_sum, r, p)
       
-      # Update row covariance U_g using current V_g (v_for_row)
-      row_cov <- matrix(0, r, r)
-      for (i in seq_len(n)) {
-        centered <- x_list[[i]] - mean_matrix
-        row_cov <- row_cov + weights[i] * (centered %*% solve(v_for_row, t(centered)))
-      }
-      row_cov <- row_cov / (p * weights_sum)
-      row_cov <- make_spd(row_cov)
-      
-      # Identifiability
-      row_scale <- r / sum(diag(row_cov))
-      row_cov <- make_spd(row_cov * row_scale)
-      
-      # Update column covariance V_g using updated U_g
-      col_cov <- matrix(0, p, p)
-      for (i in seq_len(n)) {
-        centered <- x_list[[i]] - mean_matrix
-        col_cov <- col_cov + weights[i] * (t(centered) %*% solve(row_cov, centered))
-      }
-      col_cov <- col_cov / (r * weights_sum)
-      col_cov <- make_spd(col_cov)
-      
-      # Store updated parameters for this Gaussian component
       new_params$pi[component] <- weights_sum / n
       new_params$M[[component]] <- mean_matrix
       new_params$U[[component]] <- row_cov
@@ -393,23 +369,11 @@ matrix_variate_noise_fit_impl <- function(x_list,
     
     if (verbose) {
       if (noise_type == "hc") {
-        message(
-          sprintf(
-            "Iteration %d: log-likelihood = %.4f | noise_k = %.4e",
-            iteration,
-            current_loglik,
-            noise_k
-          )
-        )
+        message(sprintf("Iteration %d: log-likelihood = %.4f | noise_k = %.4e",
+                        iteration, current_loglik, noise_k))
       } else {
-        message(
-          sprintf(
-            "Iteration %d: log-likelihood = %.4f | noise_type = %s",
-            iteration,
-            current_loglik,
-            noise_type
-          )
-        )
+        message(sprintf("Iteration %d: log-likelihood = %.4f | noise_type = %s",
+                        iteration, current_loglik, noise_type))
       }
     }
   }

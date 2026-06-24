@@ -37,22 +37,27 @@ matrix_mm_fit <- function(x_list,
   r <- nrow(x_list[[1]])
   p <- ncol(x_list[[1]])
 
+  if (!is.numeric(g) || length(g) != 1 || g < 1) {
+    stop("'g' must be a positive integer specifying the number of mixture components.")
+  }
+  g <- as.integer(g)
+
+  if (n < g) {
+    stop(sprintf(
+      "Number of observations (%d) must be at least as large as the number of components (%d).",
+      n, g
+    ))
+  }
+
   has_noise <- !is.null(noise_type)
   if (has_noise) {
-    noise_type <- match.arg(noise_type)
+    noise_type <- match.arg(noise_type, choices = c("hc", "br"))
     n_components <- g + 1
   } else {
     n_components <- g
   }
 
-  # Initialize
-  if (init == "random") {
-    params <- matrix_mixture_random_init(x_list, g = g)
-  } else if (init == "ecme") {
-    params <- matrix_mixture_ecme_init(x_list, g = g)
-  } else {
-    params <- matrix_mixture_kmeans_init(x_list, g = g, nstart = nstart)
-  }
+  params <- matrix_init_dispatch(x_list, g, init, nstart)
 
   if (has_noise) {
     params$pi <- c((1 - noise_pi_init) * params$pi, noise_pi_init)
@@ -88,29 +93,15 @@ matrix_mm_fit <- function(x_list,
     prev_params <- params
 
     # E-step: compute posteriors using CURRENT parameters
-    log_density <- matrix(NA_real_, nrow = n, ncol = n_components)
-
-    for (component in seq_len(g)) {
-      for (i in seq_len(n)) {
-        log_density[i, component] <- log(params$pi[component]) +
-          matrix_variate_log_density(
-            x = x_list[[i]],
-            mean_matrix = params$M[[component]],
-            row_cov = params$U[[component]],
-            col_cov = params$V[[component]]
-          )
-      }
-    }
+    log_density_gauss <- matrix_e_step_log_density(x_list, params, g, n)
 
     if (has_noise) {
-      log_density[, n_components] <- log(params$pi[n_components]) + noise_log_density
+      log_density <- cbind(log_density_gauss, log(params$pi[n_components]) + noise_log_density)
+    } else {
+      log_density <- log_density_gauss
     }
 
-    for (i in seq_len(n)) {
-      row_log_densities <- log_density[i, ]
-      normalizer <- matrix_log_sum_exp(row_log_densities)
-      responsibilities[i, ] <- exp(row_log_densities - normalizer)
-    }
+    responsibilities <- matrix_normalize_responsibilities(log_density)
 
     current_loglik <- sum(apply(log_density, 1, matrix_log_sum_exp))
     loglik_trace <- c(loglik_trace, current_loglik)
@@ -126,66 +117,33 @@ matrix_mm_fit <- function(x_list,
 
     for (component in seq_len(g)) {
       if (component_sizes[component] <= 0) {
+        warning(sprintf(
+          "Component %d has zero effective membership at iteration %d; skipping update.",
+          component, iteration
+        ), call. = FALSE)
         next
       }
 
       weights <- responsibilities[, component]
       weights_sum <- component_sizes[component]
 
-      # Mean update (same for EM and MM)
-      new_M <- matrix(0, r, p)
-      for (i in seq_len(n)) {
-        new_M <- new_M + weights[i] * x_list[[i]]
-      }
-      new_M <- new_M / weights_sum
+      new_M <- matrix_weighted_mean(x_list, weights, weights_sum, r, p)
 
       if (is_mm) {
         # MM: use CURRENT (previous iteration) U and V for both updates
-        U_curr <- make_spd(prev_params$U[[component]])
-        V_curr <- make_spd(prev_params$V[[component]])
-
-        # U update using CURRENT V
-        row_cov <- matrix(0, r, r)
-        for (i in seq_len(n)) {
-          centered <- x_list[[i]] - new_M
-          row_cov <- row_cov + weights[i] * (centered %*% solve(V_curr, t(centered)))
-        }
-        row_cov <- row_cov / (p * weights_sum)
-        row_cov <- make_spd(row_cov)
-
-        # V update using CURRENT U
-        col_cov <- matrix(0, p, p)
-        for (i in seq_len(n)) {
-          centered <- x_list[[i]] - new_M
-          col_cov <- col_cov + weights[i] * (t(centered) %*% solve(U_curr, centered))
-        }
-        col_cov <- col_cov / (r * weights_sum)
-        col_cov <- make_spd(col_cov)
+        row_cov <- matrix_update_row_cov(x_list, new_M, prev_params$V[[component]],
+                                         weights, weights_sum, r, p, scale_trace = FALSE)
+        col_cov <- matrix_update_col_cov(x_list, new_M, prev_params$U[[component]],
+                                         weights, weights_sum, r, p)
 
         new_params$U[[component]] <- row_cov
         new_params$V[[component]] <- col_cov
       } else {
         # EM: U uses CURRENT V, V uses NEW U (sequential)
-        v_for_row <- make_spd(params$V[[component]])
-
-        row_cov <- matrix(0, r, r)
-        for (i in seq_len(n)) {
-          centered <- x_list[[i]] - new_M
-          row_cov <- row_cov + weights[i] * (centered %*% solve(v_for_row, t(centered)))
-        }
-        row_cov <- row_cov / (p * weights_sum)
-        row_cov <- make_spd(row_cov)
-
-        row_scale <- r / sum(diag(row_cov))
-        row_cov <- make_spd(row_cov * row_scale)
-
-        col_cov <- matrix(0, p, p)
-        for (i in seq_len(n)) {
-          centered <- x_list[[i]] - new_M
-          col_cov <- col_cov + weights[i] * (t(centered) %*% solve(row_cov, centered))
-        }
-        col_cov <- col_cov / (r * weights_sum)
-        col_cov <- make_spd(col_cov)
+        row_cov <- matrix_update_row_cov(x_list, new_M, params$V[[component]],
+                                         weights, weights_sum, r, p)
+        col_cov <- matrix_update_col_cov(x_list, new_M, row_cov,
+                                         weights, weights_sum, r, p)
 
         new_params$U[[component]] <- row_cov
         new_params$V[[component]] <- col_cov

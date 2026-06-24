@@ -9,113 +9,67 @@
 matrix_mixture_kmeans_init <- function(x_list, g, nstart = 10) {
   x_list <- matrix_validate_x_list(x_list)
 
-  n <- length(x_list)
-  r <- nrow(x_list[[1]])
-  p <- ncol(x_list[[1]])
-
   # vectorize and run kmeans for init
   x_matrix <- do.call(rbind, lapply(x_list, function(x) as.vector(x)))
   km <- kmeans(x_matrix, centers = g, nstart = nstart)
-  z <- km$cluster
 
-  mixing_proportions <- numeric(g)
-  mean_matrices <- vector("list", g)
-  row_covariances <- vector("list", g)
-  col_covariances <- vector("list", g)
+  matrix_compute_init_params(x_list, g, km$cluster, init_method = "K-means")
+}
 
-  # For each component, compute sample mean and covariances from k-means clusters
-  for (component in seq_len(g)) {
-    component_index <- which(z == component)
-    if (length(component_index) == 0) {
-      component_index <- sample.int(n, 1)
+#' K-Means++ Initialization for Matrix Mixture Models
+#'
+#' Implements the k-means++ seeding algorithm (Arthur & Vassilvitskii, 2007)
+#' on vectorized matrix observations, then runs standard k-means from those
+#' seeds. The D^2 weighting produces better-spread initial centers than
+#' uniform random seeding.
+#'
+#' @param x_list A list of numeric matrices, each of dimension r x p
+#' @param g Integer: number of mixture components
+#' @param nstart Integer: number of k-means restarts from the pp-seeded
+#'   centers (default: 10)
+#'
+#' @return A list containing initial parameters.
+#' @keywords internal
+matrix_mixture_kmeanspp_init <- function(x_list, g, nstart = 10) {
+  x_list <- matrix_validate_x_list(x_list)
+  n <- length(x_list)
+
+  x_matrix <- do.call(rbind, lapply(x_list, function(x) as.vector(x)))
+
+  # k-means++ center seeding (D^2 weighting)
+  centers_idx <- integer(g)
+  centers_idx[1] <- sample.int(n, 1)
+
+  for (k in 2:g) {
+    # Squared distance from each point to its nearest chosen center
+    dists <- apply(x_matrix[centers_idx[1:(k - 1)], , drop = FALSE], 1, function(c) {
+      rowSums((x_matrix - matrix(c, nrow = n, ncol = ncol(x_matrix), byrow = TRUE))^2)
+    })
+    if (is.matrix(dists)) {
+      min_dists <- apply(dists, 1, min)
+    } else {
+      min_dists <- dists
     }
-
-    component_data <- x_list[component_index]
-    mixing_proportions[component] <- length(component_index) / n
-    mean_matrices[[component]] <- Reduce(`+`, component_data) / length(component_data)
-
-    row_cov <- matrix(0, r, r)
-    col_cov <- matrix(0, p, p)
-    for (x in component_data) {
-      centered <- x - mean_matrices[[component]]
-      row_cov <- row_cov + centered %*% t(centered)
-      col_cov <- col_cov + t(centered) %*% centered
-    }
-
-    row_cov <- row_cov / (p * length(component_data))
-    col_cov <- col_cov / (r * length(component_data))
-    row_cov <- make_spd(row_cov)
-    col_cov <- make_spd(col_cov)
-
-    row_covariances[[component]] <- row_cov
-    col_covariances[[component]] <- col_cov
-    row_scale <- r / sum(diag(row_covariances[[component]]))
-    row_covariances[[component]] <- row_covariances[[component]] * row_scale
-    col_covariances[[component]] <- col_covariances[[component]] / row_scale
-    row_covariances[[component]] <- make_spd(row_covariances[[component]])
-    col_covariances[[component]] <- make_spd(col_covariances[[component]])
+    # Sample proportional to D^2
+    probs <- min_dists / sum(min_dists)
+    centers_idx[k] <- sample.int(n, 1, prob = probs)
   }
 
-  list(
-    pi = mixing_proportions,
-    M = mean_matrices,
-    U = row_covariances,
-    V = col_covariances,
-    cluster = z
-  )
+  centers <- x_matrix[centers_idx, , drop = FALSE]
+
+  # Run k-means from the pp-seeded centers
+  km <- kmeans(x_matrix, centers = centers, nstart = nstart)
+
+  matrix_compute_init_params(x_list, g, km$cluster, init_method = "K-means++")
 }
 
 matrix_mixture_random_init <- function(x_list, g) {
   x_list <- matrix_validate_x_list(x_list)
   n <- length(x_list)
-  r <- nrow(x_list[[1]])
-  p <- ncol(x_list[[1]])
 
   z <- sample(seq_len(g), size = n, replace = TRUE)
-  mixing_proportions <- numeric(g)
-  mean_matrices <- vector("list", g)
-  row_covariances <- vector("list", g)
-  col_covariances <- vector("list", g)
 
-  for (component in seq_len(g)) {
-    component_index <- which(z == component)
-    if (length(component_index) == 0) {
-      component_index <- sample.int(n, 1)
-    }
-
-    component_data <- x_list[component_index]
-    mixing_proportions[component] <- length(component_index) / n
-    mean_matrices[[component]] <- Reduce(`+`, component_data) / length(component_data)
-
-    row_cov <- matrix(0, r, r)
-    col_cov <- matrix(0, p, p)
-    for (x in component_data) {
-      centered <- x - mean_matrices[[component]]
-      row_cov <- row_cov + centered %*% t(centered)
-      col_cov <- col_cov + t(centered) %*% centered
-    }
-
-    row_cov <- row_cov / (p * length(component_data))
-    col_cov <- col_cov / (r * length(component_data))
-    row_cov <- make_spd(row_cov)
-    col_cov <- make_spd(col_cov)
-
-    row_covariances[[component]] <- row_cov
-    col_covariances[[component]] <- col_cov
-    row_scale <- r / sum(diag(row_covariances[[component]]))
-    row_covariances[[component]] <- row_covariances[[component]] * row_scale
-    col_covariances[[component]] <- col_covariances[[component]] / row_scale
-    row_covariances[[component]] <- make_spd(row_covariances[[component]])
-    col_covariances[[component]] <- make_spd(col_covariances[[component]])
-  }
-
-  list(
-    pi = mixing_proportions,
-    M = mean_matrices,
-    U = row_covariances,
-    V = col_covariances,
-    cluster = z
-  )
+  matrix_compute_init_params(x_list, g, z, init_method = "Random")
 }
 
 matrix_mixture_ecme_init <- function(x_list, g, max_iter = 5) {
@@ -128,62 +82,29 @@ matrix_mixture_ecme_init <- function(x_list, g, max_iter = 5) {
   colnames(responsibilities) <- paste0("component_", seq_len(g))
 
   for (iteration in seq_len(max_iter)) {
-    log_density <- matrix(NA_real_, nrow = n, ncol = g)
-
-    for (component in seq_len(g)) {
-      for (i in seq_len(n)) {
-        log_density[i, component] <- log(params$pi[component]) +
-          matrix_variate_log_density(
-            x = x_list[[i]],
-            mean_matrix = params$M[[component]],
-            row_cov = params$U[[component]],
-            col_cov = params$V[[component]]
-          )
-      }
-    }
-
-    for (i in seq_len(n)) {
-      row_log_densities <- log_density[i, ]
-      normalizer <- matrix_log_sum_exp(row_log_densities)
-      responsibilities[i, ] <- exp(row_log_densities - normalizer)
-    }
+    log_density <- matrix_e_step_log_density(x_list, params, g, n)
+    responsibilities <- matrix_normalize_responsibilities(log_density)
 
     component_sizes <- colSums(responsibilities)
     new_params <- params
 
     for (component in seq_len(g)) {
       if (component_sizes[component] <= 0) {
+        warning(sprintf(
+          "ECME initialization: component %d has zero effective membership at iteration %d; skipping update.",
+          component, iteration
+        ), call. = FALSE)
         next
       }
 
       weights <- responsibilities[, component]
       weights_sum <- component_sizes[component]
-      v_for_row <- make_spd(params$V[[component]])
 
-      mean_matrix <- matrix(0, r, p)
-      for (i in seq_len(n)) {
-        mean_matrix <- mean_matrix + weights[i] * x_list[[i]]
-      }
-      mean_matrix <- mean_matrix / weights_sum
-
-      row_cov <- matrix(0, r, r)
-      for (i in seq_len(n)) {
-        centered <- x_list[[i]] - mean_matrix
-        row_cov <- row_cov + weights[i] * (centered %*% solve(v_for_row, t(centered)))
-      }
-      row_cov <- row_cov / (p * weights_sum)
-      row_cov <- make_spd(row_cov)
-
-      row_scale <- r / sum(diag(row_cov))
-      row_cov <- make_spd(row_cov * row_scale)
-
-      col_cov <- matrix(0, p, p)
-      for (i in seq_len(n)) {
-        centered <- x_list[[i]] - mean_matrix
-        col_cov <- col_cov + weights[i] * (t(centered) %*% solve(row_cov, centered))
-      }
-      col_cov <- col_cov / (r * weights_sum)
-      col_cov <- make_spd(col_cov)
+      mean_matrix <- matrix_weighted_mean(x_list, weights, weights_sum, r, p)
+      row_cov <- matrix_update_row_cov(x_list, mean_matrix, params$V[[component]],
+                                       weights, weights_sum, r, p)
+      col_cov <- matrix_update_col_cov(x_list, mean_matrix, row_cov,
+                                       weights, weights_sum, r, p)
 
       new_params$pi[component] <- weights_sum / n
       new_params$M[[component]] <- mean_matrix

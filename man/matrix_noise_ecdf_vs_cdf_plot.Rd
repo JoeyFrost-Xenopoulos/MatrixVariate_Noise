@@ -10,7 +10,7 @@ matrix_noise_ecdf_vs_cdf_plot(
   main = "ECDF vs Theoretical CDF (Chi-square)",
   xlab = "Mahalanobis distance",
   ylab = "CDF",
-  plot_type = "base"
+  plot_type = c("base")
 )
 }
 \description{
