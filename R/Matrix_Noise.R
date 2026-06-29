@@ -23,6 +23,10 @@
 #'   dimension-aware heuristic grid based on matrix dimensions.
 #' @param noise_pi_init Numeric: initial mixing proportion for the noise
 #'   component.
+#' @param ks_type Character: `"onesample"` (default) to compare Mahalanobis
+#'   distances against the theoretical $\chi^2(r p)$ CDF, or `"twosample"` to
+#'   compare distance distributions between the two largest non-noise mixture
+#'   components. Only used when `estimate_k = TRUE`.
 #' @param verbose Logical: print iteration progress.
 #'
 #' @return A list containing the fitted mixture parameters, posterior
@@ -41,9 +45,11 @@ matrix_variate_noise_fit <- function(x_list,
                                       k_grid = NULL,
                                       adaptive_grid = TRUE,
                                       noise_pi_init = 0.05,
+                                      ks_type = c("onesample", "twosample"),
                                       init = c("kmeans", "random", "ecme", "kmeans++"),
                                       verbose = FALSE) {
   noise_type <- match.arg(noise_type)
+  ks_type <- match.arg(ks_type)
   init <- match.arg(init)
   x_list <- matrix_validate_x_list(x_list)
 
@@ -69,7 +75,7 @@ matrix_variate_noise_fit <- function(x_list,
   # Automatic k selection for HC noise
   if (noise_type == "hc" && estimate_k) {
     if (verbose)
-      cat("Selecting optimal k using KS test...\n")
+      cat(sprintf("Selecting optimal k using %s KS test...\n", ks_type))
     
     # Generate dimension-aware grid if not provided
     if (is.null(k_grid)) {
@@ -181,7 +187,7 @@ matrix_variate_noise_fit <- function(x_list,
       
       # Step 4: KS goodness-of-fit score
       ks_result <- tryCatch(
-        matrix_noise_ks_score(fit_clean, x_clean),
+        matrix_noise_ks_score(fit_clean, x_clean, ks_type = ks_type),
         error = function(e) {
           warning(sprintf(
             "KS scoring failed for k = %e: %s",
@@ -250,7 +256,8 @@ matrix_variate_noise_fit <- function(x_list,
         x$p.value),
       n_used = sapply(all_ks_results, function(x)
         x$n_used),
-      adaptive_grid = adaptive_grid
+      adaptive_grid = adaptive_grid,
+      ks_type = ks_type
     )
     
     return(final_fit)

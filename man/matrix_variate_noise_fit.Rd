@@ -16,6 +16,7 @@ matrix_variate_noise_fit(
   k_grid = NULL,
   adaptive_grid = TRUE,
   noise_pi_init = 0.05,
+  ks_type = c("onesample", "twosample"),
   init = c("kmeans", "random", "ecme", "kmeans++"),
   verbose = FALSE
 )
@@ -46,6 +47,11 @@ dimension-aware heuristic grid based on matrix dimensions.}
 
 \item{noise_pi_init}{Numeric: initial mixing proportion for the noise
 component.}
+
+\item{ks_type}{Character: \code{"onesample"} (default) to compare Mahalanobis
+distances against the theoretical $\chi^2(r p)$ CDF, or \code{"twosample"} to
+compare distance distributions between the two largest non-noise mixture
+components. Only used when \code{estimate_k = TRUE}.}
 
 \item{init}{Character: initialization scheme. \code{"kmeans"} for k-means based
 initialization (default), \code{"random"} for random cluster assignments, or
