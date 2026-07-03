@@ -1,5 +1,4 @@
 #!/usr/bin/env Rscript
-# Benchmark: Noise Mixture Clustering (hc only, estimate_k only, no KS sweep)
 
 # --- Source package code ---
 for (f in list.files("R", pattern = "\\.R$", full.names = TRUE)) {
@@ -23,7 +22,7 @@ TOL      <- 1e-6
 OUTPUT_CSV <- "scripts/noise_clustering_hc_estk_results.csv"
 
 # ============================================================
-# Helpers
+# Metrics
 # ============================================================
 
 adjusted_rand_index <- function(labels_true, labels_pred) {
@@ -44,7 +43,12 @@ adjusted_rand_index <- function(labels_true, labels_pred) {
   (a - expected) / (max_idx - expected)
 }
 
-simulate_mixture <- function(n_per_group, g, r, p, separation, noise_sd = 0.5) {
+# ============================================================
+# Simulation WITH TRUE NOISE CLASS
+# ============================================================
+
+simulate_mixture <- function(n_per_group, g, r, p, separation,
+                             noise_sd = 0.5, noise_pi = 0.1) {
 
   true_means <- lapply(seq_len(g), function(k) {
     matrix(
@@ -56,6 +60,10 @@ simulate_mixture <- function(n_per_group, g, r, p, separation, noise_sd = 0.5) {
   x_list <- list()
   true_labels <- integer(0)
 
+  total_n <- n_per_group * g
+  n_noise <- round(total_n * noise_pi)
+
+  # ---- signal points ----
   for (k in seq_len(g)) {
     for (i in seq_len(n_per_group)) {
       noise <- matrix(rnorm(r * p, sd = noise_sd), r, p)
@@ -64,10 +72,25 @@ simulate_mixture <- function(n_per_group, g, r, p, separation, noise_sd = 0.5) {
     }
   }
 
-  list(x_list = x_list, true_labels = true_labels)
+  # ---- TRUE noise points (important change) ----
+  for (i in seq_len(n_noise)) {
+    noise_matrix <- matrix(rnorm(r * p, sd = 3 * noise_sd), r, p)
+    x_list <- c(x_list, list(noise_matrix))
+    true_labels <- c(true_labels, 0)
+  }
+
+  list(
+    x_list = x_list,
+    true_labels = true_labels,
+    noise_pi_true = noise_pi
+  )
 }
 
-run_fit <- function(x_list, g, true_labels, init) {
+# ============================================================
+# Fit runner
+# ============================================================
+
+run_fit <- function(x_list, g, true_labels, init, noise_pi_true) {
 
   fit <- tryCatch(
     suppressWarnings(
@@ -91,23 +114,57 @@ run_fit <- function(x_list, g, true_labels, init) {
       init = init,
       converged = FALSE,
       ari = NA_real_,
-      noise_pi = NA_real_,
+      misclassification_rate = NA_real_,
+      noise_pi_true = noise_pi_true,
+      noise_pi_est = NA_real_,
+      noise_precision = NA_real_,
+      noise_recall = NA_real_,
+      noise_f1 = NA_real_,
       iterations = NA_real_
     ))
   }
 
-  keep <- fit$cluster > 0
+  pred <- fit$cluster
+  true <- true_labels
 
+  signal_idx <- true != 0
+  noise_idx   <- true == 0
+
+  # ---- clustering quality (signal only) ----
   ari <- tryCatch(
-    adjusted_rand_index(true_labels[keep], fit$cluster[keep]),
+    adjusted_rand_index(true[signal_idx], pred[signal_idx]),
     error = function(e) NA_real_
   )
+
+  misclassification_rate <- mean(pred[signal_idx] != true[signal_idx])
+
+  # ---- noise detection metrics ----
+  pred_noise <- pred == 0
+
+  tp <- sum(pred_noise & noise_idx)
+  fp <- sum(pred_noise & signal_idx)
+  fn <- sum(!pred_noise & noise_idx)
+
+  noise_precision <- if ((tp + fp) == 0) NA_real_ else tp / (tp + fp)
+  noise_recall    <- if ((tp + fn) == 0) NA_real_ else tp / (tp + fn)
+
+  noise_f1 <- if (is.na(noise_precision) || is.na(noise_recall) ||
+                  (noise_precision + noise_recall) == 0) {
+    NA_real_
+  } else {
+    2 * noise_precision * noise_recall / (noise_precision + noise_recall)
+  }
 
   data.frame(
     init = init,
     converged = fit$converged,
     ari = ari,
-    noise_pi = fit$noise$pi,
+    misclassification_rate = misclassification_rate,
+    noise_pi_true = noise_pi_true,
+    noise_pi_est = if (!is.null(fit$noise$pi)) fit$noise$pi else NA_real_,
+    noise_precision = noise_precision,
+    noise_recall = noise_recall,
+    noise_f1 = noise_f1,
     iterations = fit$iterations
   )
 }
@@ -117,9 +174,9 @@ run_fit <- function(x_list, g, true_labels, init) {
 # ============================================================
 
 scenarios <- list(
-  list(name="Easy",   n=20, g=2, r=2, p=3, sep=4,   sd=0.5),
-  list(name="Medium", n=25, g=3, r=4, p=4, sep=2.5, sd=0.7),
-  list(name="Hard",   n=25, g=3, r=2, p=3, sep=1.5, sd=1.0)
+  list(name="Easy",   n=20, g=2, r=2, p=3, sep=4,   sd=0.5, pi=0.05),
+  list(name="Medium", n=25, g=3, r=4, p=4, sep=2.5, sd=0.7, pi=0.10),
+  list(name="Hard",   n=25, g=3, r=2, p=3, sep=1.5, sd=1.0, pi=0.20)
 )
 
 # ============================================================
@@ -142,7 +199,8 @@ for (scenario in scenarios) {
       r = scenario$r,
       p = scenario$p,
       separation = scenario$sep,
-      noise_sd = scenario$sd
+      noise_sd = scenario$sd,
+      noise_pi = scenario$pi
     )
 
     for (init in INIT_METHODS) {
@@ -156,7 +214,8 @@ for (scenario in scenarios) {
         x_list = sim$x_list,
         g = scenario$g,
         true_labels = sim$true_labels,
-        init = init
+        init = init,
+        noise_pi_true = sim$noise_pi_true
       )
 
       result$scenario <- scenario$name
@@ -171,7 +230,7 @@ for (scenario in scenarios) {
 # Summary
 # ============================================================
 
-cat("\n\n===== SUMMARY (Mean ARI) =====\n")
+cat("\n\n===== SUMMARY =====\n")
 
 for (scenario in scenarios) {
 
@@ -185,12 +244,13 @@ for (scenario in scenarios) {
     if (nrow(sub) == 0) next
 
     cat(sprintf(
-      "  %-10s ARI=%.3f  conv=%.2f%%  pi=%.3f  iters=%.1f\n",
+      "  %-10s ARI=%.3f  miss=%.3f  F1=%.3f  pi_err=%.3f  conv=%.2f%%\n",
       init,
       mean(sub$ari, na.rm = TRUE),
-      mean(sub$converged, na.rm = TRUE) * 100,
-      mean(sub$noise_pi, na.rm = TRUE),
-      mean(sub$iterations, na.rm = TRUE)
+      mean(sub$misclassification_rate, na.rm = TRUE),
+      mean(sub$noise_f1, na.rm = TRUE),
+      mean(abs(sub$noise_pi_est - sub$noise_pi_true), na.rm = TRUE),
+      mean(sub$converged, na.rm = TRUE) * 100
     ))
   }
 }
