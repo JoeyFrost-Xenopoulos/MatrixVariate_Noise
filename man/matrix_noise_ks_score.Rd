@@ -4,28 +4,21 @@
 \alias{matrix_noise_ks_score}
 \title{Score HC Noise Fit with a Matrix KS Test}
 \usage{
-matrix_noise_ks_score(fit, x_list, ks_type = c("onesample", "twosample"))
+matrix_noise_ks_score(fit, x_list)
 }
 \arguments{
 \item{fit}{A fitted noise model.}
 
 \item{x_list}{List of matrices used for fitting.}
-
-\item{ks_type}{Character: \code{"onesample"} or \code{"twosample"}.}
 }
 \value{
-A list with \code{statistic}, \code{p.value}, \code{n_used}, and (for
-\code{"twosample"}) \code{n_group1}, \code{n_group2}, and \code{ks_type}.
+A list with \code{statistic}, \code{p.value}, \code{n_used}.
 }
 \description{
 Supports two scoring modes:
 \itemize{
 \item \code{"onesample"} (default): one-sample KS test comparing Mahalanobis
 distances against the theoretical $\chi^2(r p)$ CDF.
-\item \code{"twosample"}: two-sample KS test comparing Mahalanobis distance
-distributions between the two largest non-noise mixture components.
-Under a correct model, both groups should follow the same
-$\chi^2(r p)$ distribution, so the KS statistic should be small.
 }
 }
 \keyword{internal}

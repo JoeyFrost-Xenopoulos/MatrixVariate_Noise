@@ -52,7 +52,6 @@ library(Ampharos)
 
 fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
                                              init = "kmeans",
-                                             ks_type = "onesample",
                                              estimate_k = TRUE,
                                              verbose = TRUE)
 
@@ -73,7 +72,6 @@ fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
   
 
 # fit_hc <- Ampharos::matrix_noise_auto_k_robust(x_list, g = 2, verbose = TRUE)
-fit_hc <-  Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc", init = "kmeans", ks_type = "twosample", noise_k =  1.373824e-08, verbose = FALSE)
 
 cat('HC fit mixing proportions:\n')
 print(fit_hc$pi)
