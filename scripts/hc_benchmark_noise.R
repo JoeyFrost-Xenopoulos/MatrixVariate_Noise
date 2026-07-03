@@ -76,8 +76,6 @@ run_fit <- function(x_list, g, true_labels, init) {
         g = g,
         noise_type = NOISE_TYPE,
         init = init,
-        ks_type = "onesample",   # fixed placeholder (required arg)
-        noise_k = 1e-4,
         estimate_k = TRUE,
         max_iter = MAX_ITER,
         tol = TOL,
