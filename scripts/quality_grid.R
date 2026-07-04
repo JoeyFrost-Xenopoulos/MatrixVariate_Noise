@@ -1,140 +1,249 @@
-################################
-# HC Noise Grid Search Quality Benchmark
-#
-# Goal:
-#   Evaluate whether heuristic k-grid is sufficient to
-#   capture optimal noise constant across scenarios
-################################
+###############################################################
+## Grid Search Heuristic Validation (CLEAN VERSION)
+##
+## Tests whether candidate_k_grid recovers optimal noise k
+## using explicit profile evaluation over noise_k
+###############################################################
 
 rm(list = ls())
 
 library(Ampharos)
 library(mclust)
 library(dplyr)
-library(purrr)
 library(tidyr)
+library(purrr)
 library(readr)
 library(tibble)
 
-set.seed(123)
+set.seed(12345)
 
-# Grid definition
+###############################################################
+## Output directory
+###############################################################
 
-k_grid <- 10^seq(-16, -1, length.out = 30)
+output_dir <- "grid_search_diagnostics"
+if (!dir.exists(output_dir)) dir.create(output_dir)
 
-# Helper: compute KS score for a given k
+###############################################################
+## Candidate grid
+###############################################################
 
-compute_k_score <- function(fit, x_list) {
-  matrix_noise_ks_score(fit, x_list)$statistic
+candidate_k_grid <- 10^seq(-16, -1, length.out = 30)
+
+###############################################################
+## Simulation settings
+###############################################################
+
+test_settings <- list(
+  n_replications = 30,
+  dimensions = list(c(3,3), c(5,5)),
+  n_groups = c(2,3),
+  sample_size = c(150),
+  contamination = c(0, 0.1, 0.3),
+  noise_type = c("matrix", "column"),
+  init = c("kmeans", "ecme")
+)
+
+###############################################################
+## Storage
+###############################################################
+
+results_list <- list()
+
+###############################################################
+## Scenario generator (assumes already defined elsewhere)
+###############################################################
+
+# generate_scenario_mixture()
+# simulate_matrix_mixture()
+# apply_contamination()
+
+###############################################################
+## Fit model at fixed k
+###############################################################
+
+fit_fixed_k <- function(x_list, g, init_method, k_val) {
+
+  tryCatch(
+    matrix_variate_noise_fit(
+      x_list = x_list,
+      g = g,
+      init = init_method,
+      estimate_k = FALSE,
+      noise_k = k_val,
+      max_iter = 100,
+      tol = 1e-6,
+      nstart = 100,
+      verbose = FALSE
+    ),
+    error = function(e) NULL
+  )
 }
 
-# Run grid search for a single dataset
+###############################################################
+## Profile oracle over k grid
+###############################################################
 
-evaluate_k_grid <- function(x_list, g, init_method) {
+profile_k_grid <- function(x_list, g, init_method, grid) {
 
-  scores <- numeric(length(k_grid))
+  scores <- numeric(length(grid))
 
-  for (i in seq_along(k_grid)) {
+  for (i in seq_along(grid)) {
 
-    fit <- tryCatch(
-      matrix_variate_noise_fit(
-        x_list = x_list,
-        g = g,
-        noise_type = "hc",
-        init = init_method,
-        estimate_k = FALSE,
-        noise_k = k_grid[i],
-        verbose = FALSE
-      ),
-      error = function(e) NULL
-    )
+    fit <- fit_fixed_k(x_list, g, init_method, grid[i])
 
     if (is.null(fit)) {
-      scores[i] <- NA
+      scores[i] <- NA_real_
+    } else if (!is.null(fit$loglik)) {
+      scores[i] <- fit$loglik
     } else {
-      scores[i] <- compute_k_score(fit, x_list)
+      scores[i] <- NA_real_
     }
   }
 
-  tibble(
-    k = k_grid,
-    log_k = log10(k_grid),
-    score = scores
-  )
-}
-
-# Extract optimal k from grid
-
-extract_best_k <- function(grid_df) {
-
-  grid_df <- grid_df %>% filter(!is.na(score))
-
-  if (nrow(grid_df) == 0) return(NA_real_)
-
-  grid_df$k[which.max(grid_df$score)]
-}
-
-# Grid diagnostics
-
-grid_diagnostics <- function(grid_df, k_star) {
-
-  k_min <- min(grid_df$k, na.rm = TRUE)
-  k_max <- max(grid_df$k, na.rm = TRUE)
-
-  tibble(
-    k_star = k_star,
-    hit_grid = k_star >= k_min & k_star <= k_max,
-    at_lower_edge = abs(k_star - k_min) < 1e-12,
-    at_upper_edge = abs(k_star - k_max) < 1e-12,
-    log_error = min(abs(log10(grid_df$k) - log10(k_star)))
-  )
-}
-
-# Single experiment wrapper
-
-run_grid_experiment <- function(x_list, g, init_method) {
-
-  grid_df <- evaluate_k_grid(x_list, g, init_method)
-
-  k_star <- extract_best_k(grid_df)
-
-  diag <- grid_diagnostics(grid_df, k_star)
+  best_idx <- which.max(scores)
 
   list(
-    grid = grid_df,
-    diagnostics = diag
+    grid = grid,
+    scores = scores,
+    oracle_k = grid[best_idx],
+    oracle_score = scores[best_idx]
   )
 }
 
-# Example simulation (replace with full benchmark loop later)
+###############################################################
+## Run single experiment
+###############################################################
 
-simulate_simple <- function(n = 100, r = 3, p = 3, g = 2) {
+run_case <- function(dim, g, n, cont, type, init) {
 
-  M1 <- matrix(0, r, p)
-  M2 <- matrix(2, r, p)
+  r <- dim[1]
+  p <- dim[2]
 
-  x_list <- c(
-    replicate(n/2, M1 + matrix(rnorm(r*p), r, p), simplify = FALSE),
-    replicate(n/2, M2 + matrix(rnorm(r*p), r, p), simplify = FALSE)
+  mix <- generate_scenario_mixture(r, p, g)
+
+  sim <- simulate_matrix_mixture(
+    n = n,
+    means = mix$means,
+    row_covs = mix$row_covs,
+    col_covs = mix$col_covs,
+    proportions = mix$proportions
   )
 
-  x_list
+  contam <- apply_contamination(
+    sim$x_list,
+    type = type,
+    proportion = cont,
+    r = r,
+    p = p
+  )
+
+  x_list <- contam$x_list
+
+  ###########################################################
+  ## Oracle via grid profiling
+  ###########################################################
+
+  oracle <- profile_k_grid(
+    x_list = x_list,
+    g = g,
+    init_method = init,
+    grid = candidate_k_grid
+  )
+
+  ###########################################################
+  ## Automatic estimator
+  ###########################################################
+
+  fit_auto <- tryCatch(
+    matrix_variate_noise_fit(
+      x_list = x_list,
+      g = g,
+      init = init,
+      estimate_k = TRUE,
+      max_iter = 100,
+      tol = 1e-6,
+      nstart = 100,
+      verbose = FALSE
+    ),
+    error = function(e) NULL
+  )
+
+  selected_k <- if (!is.null(fit_auto$k_selection)) {
+    fit_auto$k_selection$selected_k
+  } else {
+    NA_real_
+  }
+
+  ###########################################################
+  ## Metrics
+  ###########################################################
+
+  log_error <- abs(log10(selected_k) - log10(oracle$oracle_k))
+
+  tibble(
+    r = r,
+    p = p,
+    g = g,
+    n = n,
+    contamination = cont,
+    type = type,
+    init = init,
+    oracle_k = oracle$oracle_k,
+    selected_k = selected_k,
+    log_error = log_error
+  )
 }
 
-# Run test
+###############################################################
+## Main loop
+###############################################################
 
-x_list <- simulate_simple()
+for (d in seq_along(test_settings$dimensions)) {
+  for (g in test_settings$n_groups) {
+    for (n in test_settings$sample_size) {
+      for (cont in test_settings$contamination) {
+        for (type in test_settings$noise_type) {
+          for (init in test_settings$init) {
 
-res_kmeans <- run_grid_experiment(x_list, g = 2, init_method = "kmeans")
-res_ecme   <- run_grid_experiment(x_list, g = 2, init_method = "ecme")
+            dim <- test_settings$dimensions[[d]]
 
-# Combine outputs
+            cat("\nRunning:", dim[1], "x", dim[2],
+                "G", g,
+                "cont", cont,
+                "type", type,
+                "init", init, "\n")
 
-summary <- bind_rows(
-  mutate(res_kmeans$diagnostics, init = "kmeans"),
-  mutate(res_ecme$diagnostics, init = "ecme")
-)
+            res <- run_case(dim, g, n, cont, type, init)
 
-print(summary)
+            results_list[[length(results_list) + 1]] <- res
+          }
+        }
+      }
+    }
+  }
+}
 
-write_csv(summary, "grid_quality_summary.csv")
+###############################################################
+## Save outputs
+###############################################################
+
+results_df <- bind_rows(results_list)
+
+write_csv(results_df,
+          file.path(output_dir, "grid_search_diagnostics.csv"))
+
+###############################################################
+## Summary table
+###############################################################
+
+summary_df <- results_df %>%
+  group_by(r, p, g, contamination, type, init) %>%
+  summarise(
+    mean_log_error = mean(log_error, na.rm = TRUE),
+    sd_log_error = sd(log_error, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+write_csv(summary_df,
+          file.path(output_dir, "grid_search_summary.csv"))
