@@ -346,7 +346,7 @@ apply_contamination <- function(x_list,
                                 r,
                                 p) {
 
-  type <- match.arg(type)
+  type <- match.arg(as.character(type), c("matrix", "column", "element", "permutation"))
 
   if (type == "matrix") {
     return(contam_matrix_level(x_list, proportion, r, p))
@@ -559,7 +559,8 @@ design_grid <- expand.grid(
   contamination_type = benchmark_settings$noise_mechanism,
   contamination_level = benchmark_settings$contamination,
   replicate = seq_len(benchmark_settings$n_replications),
-  KEEP.OUT.ATTRS = FALSE
+  KEEP.OUT.ATTRS = FALSE,
+  stringsAsFactors = FALSE
 )
 
 # Output storage
@@ -607,8 +608,8 @@ for (i in seq_len(nrow(design_grid))) {
 
   g <- config$groups
   n <- config$n
-  init_method <- config$init
-  contamination_type <- config$contamination_type
+  init_method <- as.character(config$init)
+  contamination_type <- as.character(config$contamination_type)
   contamination_level <- config$contamination_level
   rep <- config$replicate
 
