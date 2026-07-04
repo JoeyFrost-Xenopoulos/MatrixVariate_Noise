@@ -1,0 +1,198 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+
+\begin{document}
+
+\section{Experimental Design}
+
+\subsection{Objective}
+
+This simulation study evaluates the performance of the automatic noise constant selection procedure, denoted $\hat{k}$, within the matrix-variate heterogeneous clustering (HC) framework implemented via \texttt{matrix\_variate\_noise\_fit}. The primary goal is to assess:
+
+\begin{itemize}
+    \item the accuracy and stability of the selected noise scale parameter $\hat{k}$,
+    \item the ability of the method to recover latent cluster structure,
+    \item robustness under multiple contamination regimes and increasing data complexity.
+\end{itemize}
+
+Two initialization strategies are compared: K-means initialization and ECME initialization.
+
+\subsection{Data-Generating Process}
+
+\subsubsection{Matrix-variate mixture model}
+
+Each observation is a matrix $X_i \in \mathbb{R}^{r \times p}$ generated from a finite mixture of matrix-variate Gaussian distributions:
+\[
+X_i \sim \sum_{g=1}^{G} \pi_g \, \mathcal{MN}(M_g, U_g, V_g),
+\]
+where $M_g \in \mathbb{R}^{r \times p}$ denotes the component mean matrix, $U_g \in \mathbb{R}^{r \times r}$ the row covariance matrix, $V_g \in \mathbb{R}^{p \times p}$ the column covariance matrix, and $\pi_g$ the mixture proportions.
+
+Covariance matrices are randomly generated to ensure positive definiteness and heterogeneity in cluster structure.
+
+\subsubsection{Dimension settings}
+
+The simulation considers a range of matrix dimensions:
+\[
+(r,p) \in \{(2,2), (2,4), (3,3), (3,5), (4,4), (5,5), (6,6)\}.
+\]
+
+This allows evaluation across low-, moderate-, and higher-dimensional regimes.
+
+\subsubsection{Sample sizes and mixture complexity}
+
+Two sample sizes are considered:
+\[
+n \in \{150, 300\},
+\]
+and the number of mixture components is set to:
+\[
+G \in \{2,3\}.
+\]
+
+\subsection{Contamination Mechanisms}
+
+To assess robustness, four contamination mechanisms are introduced.
+
+\subsubsection{Matrix-level contamination}
+
+Entire observations are replaced with noise:
+\[
+X_i \sim U(a,b)^{r \times p}.
+\]
+
+\subsubsection{Column-wise contamination}
+
+A randomly selected column of selected matrices is replaced with uniform noise, inducing structured partial corruption.
+
+\subsubsection{Element-wise contamination}
+
+Individual entries are corrupted according to a Bernoulli mask:
+\[
+X_{ij} \leftarrow
+\begin{cases}
+U(a,b), & \text{with probability } \rho, \\
+X_{ij}, & \text{otherwise}.
+\end{cases}
+\]
+
+\subsubsection{Permutation contamination}
+
+Selected matrices undergo random permutation of their entries, preserving marginal distributions but destroying structural dependence.
+
+\subsubsection{Contamination levels}
+
+The contamination proportion is varied as:
+\[
+\rho \in \{0.00, 0.05, 0.10, 0.20, 0.30, 0.40\}.
+\]
+
+\subsection{Monte Carlo Design}
+
+For each configuration, $R = 100$ Monte Carlo replications are generated. The full factorial design spans:
+
+\begin{itemize}
+    \item matrix dimension $(r,p)$,
+    \item sample size $n$,
+    \item number of components $G$,
+    \item initialization method,
+    \item contamination mechanism,
+    \item contamination level.
+\end{itemize}
+
+\subsection{Model Fitting Procedure}
+
+For each simulated dataset, the HC model is fitted using:
+\[
+\texttt{matrix\_variate\_noise\_fit}.
+\]
+
+Two initialization strategies are considered:
+\begin{itemize}
+    \item K-means initialization,
+    \item ECME initialization.
+\end{itemize}
+
+The noise constant is selected automatically via:
+\[
+\texttt{estimate\_k = TRUE}.
+\]
+
+The fitted model returns:
+\begin{itemize}
+    \item cluster assignments,
+    \item estimated noise proportion,
+    \item selected noise constant $\hat{k}$.
+\end{itemize}
+
+\subsection{Evaluation Metrics}
+
+\subsubsection{Clustering performance}
+
+Two standard metrics are used:
+
+\begin{itemize}
+    \item Misclassification Rate:
+    \[
+    \frac{1}{n} \sum_{i=1}^{n} \mathbb{I}(z_i \neq \hat{z}_i),
+    \]
+    \item Adjusted Rand Index (ARI), computed using \texttt{mclust}.
+\end{itemize}
+
+\subsubsection{Noise estimation performance}
+
+The primary object of interest is the selected noise constant:
+\[
+\hat{k} = \text{estimate\_k}(X).
+\]
+
+Performance is assessed through:
+\begin{itemize}
+    \item stability of $\hat{k}$ across replications,
+    \item sensitivity to contamination level,
+    \item sensitivity to initialization method.
+\end{itemize}
+
+\subsection{Output Structure}
+
+Two datasets are produced:
+
+\subsubsection{Summary output}
+
+\texttt{estimate\_k\_summary.csv} contains one row per experiment, including:
+\begin{itemize}
+    \item dimension, sample size, number of components,
+    \item initialization method,
+    \item contamination type and level,
+    \item estimated $\hat{k}$,
+    \item ARI and misclassification rate,
+    \item number of contaminated observations.
+\end{itemize}
+
+\subsubsection{Candidate-level log}
+
+\texttt{estimate\_k\_candidates.csv} contains diagnostic-level outputs, including:
+\begin{itemize}
+    \item full cluster assignment tables,
+    \item replicate-level configuration metadata,
+    \item initialization and contamination settings.
+\end{itemize}
+
+\subsection{Key Comparisons}
+
+The study evaluates:
+
+\begin{itemize}
+    \item sensitivity of $\hat{k}$ to initialization strategy,
+    \item robustness under increasing contamination,
+    \item scalability across matrix dimensions,
+    \item identifiability and stability of the noise constant.
+\end{itemize}
+
+\subsection{Overall Aim}
+
+The central question is whether the automatic HC noise calibration procedure reliably recovers an appropriate noise scale across heterogeneous matrix structures and contamination regimes, and whether this behavior depends on the initialization strategy.
+
+\end{document}
