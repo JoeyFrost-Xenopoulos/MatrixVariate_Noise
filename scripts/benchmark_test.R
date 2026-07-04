@@ -552,7 +552,7 @@ run_benchmark_case <- function(replicate_id,
 # Experimental design grid
 
 design_grid <- expand.grid(
-  dimension = seq_along(benchmark_settings$dimensions),
+  dimension_index = seq_along(benchmark_settings$dimensions),
   groups = benchmark_settings$n_groups,
   n = benchmark_settings$sample_size,
   init = benchmark_settings$initialization,
@@ -601,8 +601,9 @@ for (i in seq_len(nrow(design_grid))) {
 
   config <- design_grid[i, ]
 
-  r <- config$dimension_value[[1]]
-  p <- config$dimension_value[[2]]
+  dimension <- benchmark_settings$dimensions[[config$dimension_index]]
+  r <- dimension[1]
+  p <- dimension[2]
 
   g <- config$groups
   n <- config$n
