@@ -17,22 +17,16 @@ library(tibble)
 
 set.seed(12345)
 
-#
 ## Output directory
-#
 
 output_dir <- "grid_search_diagnostics"
 if (!dir.exists(output_dir)) dir.create(output_dir)
 
-#
 ## Candidate grid
-#
 
 candidate_k_grid <- 10^seq(-16, -1, length.out = 30)
 
-#
 ## Simulation settings
-#
 
 test_settings <- list(
   n_replications = 30,
@@ -44,15 +38,11 @@ test_settings <- list(
   init = c("kmeans", "ecme")
 )
 
-#
 ## Storage
-#
 
 results_list <- list()
 
-#
 ## Scenario generator
-#
 
 generate_scenario_mixture <- function(r, p, g) {
 
@@ -77,9 +67,7 @@ generate_scenario_mixture <- function(r, p, g) {
   )
 }
 
-#
 ## Matrix mixture generator
-#
 
 simulate_matrix_mixture <- function(n, means, row_covs, col_covs, proportions) {
 
@@ -105,9 +93,7 @@ simulate_matrix_mixture <- function(n, means, row_covs, col_covs, proportions) {
   list(x_list = x_list, cluster_true = cluster_true)
 }
 
-#
 ## Contamination dispatcher
-#
 
 apply_contamination <- function(x_list, type, proportion, r, p) {
 
@@ -135,9 +121,7 @@ apply_contamination <- function(x_list, type, proportion, r, p) {
   list(x_list = x_list, contam_idx = contam_idx)
 }
 
-#
 ## Fit model at fixed k
-#
 
 fit_fixed_k <- function(x_list, g, init_method, k_val) {
 
@@ -157,9 +141,7 @@ fit_fixed_k <- function(x_list, g, init_method, k_val) {
   )
 }
 
-#
 ## Profile oracle over k grid
-#
 
 profile_k_grid <- function(x_list, g, init_method, grid) {
 
@@ -188,9 +170,7 @@ profile_k_grid <- function(x_list, g, init_method, grid) {
   )
 }
 
-#
 ## Run single experiment
-#
 
 run_case <- function(dim, g, n, cont, type, init) {
 
@@ -217,9 +197,7 @@ run_case <- function(dim, g, n, cont, type, init) {
 
   x_list <- contam$x_list
 
-  ###########################################################
   ## Oracle via grid profiling
-  ###########################################################
 
   oracle <- profile_k_grid(
     x_list = x_list,
@@ -228,9 +206,7 @@ run_case <- function(dim, g, n, cont, type, init) {
     grid = candidate_k_grid
   )
 
-  ###########################################################
   ## Automatic estimator
-  ###########################################################
 
   fit_auto <- tryCatch(
     matrix_variate_noise_fit(
@@ -252,9 +228,7 @@ run_case <- function(dim, g, n, cont, type, init) {
     NA_real_
   }
 
-  ###########################################################
   ## Metrics
-  ###########################################################
 
   log_error <- abs(log10(selected_k) - log10(oracle$oracle_k))
 
@@ -272,9 +246,7 @@ run_case <- function(dim, g, n, cont, type, init) {
   )
 }
 
-#
 ## Main loop
-#
 
 for (d in seq_along(test_settings$dimensions)) {
   for (g in test_settings$n_groups) {
@@ -301,18 +273,14 @@ for (d in seq_along(test_settings$dimensions)) {
   }
 }
 
-#
 ## Save outputs
-#
 
 results_df <- bind_rows(results_list)
 
 write_csv(results_df,
           file.path(output_dir, "grid_search_diagnostics.csv"))
 
-#
 ## Summary table
-#
 
 summary_df <- results_df %>%
   group_by(r, p, g, contamination, type, init) %>%
