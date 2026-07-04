@@ -562,8 +562,6 @@ design_grid <- expand.grid(
   KEEP.OUT.ATTRS = FALSE
 )
 
-design_grid$dimension_value <- benchmark_settings$dimensions[design_grid$dimension]
-
 # Output storage
 
 summary_results <- list()
