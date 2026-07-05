@@ -56,7 +56,7 @@ make_spd <- function(mat, jitter = 1e-8, max_tries = 8) {
 #' the matrix structure. The computation uses Cholesky decomposition and
 #' forward/backsolve for numerical stability.
 #'
-#' @keywords internal
+#' @export
 matrix_mahalanobis <- function(x, mean_matrix, row_cov, col_cov) {
 	if (!is.matrix(x) || !is.numeric(x)) {
 		stop("'x' must be a numeric matrix.")

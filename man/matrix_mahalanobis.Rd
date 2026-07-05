@@ -28,4 +28,3 @@ This metric extends the multivariate Mahalanobis distance to account for
 the matrix structure. The computation uses Cholesky decomposition and
 forward/backsolve for numerical stability.
 }
-\keyword{internal}

@@ -2,7 +2,7 @@
 #'
 #' Supports two scoring modes:
 #' - `"onesample"` (default): one-sample KS test comparing Mahalanobis
-#'   distances against the theoretical $\chi^2(r p)$ CDF.
+#'   distances against the theoretical chi-square CDF.
 #'
 #' @param fit A fitted noise model.
 #' @param x_list List of matrices used for fitting.
