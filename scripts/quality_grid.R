@@ -210,14 +210,6 @@ run_case <- function(dim, g, n, cont, type, init) {
     grid = candidate_k_grid
   )
 
-  print(oracle$oracle_k)
-  print(oracle$scores)
-
-  print(is.null(fit_auto))
-  print(fit_auto$k_selection)
-
-  print(selected_k)
-
   ## Automatic estimator
 
   fit_auto <- tryCatch(
