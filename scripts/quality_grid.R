@@ -137,7 +137,11 @@ fit_fixed_k <- function(x_list, g, init_method, k_val) {
       nstart = 100,
       verbose = FALSE
     ),
-    error = function(e) NULL
+    error = function(e) {
+      cat("\nFAILED at k =", k_val, "\n")
+      message(e$message)
+      NULL
+    }
   )
 }
 
@@ -207,12 +211,12 @@ run_case <- function(dim, g, n, cont, type, init) {
   )
 
   print(oracle$oracle_k)
-print(oracle$scores)
+  print(oracle$scores)
 
-print(is.null(fit_auto))
-print(fit_auto$k_selection)
+  print(is.null(fit_auto))
+  print(fit_auto$k_selection)
 
-print(selected_k)
+  print(selected_k)
 
   ## Automatic estimator
 
