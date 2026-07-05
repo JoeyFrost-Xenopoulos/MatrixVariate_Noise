@@ -362,9 +362,9 @@ apply_contamination <- function(x_list,
   }
 }
 
-################################
+##
 # Evaluation metrics
-################################
+##
 
 compute_misclassification_rate <- function(true, pred) {
   mean(true != pred)
@@ -374,9 +374,9 @@ compute_ari <- function(true, pred) {
   mclust::adjustedRandIndex(true, pred)
 }
 
-################################
+##
 # Safe HC fitting wrapper
-################################
+##
 
 run_hc_fit <- function(x_list,
                         g,
@@ -410,9 +410,7 @@ run_hc_fit <- function(x_list,
   fit
 }
 
-################################
 # Extract estimated k
-################################
 
 extract_k <- function(fit) {
 
@@ -429,9 +427,7 @@ extract_k <- function(fit) {
   NA_real_
 }
 
-################################
 # Single benchmark run
-################################
 
 run_benchmark_case <- function(replicate_id,
                                dimension,
@@ -449,9 +445,7 @@ run_benchmark_case <- function(replicate_id,
   r <- dimension[1]
   p <- dimension[2]
 
-  ##############################
   # 1. Generate clean data
-  ##############################
 
   sim <- simulate_matrix_mixture(
     n = n,
@@ -464,9 +458,7 @@ run_benchmark_case <- function(replicate_id,
   x_list <- sim$x_list
   true_cluster <- sim$cluster_true
 
-  ##############################
-  # 2. Apply contamination
-  ##############################
+  # 2. Apply contamination  
 
   contam <- apply_contamination(
     x_list = x_list,
@@ -479,9 +471,7 @@ run_benchmark_case <- function(replicate_id,
   x_list <- contam$x_list
   contam_idx <- contam$contam_idx
 
-  ##############################
-  # 3. Fit HC model (with k estimation)
-  ##############################
+  # 3. Fit HC model (with k estimation)  
 
   fit <- run_hc_fit(
     x_list = x_list,
@@ -490,10 +480,8 @@ run_benchmark_case <- function(replicate_id,
     estimate_k = TRUE,
     verbose = FALSE
   )
-
-  ##############################
-  # 4. Extract results
-  ##############################
+  
+  # 4. Extract results  
 
   pred_cluster <- if (!is.null(fit)) fit$cluster else rep(NA, n)
 
@@ -501,9 +489,7 @@ run_benchmark_case <- function(replicate_id,
   misclass <- compute_misclassification_rate(true_cluster, pred_cluster)
   est_k <- extract_k(fit)
 
-  ##############################
-  # 5. Confusion table
-  ##############################
+  # 5. Confusion table  
 
   cluster_table <- if (!is.null(fit)) {
     table(Predicted = pred_cluster, True = true_cluster)
@@ -511,9 +497,7 @@ run_benchmark_case <- function(replicate_id,
     matrix(NA)
   }
 
-  ##############################
-  # 6. Summary output
-  ##############################
+  # 6. Summary output  
 
   summary_row <- tibble::tibble(
     replicate = replicate_id,
@@ -530,9 +514,7 @@ run_benchmark_case <- function(replicate_id,
     n_noise = length(contam_idx)
   )
 
-  ##############################
-  # 7. Full candidate log (placeholder structure)
-  ##############################
+  # 7. Full candidate log (placeholder structure)  
 
   candidate_log <- tibble::tibble(
     replicate = replicate_id,
