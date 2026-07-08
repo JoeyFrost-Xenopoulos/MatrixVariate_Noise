@@ -18,7 +18,7 @@ A list with \code{statistic}, \code{p.value}, \code{n_used}.
 Supports two scoring modes:
 \itemize{
 \item \code{"onesample"} (default): one-sample KS test comparing Mahalanobis
-distances against the theoretical $\chi^2(r p)$ CDF.
+distances against the theoretical chi-square CDF.
 }
 }
 \keyword{internal}
