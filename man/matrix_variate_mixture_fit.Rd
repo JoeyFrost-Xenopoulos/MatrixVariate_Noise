@@ -10,7 +10,7 @@ matrix_variate_mixture_fit(
   max_iter = 100,
   tol = 1e-06,
   nstart = 10,
-  init = c("kmeans", "random", "emrefine", "kmeans++"),
+  init = c("kmeans", "emrefine", "dbscan"),
   verbose = FALSE
 )
 }
@@ -25,7 +25,7 @@ matrix_variate_mixture_fit(
 
 \item{nstart}{Integer: number of k-means restarts for initialization (default: 10). Ignored unless \code{init = "kmeans"}.}
 
-\item{init}{Character: initialization scheme. \code{"emrefine"} (default), \code{"random"}, or \code{"kmeans++"}.}
+\item{init}{Character: initialization scheme. \code{"kmeans"} (default), \code{"emrefine"}, or \code{"dbscan"}.}
 
 \item{verbose}{Logical: print iteration progress (default: FALSE)}
 }

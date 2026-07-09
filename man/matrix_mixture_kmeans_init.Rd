@@ -2,7 +2,7 @@
 % Please edit documentation in R/Matrix_Init.R
 \name{matrix_mixture_kmeans_init}
 \alias{matrix_mixture_kmeans_init}
-\title{K-Means Initialization for Matrix Mixture Models}
+\title{K-Means++ Initialization for Matrix Mixture Models}
 \usage{
 matrix_mixture_kmeans_init(x_list, g, nstart = 10)
 }
@@ -17,6 +17,6 @@ matrix_mixture_kmeans_init(x_list, g, nstart = 10)
 A list containing initial parameters.
 }
 \description{
-K-Means Initialization for Matrix Mixture Models
+K-Means++ Initialization for Matrix Mixture Models
 }
 \keyword{internal}

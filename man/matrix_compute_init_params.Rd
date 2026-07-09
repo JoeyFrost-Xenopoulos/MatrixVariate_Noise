@@ -24,7 +24,7 @@ matrix_compute_init_params(
 A list with pi, M, U, V, cluster.
 }
 \description{
-Shared logic used by both kmeans and random initialization to compute
+Shared logic used by both kmeans and emrefine initialization to compute
 mean matrices and covariances from initial cluster assignments.
 }
 \keyword{internal}

@@ -119,7 +119,10 @@ test_that("mm_fit works with different init methods", {
                                init = "kmeans", max_iter = 10, verbose = FALSE)
   fit_emrefine <- matrix_mm_fit(x_list, g = 2, method = "em", noise_type = NULL,
                              init = "emrefine", max_iter = 10, verbose = FALSE)
+  fit_dbscan <- matrix_mm_fit(x_list, g = 2, method = "em", noise_type = NULL,
+                              init = "dbscan", max_iter = 10, verbose = FALSE)
 
   expect_length(fit_kmeans$cluster, 15)
   expect_length(fit_emrefine$cluster, 15)
+  expect_length(fit_dbscan$cluster, 15)
 })

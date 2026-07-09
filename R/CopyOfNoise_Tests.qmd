@@ -42,6 +42,9 @@ df <- data.frame(
 ggplot(df, aes(PC1, PC2, color = group)) +
   geom_point(size = 3, alpha = 0.8) +
   theme_minimal()
+
+plot(df$PC1, df$PC2, col = fit_hc$cluster + 1)
+
 ```
 
 
@@ -51,7 +54,7 @@ ggplot(df, aes(PC1, PC2, color = group)) +
 library(Ampharos)
 
 fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
-                                             init = "kmeans",
+                                             init = "dbscan",
                                              estimate_k = TRUE,
                                              verbose = TRUE)
 
@@ -78,21 +81,6 @@ print(fit_hc$pi)
 cat('\nHC cluster counts (0 indicates noise):\n')
 print(table(fit_hc$cluster))
 print(fit_hc$noise)
-```
-
-```{r}
-k_grid <- 10^seq(-15, -1, length.out = 30)
-
-for(i in seq_along(k_grid)){
-  fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 3, noise_type = "hc", 
-                                             noise_k = k_grid[i], 
-                                             verbose = FALSE)
-Ampharos::matrix_noise_ecdf_vs_cdf_plot(
-  fit_hc_viroli,
-  x_list,
-  main = "HC Noise Fit: ECDF vs Chi-square CDF"
-)
-}
 ```
 
 

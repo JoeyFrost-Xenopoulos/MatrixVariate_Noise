@@ -16,7 +16,7 @@ matrix_variate_noise_fit(
   k_grid = NULL,
   adaptive_grid = TRUE,
   noise_pi_init = 0.05,
-  init = c("kmeans", "random", "emrefine", "kmeans++"),
+  init = c("kmeans", "emrefine", "dbscan"),
   verbose = FALSE
 )
 }
@@ -47,9 +47,9 @@ dimension-aware heuristic grid based on matrix dimensions.}
 \item{noise_pi_init}{Numeric: initial mixing proportion for the noise
 component.}
 
-\item{init}{Character: initialization scheme. \code{"kmeans"} for k-means based
-initialization (default), \code{"random"} for random cluster assignments, or
-\code{"emrefine"} for EM-refine pre-initialization.}
+\item{init}{Character: initialization scheme. \code{"kmeans"} for the
+k-means++ seeded initialization (default), \code{"emrefine"} for EM-refine
+pre-initialization, or \code{"dbscan"} for DBSCAN-seeded initialization.}
 
 \item{verbose}{Logical: print iteration progress.}
 }

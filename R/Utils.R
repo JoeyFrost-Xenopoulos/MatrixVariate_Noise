@@ -60,12 +60,14 @@ matrix_log_sum_exp <- function(values) {
 #'
 #' @param x_list Validated list of matrices.
 #' @param g Number of components.
-#' @param init One of "kmeans" or "emrefine".
+#' @param init One of "kmeans", "emrefine", or "dbscan".
 #' @param nstart Number of k-means restarts (used only for kmeans init).
 #' @return Initial parameter list (pi, M, U, V, cluster).
 #' @keywords internal
 matrix_init_dispatch <- function(x_list, g, init, nstart = 10) {
-	if (init == "emrefine") {
+	if (init == "dbscan") {
+		matrix_mixture_dbscan_init(x_list, g = g)
+	} else if (init == "emrefine") {
 		matrix_mixture_emrefine_init(x_list, g = g)
 	} else {
 		matrix_mixture_kmeans_init(x_list, g = g, nstart = nstart)
