@@ -40,7 +40,7 @@ matrix_mixture_kmeans_init <- function(x_list, g, nstart = 10) {
   matrix_compute_init_params(x_list, g, km$cluster, init_method = "K-means")
 }
 
-matrix_mixture_ecme_init <- function(x_list, g, max_iter = 5) {
+matrix_mixture_emrefine_init <- function(x_list, g, max_iter = 5) {
   params <- matrix_mixture_kmeans_init(x_list, g = g)
   n <- length(x_list)
   r <- nrow(x_list[[1]])
@@ -59,7 +59,7 @@ matrix_mixture_ecme_init <- function(x_list, g, max_iter = 5) {
     for (component in seq_len(g)) {
       if (component_sizes[component] <= 0) {
         warning(sprintf(
-          "ECME initialization: component %d has zero effective membership at iteration %d; skipping update.",
+          "EM-refine initialization: component %d has zero effective membership at iteration %d; skipping update.",
           component, iteration
         ), call. = FALSE)
         next

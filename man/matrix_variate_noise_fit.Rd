@@ -16,7 +16,7 @@ matrix_variate_noise_fit(
   k_grid = NULL,
   adaptive_grid = TRUE,
   noise_pi_init = 0.05,
-  init = c("kmeans", "random", "ecme", "kmeans++"),
+  init = c("kmeans", "random", "emrefine", "kmeans++"),
   verbose = FALSE
 )
 }
@@ -49,7 +49,7 @@ component.}
 
 \item{init}{Character: initialization scheme. \code{"kmeans"} for k-means based
 initialization (default), \code{"random"} for random cluster assignments, or
-\code{"ecme"} for ECME-style pre-EM initialization.}
+\code{"emrefine"} for EM-refine pre-initialization.}
 
 \item{verbose}{Logical: print iteration progress.}
 }

@@ -168,10 +168,10 @@ test_that("matrix_variate_mixture_fit works with kmeans init", {
   expect_length(fit$cluster, 12)
 })
 
-test_that("matrix_variate_mixture_fit works with ecme init", {
+test_that("matrix_variate_mixture_fit works with emrefine init", {
   set.seed(99)
   x_list <- lapply(1:12, function(i) matrix(rnorm(6), 2, 3))
-  fit <- matrix_variate_mixture_fit(x_list, g = 2, max_iter = 10, init = "ecme", verbose = FALSE)
+  fit <- matrix_variate_mixture_fit(x_list, g = 2, max_iter = 10, init = "emrefine", verbose = FALSE)
   expect_length(fit$cluster, 12)
 })
 

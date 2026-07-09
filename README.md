@@ -4,7 +4,7 @@
 
 Matrix-variate Gaussian mixture models with explicit background noise
 components. Supports EM and MM estimation, four initialization schemes
-(k-means, k-means++, random, ECME), two noise types (HC improper constant, BR
+(k-means, k-means++, random, emrefine), two noise types (HC improper constant, BR
 convex-hull uniform), and automatic noise-level selection via KS
 goodness-of-fit.
 
@@ -35,7 +35,7 @@ All fitting functions accept an `init` argument:
 - **`"kmeans"`** (default) — Vectorizes matrices and runs k-means for initial cluster assignments. Deterministic given `nstart`; generally best for well-separated clusters.
 - **`"kmeans++"`** — K-means++ seeding (Arthur & Vassilvitskii, 2007): selects initial centers via D^2 weighting for better spread, then runs k-means. More robust than plain k-means on overlapping clusters.
 - **`"random"`** — Random cluster assignment. Fast but high variance; may require multiple restarts.
-- **`"ecme"`** — Starts with random assignment, then runs a few EM iterations to refine. Balances speed and quality.
+- **`"emrefine"`** — Starts with random assignment, then runs a few EM iterations to refine. Balances speed and quality.
 
 See `scripts/compare_initializations.R` for a benchmark comparing these schemes.
 

@@ -81,10 +81,10 @@ test_that("noise_fit works with kmeans init", {
   expect_length(fit$cluster, 15)
 })
 
-test_that("noise_fit works with ecme init", {
+test_that("noise_fit works with emrefine init", {
   set.seed(42)
   x_list <- lapply(1:15, function(i) matrix(rnorm(6), 2, 3))
   fit <- matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
-                                   max_iter = 10, init = "ecme", verbose = FALSE)
+                                   max_iter = 10, init = "emrefine", verbose = FALSE)
   expect_length(fit$cluster, 15)
 })

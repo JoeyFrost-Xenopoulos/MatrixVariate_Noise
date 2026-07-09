@@ -11,7 +11,7 @@ matrix_init_dispatch(x_list, g, init, nstart = 10)
 
 \item{g}{Number of components.}
 
-\item{init}{One of "kmeans", "random", or "ecme".}
+\item{init}{One of "kmeans", "random", or "emrefine".}
 
 \item{nstart}{Number of k-means restarts (used only for kmeans init).}
 }

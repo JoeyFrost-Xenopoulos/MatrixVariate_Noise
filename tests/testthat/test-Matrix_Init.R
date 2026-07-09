@@ -115,12 +115,12 @@ test_that("kmeans init selects spread-out centers", {
   expect_true(group1[1] != group2[1])
 })
 
-## ---- matrix_mixture_ecme_init ----
+## ---- matrix_mixture_emrefine_init ----
 
-test_that("ecme init returns correct structure", {
+test_that("emrefine init returns correct structure", {
   set.seed(42)
   x_list <- lapply(1:15, function(i) matrix(rnorm(6), 2, 3))
-  params <- matrix_mixture_ecme_init(x_list, g = 2)
+  params <- matrix_mixture_emrefine_init(x_list, g = 2)
 
   expect_named(params, c("pi", "M", "U", "V", "cluster"))
   expect_length(params$pi, 2)
@@ -128,20 +128,20 @@ test_that("ecme init returns correct structure", {
   expect_length(params$cluster, 15)
 })
 
-test_that("ecme init produces valid covariance matrices", {
+test_that("emrefine init produces valid covariance matrices", {
   set.seed(42)
   x_list <- lapply(1:15, function(i) matrix(rnorm(6), 2, 3))
-  params <- matrix_mixture_ecme_init(x_list, g = 2, max_iter = 3)
+  params <- matrix_mixture_emrefine_init(x_list, g = 2, max_iter = 3)
   for (j in 1:2) {
     expect_silent(chol(params$U[[j]]))
     expect_silent(chol(params$V[[j]]))
   }
 })
 
-test_that("ecme init respects max_iter", {
+test_that("emrefine init respects max_iter", {
   set.seed(42)
   x_list <- lapply(1:15, function(i) matrix(rnorm(6), 2, 3))
   # Should not error with just 1 iteration
-  params <- matrix_mixture_ecme_init(x_list, g = 2, max_iter = 1)
+  params <- matrix_mixture_emrefine_init(x_list, g = 2, max_iter = 1)
   expect_type(params, "list")
 })

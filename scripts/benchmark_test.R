@@ -3,7 +3,7 @@
 #
 # Compares automatic estimate_k performance using
 #   • K-means initialization
-#   • ECME initialization
+#   • EM-refine initialization
 #
 # Outputs
 # --------
@@ -73,7 +73,7 @@ benchmark_settings <- list(
     initialization = c(
 
         "kmeans",
-        "ecme"
+        "emrefine"
 
     ),
     
