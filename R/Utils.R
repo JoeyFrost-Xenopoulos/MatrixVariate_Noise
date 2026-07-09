@@ -60,17 +60,13 @@ matrix_log_sum_exp <- function(values) {
 #'
 #' @param x_list Validated list of matrices.
 #' @param g Number of components.
-#' @param init One of "kmeans", "random", or "ecme".
+#' @param init One of "kmeans" or "ecme".
 #' @param nstart Number of k-means restarts (used only for kmeans init).
 #' @return Initial parameter list (pi, M, U, V, cluster).
 #' @keywords internal
 matrix_init_dispatch <- function(x_list, g, init, nstart = 10) {
-	if (init == "random") {
-		matrix_mixture_random_init(x_list, g = g)
-	} else if (init == "ecme") {
+	if (init == "ecme") {
 		matrix_mixture_ecme_init(x_list, g = g)
-	} else if (init == "kmeans++") {
-		matrix_mixture_kmeanspp_init(x_list, g = g, nstart = nstart)
 	} else {
 		matrix_mixture_kmeans_init(x_list, g = g, nstart = nstart)
 	}
@@ -197,7 +193,7 @@ matrix_update_col_cov <- function(x_list, mean_matrix, u_inv_target, weights,
 
 #' Compute Component Parameters from Cluster Assignments
 #'
-#' Shared logic used by both kmeans and random initialization to compute
+#' Shared logic used by both kmeans and ECME initialization to compute
 #' mean matrices and covariances from initial cluster assignments.
 #'
 #' @param x_list Validated list of matrices.
@@ -220,10 +216,10 @@ matrix_compute_init_params <- function(x_list, g, cluster_assignments, init_meth
 		component_index <- which(cluster_assignments == component)
 		if (length(component_index) == 0) {
 			warning(sprintf(
-				"%s initialization: component %d received no observations; using a random observation as seed.",
+				"%s initialization: component %d received no observations; using a deterministic observation as seed.",
 				init_method, component
 			), call. = FALSE)
-			component_index <- sample.int(n, 1)
+			component_index <- ((component - 1L) %% n) + 1L
 		}
 
 		component_data <- x_list[component_index]

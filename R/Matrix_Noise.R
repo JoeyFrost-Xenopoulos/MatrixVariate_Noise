@@ -10,9 +10,9 @@
 #'   for convex-hull uniform noise.
 #' @param max_iter Integer: maximum EM iterations.
 #' @param tol Numeric: convergence tolerance on the log-likelihood trace.
-#' @param init Character: initialization scheme. `"kmeans"` for k-means based
-#'   initialization (default), `"random"` for random cluster assignments, or
-#'   `"ecme"` for ECME-style pre-EM initialization.
+#' @param init Character: initialization scheme. `"kmeans"` for the
+#'   k-means++ seeded initialization (default), or `"ecme"` for ECME-style
+#'   pre-EM initialization.
 #' @param noise_k Numeric: constant noise height used when `noise_type = "hc"`.
 #'   If `estimate_k = TRUE`, this is ignored.
 #' @param estimate_k Logical: if TRUE, automatically select optimal noise_k
@@ -41,7 +41,7 @@ matrix_variate_noise_fit <- function(x_list,
                                       k_grid = NULL,
                                       adaptive_grid = TRUE,
                                       noise_pi_init = 0.05,
-                                      init = c("kmeans", "random", "ecme", "kmeans++"),
+                                      init = c("kmeans", "ecme"),
                                       verbose = FALSE) {
   noise_type <- match.arg(noise_type)
   init <- match.arg(init)
@@ -281,7 +281,7 @@ matrix_variate_noise_fit_impl <- function(x_list,
                                           noise_k = 1e-04,
                                           noise_jitter = 1e-08,
                                           noise_pi_init = 0.05,
-                                          init = c("kmeans", "random", "ecme", "kmeans++"),
+                                          init = c("kmeans", "ecme"),
                                           verbose = FALSE) {
   noise_type <- match.arg(noise_type)
   init <- match.arg(init)

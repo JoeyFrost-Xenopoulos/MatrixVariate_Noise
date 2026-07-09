@@ -156,7 +156,7 @@ matrix_variate_log_density <- function(x, mean_matrix, row_cov, col_cov) {
 #' @param max_iter Integer: maximum EM iterations (default: 100)
 #' @param tol Numeric: convergence tolerance for log-likelihood (default: 1e-6)
 #' @param nstart Integer: number of k-means restarts for initialization (default: 10). Ignored unless `init = "kmeans"`.
-#' @param init Character: initialization scheme. `"kmeans"` (default), `"random"`, or `"ecme"`.
+#' @param init Character: initialization scheme. `"kmeans"` (default) or `"ecme"`.
 #' @param verbose Logical: print iteration progress (default: FALSE)
 #'
 #' @return A list containing:
@@ -202,7 +202,7 @@ matrix_variate_log_density <- function(x, mean_matrix, row_cov, col_cov) {
 #'
 #' @export
 matrix_variate_mixture_fit <- function(x_list, g, max_iter = 100, tol = 1e-06,
-																			 nstart = 10, init = c("kmeans", "random", "ecme", "kmeans++"),
+																			 nstart = 10, init = c("kmeans", "ecme"),
 																			 verbose = FALSE) {
 	init <- match.arg(init)
 	x_list <- matrix_validate_x_list(x_list)

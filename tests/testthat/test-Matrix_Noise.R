@@ -73,11 +73,11 @@ test_that("noise_fit BR returns correct structure", {
 
 ## ---- noise_fit with init options ----
 
-test_that("noise_fit works with random init", {
+test_that("noise_fit works with kmeans init", {
   set.seed(42)
   x_list <- lapply(1:15, function(i) matrix(rnorm(6), 2, 3))
   fit <- matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
-                                   max_iter = 10, init = "random", verbose = FALSE)
+                                   max_iter = 10, init = "kmeans", verbose = FALSE)
   expect_length(fit$cluster, 15)
 })
 
