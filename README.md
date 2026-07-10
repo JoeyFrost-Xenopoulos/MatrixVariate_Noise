@@ -24,17 +24,12 @@ plot(fit$logLik, type = "b")
 |----------|-------------|
 | `matrix_variate_mixture_fit()` | Standard EM mixture model (no noise) |
 | `matrix_variate_noise_fit()` | Noise mixture with HC or BR noise component |
-| `matrix_mm_fit()` | EM or MM algorithm with optional noise |
-| `diagnose_kmeans_wcss()` | Compare k-means WCSS against true labels |
-| `matrix_noise_ecdf_vs_cdf_plot()` | ECDF vs chi-squared CDF diagnostic plot |
 
 ## Initialization Schemes
 
 All fitting functions accept an `init` argument:
 
-- **`"kmeans"`** (default) — Vectorizes matrices and runs k-means for initial cluster assignments. Deterministic given `nstart`; generally best for well-separated clusters.
 - **`"kmeans++"`** — K-means++ seeding (Arthur & Vassilvitskii, 2007): selects initial centers via D^2 weighting for better spread, then runs k-means. More robust than plain k-means on overlapping clusters.
-- **`"random"`** — Random cluster assignment. Fast but high variance; may require multiple restarts.
 - **`"emrefine"`** — Starts with random assignment, then runs a few EM iterations to refine. Balances speed and quality.
 
 See `scripts/compare_initializations.R` for a benchmark comparing these schemes.
@@ -50,5 +45,3 @@ See `scripts/compare_initializations.R` for a benchmark comparing these schemes.
 - Use `noise_type = "br"` to restrict noise to the convex hull of the data
   (requires `geometry`; may be expensive for large `r * p`).
 - To automatically select an HC `k` value, set `estimate_k = TRUE`.
-- The `matrix_mm_fit()` function supports both `method = "em"` (standard EM)
-  and `method = "mm"` (minorization-maximization with monotonic guarantees).
