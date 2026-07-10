@@ -41,7 +41,7 @@ benchmark_settings <- list(
     
     # Monte Carlo
     
-    n_replications = 100,
+    n_replications = 1,
 
     # Matrix dimensions
     
