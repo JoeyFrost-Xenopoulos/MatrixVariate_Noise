@@ -58,6 +58,12 @@ $$
 
 We can initialize $\hat{z}_{ig}$ using k-means by vectorizing the matrices first. 
 
+### Improved Initialization Strategy
+
+The current initialization now uses several independent starts rather than a single k-means fit. Each start is run in a matrix-aware whitened space built from a pooled row/column covariance estimate, so the distance used to seed clusters is closer to the matrix-variate geometry than a plain Euclidean distance on `vec(X)`. After each start is converted back to matrix-variate parameters, a short EM burn-in is applied and the candidate with the highest observed-data log-likelihood is kept.
+
+This gives two practical benefits: the starts are less sensitive to row/column scale imbalance, and the final choice is aligned with the model objective instead of with k-means within-cluster SSE.
+
 Meaning we define the Mahalonobis distance as
 
 $$

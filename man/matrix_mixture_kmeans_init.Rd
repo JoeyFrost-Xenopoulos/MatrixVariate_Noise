@@ -11,7 +11,7 @@ matrix_mixture_kmeans_init(x_list, g, nstart = 10)
 
 \item{g}{Integer: number of mixture components}
 
-\item{nstart}{Integer: number of k-means restarts (default: 10)}
+\item{nstart}{Integer: number of independent starts (default: 10)}
 }
 \value{
 A list containing initial parameters.

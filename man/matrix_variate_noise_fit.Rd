@@ -8,7 +8,7 @@ matrix_variate_noise_fit(
   x_list,
   g,
   noise_type = c("hc", "br"),
-  max_iter = 1000,
+  max_iter = 100,
   tol = 1e-06,
   nstart = 100,
   noise_k = 1e-04,

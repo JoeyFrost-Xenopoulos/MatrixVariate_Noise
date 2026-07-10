@@ -22,6 +22,45 @@ contam <- lapply(seq_len(15), function(i) matrix(runif(r*p, -1,1), r, p))
 x_list <- c(x_list, contam)
 ```
 
+
+### HC-noise
+
+```{r}
+library(Ampharos)
+
+fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
+                                             nstart = 10,
+                                             init = "kmeans",
+                                             estimate_k = TRUE,
+                                             verbose = TRUE)
+
+cat('HC fit mixing proportions:\n')
+print(fit_hc$pi)
+cat('\nHC cluster counts (0 indicates noise):\n')
+print(table(fit_hc$cluster))
+print(fit_hc$noise)
+
+fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
+                                             init = "dbscan",
+                                             nstart = 10,
+                                             estimate_k = TRUE,
+                                             verbose = TRUE)
+  
+cat('HC fit mixing proportions:\n')
+print(fit_hc$pi)
+cat('\nHC cluster counts (0 indicates noise):\n')
+print(table(fit_hc$cluster))
+print(fit_hc$noise)
+
+fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, estimate_k = TRUE, init = "emrefine", verbose = TRUE)
+
+cat('HC fit mixing proportions:\n')
+print(fit_hc$pi)
+cat('\nHC cluster counts (0 indicates noise):\n')
+print(table(fit_hc$cluster))
+print(fit_hc$noise)
+```
+
 ```{r}
 library(ggplot2)
 
@@ -46,43 +85,6 @@ ggplot(df, aes(PC1, PC2, color = group)) +
 plot(df$PC1, df$PC2, col = fit_hc$cluster + 1)
 
 ```
-
-
-### HC-noise
-
-```{r}
-library(Ampharos)
-
-fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
-                                             init = "dbscan",
-                                             estimate_k = TRUE,
-                                             verbose = TRUE)
-
-# fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
-#                                              init = "emrefine",
-#                                              estimate_k = TRUE,
-#                                              verbose = TRUE)
-# 
-# fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
-#                                              init = "kmeans++",
-#                                              estimate_k = TRUE,
-#                                              verbose = TRUE)
-
-# fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
-#                                              init = "random",
-#                                              estimate_k = TRUE,
-#                                              verbose = TRUE)
-  
-
-fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, estimate_k = TRUE, init = "emrefine", verbose = TRUE)
-
-cat('HC fit mixing proportions:\n')
-print(fit_hc$pi)
-cat('\nHC cluster counts (0 indicates noise):\n')
-print(table(fit_hc$cluster))
-print(fit_hc$noise)
-```
-
 
 ### BR-noise
 
@@ -172,19 +174,15 @@ cat('Viroli simulation: n =', length(x_list_viroli), ', groups =', n1_viroli, n2
 
 ```{r}
 fit_hc_viroli_k <- Ampharos::matrix_variate_noise_fit(x_list_viroli, g = 3, noise_type = "hc",
+                                                      nstart = 10,
                                                     estimate_k = TRUE,
-                                                    init = "kmeans++",
+                                                    init = "kmeans",
                                                      verbose = TRUE)
 
 fit_hc_viroli_ecme <- Ampharos::matrix_variate_noise_fit(x_list_viroli, g = 3, noise_type = "hc",
                                                     estimate_k = TRUE,
                                                     init = "emrefine",
                                                      verbose = TRUE)
-
-# fit_hc_viroli <- Ampharos::matrix_variate_noise_fit(x_list_viroli, g = 3, noise_type = "hc",
-#                                                      noise_k = 1.709065e-09,
-#                                                      verbose = TRUE)
-# 
 
 cat('HC fit mixing proportions:\n')
 print(fit_hc_viroli_k$pi)
