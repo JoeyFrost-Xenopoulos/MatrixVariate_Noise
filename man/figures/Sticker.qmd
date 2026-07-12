@@ -1,0 +1,33 @@
+---
+title: "Sticker"
+format: html
+---
+
+```{r}
+library(magick)
+library(dplyr)
+library(hexSticker)
+```
+
+```{r}
+img <- image_read("ampharos.png")
+img %>% 
+  image_convert("png") %>% 
+  image_resize("1080 x 200")%>% 
+  image_fill(color="#062047", point="+45") %>% 
+  image_annotate("", size=38, location = "+47+58", color="black") -> res
+
+res
+```
+
+```{r}
+# wrap in plot to preview ie plot(sticker(...))
+final_res<-sticker(res, package="AMPH", p_size=30,
+             p_y = 1.5,
+             s_x=1, s_y=0.8, s_width=1.1,
+             s_height = 14,
+        filename="mde_icon_2.png",h_fill="#000080",h_color = "#000080")
+
+plot(final_res)
+```
+

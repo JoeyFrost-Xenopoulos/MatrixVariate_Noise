@@ -16,9 +16,7 @@ source_order <- c(
   "Init_EMRefine.R",
   "Matrix_Noise_BR.R",
   "KS_Score.R",
-  "Matrix_Noise.R",
-  "Matrix_MM.R",
-  "Diagnostics.R"
+  "Matrix_Noise.R"
 )
 
 for (f in source_order) {
