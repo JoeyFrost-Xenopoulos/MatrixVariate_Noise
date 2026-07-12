@@ -6,8 +6,8 @@
 #'
 #' @return A list containing initial parameters.
 #' @noRd
-matrix_mixture_kmeans_init <- function(x_list, g, nstart = 10) {
-  x_list <- matrix_validate_x_list(x_list)
+mv_mixture_kmeans_init <- function(x_list, g, nstart = 10) {
+  x_list <- mv_validate_x_list(x_list)
   n <- length(x_list)
 
   if (!is.numeric(nstart) || length(nstart) != 1 || !is.finite(nstart) || nstart < 1) {
@@ -15,14 +15,14 @@ matrix_mixture_kmeans_init <- function(x_list, g, nstart = 10) {
   }
   nstart <- as.integer(nstart)
 
-  init_basis <- matrix_init_whitening_basis(x_list)
-  x_matrix <- matrix_whitened_vectorized_matrices(x_list, init_basis)
+  init_basis <- mv_init_whitening_basis(x_list)
+  x_matrix <- mv_whitened_vectorized_matrices(x_list, init_basis)
 
   best_fit <- NULL
   best_score <- -Inf
 
   for (restart in seq_len(nstart)) {
-    centers <- matrix_kmeanspp_centers(x_matrix, g, n)
+    centers <- mv_kmeanspp_centers(x_matrix, g, n)
     fit <- tryCatch(
       kmeans(x_matrix, centers = centers, nstart = 1),
       error = function(e) NULL
@@ -32,9 +32,9 @@ matrix_mixture_kmeans_init <- function(x_list, g, nstart = 10) {
       next
     }
 
-    candidate <- matrix_compute_init_params(x_list, g, fit$cluster, init_method = "K-means")
-    candidate <- matrix_short_em_burn_in(candidate, x_list, g, max_iter = 3L)
-    score <- matrix_initialization_loglik(candidate, x_list, g)
+    candidate <- mv_compute_init_params(x_list, g, fit$cluster, init_method = "K-means")
+    candidate <- mv_short_em_burn_in(candidate, x_list, g, max_iter = 3L)
+    score <- mv_initialization_loglik(candidate, x_list, g)
 
     if (is.finite(score) && score > best_score) {
       best_score <- score
@@ -43,9 +43,9 @@ matrix_mixture_kmeans_init <- function(x_list, g, nstart = 10) {
   }
 
   if (is.null(best_fit)) {
-    fallback <- kmeans(x_matrix, centers = matrix_kmeanspp_centers(x_matrix, g, n), nstart = 1)
-    best_fit <- matrix_compute_init_params(x_list, g, fallback$cluster, init_method = "K-means")
-    best_fit <- matrix_short_em_burn_in(best_fit, x_list, g, max_iter = 3L)
+    fallback <- kmeans(x_matrix, centers = mv_kmeanspp_centers(x_matrix, g, n), nstart = 1)
+    best_fit <- mv_compute_init_params(x_list, g, fallback$cluster, init_method = "K-means")
+    best_fit <- mv_short_em_burn_in(best_fit, x_list, g, max_iter = 3L)
   }
 
   best_fit
@@ -59,7 +59,7 @@ matrix_mixture_kmeans_init <- function(x_list, g, nstart = 10) {
 #'
 #' @return A numeric matrix (g × d) of selected centers.
 #' @noRd
-matrix_kmeanspp_centers <- function(x_matrix, g, n) {
+mv_kmeanspp_centers <- function(x_matrix, g, n) {
   centers_idx <- integer(g)
   centers_idx[1] <- sample.int(n, 1)
   min_dists <- rep(Inf, n)
@@ -95,10 +95,10 @@ matrix_kmeanspp_centers <- function(x_matrix, g, n) {
 #'
 #' @return Numeric log-likelihood.
 #' @noRd
-matrix_initialization_loglik <- function(params, x_list, g) {
+mv_initialization_loglik <- function(params, x_list, g) {
   n <- length(x_list)
-  log_density <- matrix_e_step_log_density(x_list, params, g, n)
-  sum(apply(log_density, 1, matrix_log_sum_exp))
+  log_density <- mv_e_step_log_density(x_list, params, g, n)
+  sum(apply(log_density, 1, mv_log_sum_exp))
 }
 
 #' Short EM Burn-In for Initialization
@@ -113,8 +113,8 @@ matrix_initialization_loglik <- function(params, x_list, g) {
 #'
 #' @return Refined parameter list with cluster assignments.
 #' @noRd
-matrix_short_em_burn_in <- function(params, x_list, g, max_iter = 3L) {
-  x_list <- matrix_validate_x_list(x_list)
+mv_short_em_burn_in <- function(params, x_list, g, max_iter = 3L) {
+  x_list <- mv_validate_x_list(x_list)
   n <- length(x_list)
   r <- nrow(x_list[[1]])
   p <- ncol(x_list[[1]])
@@ -125,8 +125,8 @@ matrix_short_em_burn_in <- function(params, x_list, g, max_iter = 3L) {
   max_iter <- as.integer(max_iter)
 
   for (iteration in seq_len(max_iter)) {
-    log_density <- matrix_e_step_log_density(x_list, params, g, n)
-    responsibilities <- matrix_normalize_responsibilities(log_density)
+    log_density <- mv_e_step_log_density(x_list, params, g, n)
+    responsibilities <- mv_normalize_responsibilities(log_density)
     component_sizes <- colSums(responsibilities)
     new_params <- params
 
@@ -138,10 +138,10 @@ matrix_short_em_burn_in <- function(params, x_list, g, max_iter = 3L) {
       weights <- responsibilities[, component]
       weights_sum <- component_sizes[component]
 
-      mean_matrix <- matrix_weighted_mean(x_list, weights, weights_sum, r, p)
-      row_cov <- matrix_update_row_cov(x_list, mean_matrix, params$V[[component]],
+      mean_matrix <- mv_weighted_mean(x_list, weights, weights_sum, r, p)
+      row_cov <- mv_update_row_cov(x_list, mean_matrix, params$V[[component]],
                                        weights, weights_sum, r, p)
-      col_cov <- matrix_update_col_cov(x_list, mean_matrix, row_cov,
+      col_cov <- mv_update_col_cov(x_list, mean_matrix, row_cov,
                                        weights, weights_sum, r, p)
 
       new_params$pi[component] <- weights_sum / n
@@ -156,8 +156,8 @@ matrix_short_em_burn_in <- function(params, x_list, g, max_iter = 3L) {
     params <- new_params
   }
 
-  params$cluster <- max.col(matrix_normalize_responsibilities(
-    matrix_e_step_log_density(x_list, params, g, n)
+  params$cluster <- max.col(mv_normalize_responsibilities(
+    mv_e_step_log_density(x_list, params, g, n)
   ), ties.method = "first")
 
   params

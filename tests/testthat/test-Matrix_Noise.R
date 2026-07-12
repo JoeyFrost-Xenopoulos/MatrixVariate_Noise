@@ -1,4 +1,4 @@
-## ---- matrix_variate_noise_fit (HC) ----
+## ---- mv_noise_fit (HC) ----
 
 test_that("noise_fit HC returns correct structure", {
   set.seed(42)
@@ -6,7 +6,7 @@ test_that("noise_fit HC returns correct structure", {
     lapply(1:10, function(i) matrix(rnorm(6, mean = 3), 2, 3)),
     lapply(1:10, function(i) matrix(rnorm(6, mean = -3), 2, 3))
   )
-  fit <- matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
+  fit <- mv_noise_fit(x_list, g = 2, noise_type = "hc",
                                    max_iter = 30, verbose = FALSE)
 
   expect_type(fit, "list")
@@ -21,7 +21,7 @@ test_that("noise_fit HC returns correct structure", {
 test_that("noise_fit HC mixing proportions sum to 1", {
   set.seed(42)
   x_list <- lapply(1:15, function(i) matrix(rnorm(6), 2, 3))
-  fit <- matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
+  fit <- mv_noise_fit(x_list, g = 2, noise_type = "hc",
                                    max_iter = 20, verbose = FALSE)
   expect_equal(sum(fit$pi), 1, tolerance = 1e-10)
 })
@@ -29,7 +29,7 @@ test_that("noise_fit HC mixing proportions sum to 1", {
 test_that("noise_fit HC cluster 0 represents noise", {
   set.seed(42)
   x_list <- lapply(1:15, function(i) matrix(rnorm(6), 2, 3))
-  fit <- matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
+  fit <- mv_noise_fit(x_list, g = 2, noise_type = "hc",
                                    max_iter = 20, verbose = FALSE)
   # cluster=0 is valid for noise
 
@@ -39,7 +39,7 @@ test_that("noise_fit HC cluster 0 represents noise", {
 test_that("noise_fit HC responsibilities sum to 1 per row", {
   set.seed(42)
   x_list <- lapply(1:15, function(i) matrix(rnorm(6), 2, 3))
-  fit <- matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
+  fit <- mv_noise_fit(x_list, g = 2, noise_type = "hc",
                                    max_iter = 20, verbose = FALSE)
   row_sums <- rowSums(fit$z)
   expect_equal(row_sums, rep(1, 15), tolerance = 1e-8)
@@ -48,7 +48,7 @@ test_that("noise_fit HC responsibilities sum to 1 per row", {
 test_that("noise_fit HC log-likelihood trace is non-decreasing", {
   set.seed(42)
   x_list <- lapply(1:15, function(i) matrix(rnorm(6), 2, 3))
-  fit <- matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
+  fit <- mv_noise_fit(x_list, g = 2, noise_type = "hc",
                                    max_iter = 30, verbose = FALSE)
   ll <- fit$logLik
   if (length(ll) > 1) {
@@ -57,13 +57,13 @@ test_that("noise_fit HC log-likelihood trace is non-decreasing", {
   }
 })
 
-## ---- matrix_variate_noise_fit (BR) ----
+## ---- mv_noise_fit (BR) ----
 
 test_that("noise_fit BR returns correct structure", {
   set.seed(42)
   # BR needs enough data for convex hull in 2*2=4 dimensions
   x_list <- lapply(1:20, function(i) matrix(rnorm(4, sd = 2), 2, 2))
-  fit <- matrix_variate_noise_fit(x_list, g = 2, noise_type = "br",
+  fit <- mv_noise_fit(x_list, g = 2, noise_type = "br",
                                    max_iter = 20, verbose = FALSE)
 
   expect_type(fit, "list")
@@ -76,7 +76,7 @@ test_that("noise_fit BR returns correct structure", {
 test_that("noise_fit works with kmeans init", {
   set.seed(42)
   x_list <- lapply(1:15, function(i) matrix(rnorm(6), 2, 3))
-  fit <- matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
+  fit <- mv_noise_fit(x_list, g = 2, noise_type = "hc",
                                    max_iter = 10, init = "kmeans", verbose = FALSE)
   expect_length(fit$cluster, 15)
 })
@@ -84,7 +84,7 @@ test_that("noise_fit works with kmeans init", {
 test_that("noise_fit works with emrefine init", {
   set.seed(42)
   x_list <- lapply(1:15, function(i) matrix(rnorm(6), 2, 3))
-  fit <- matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
+  fit <- mv_noise_fit(x_list, g = 2, noise_type = "hc",
                                    max_iter = 10, init = "emrefine", verbose = FALSE)
   expect_length(fit$cluster, 15)
 })
@@ -92,7 +92,7 @@ test_that("noise_fit works with emrefine init", {
 test_that("noise_fit works with dbscan init", {
   set.seed(42)
   x_list <- lapply(1:15, function(i) matrix(rnorm(6), 2, 3))
-  fit <- matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
+  fit <- mv_noise_fit(x_list, g = 2, noise_type = "hc",
                                    max_iter = 10, init = "dbscan", verbose = FALSE)
   expect_length(fit$cluster, 15)
 })

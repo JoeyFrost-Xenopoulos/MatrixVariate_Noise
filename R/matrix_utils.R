@@ -3,7 +3,7 @@
 #' @param x_list List of matrices to validate.
 #' @return A list of same-sized matrices.
 #' @noRd
-matrix_validate_x_list <- function(x_list) {
+mv_validate_x_list <- function(x_list) {
 	if (!is.list(x_list) || length(x_list) == 0) {
 		stop("x_list must be a non-empty list of matrices.")
 	}
@@ -40,7 +40,7 @@ matrix_validate_x_list <- function(x_list) {
 #' @param values Numeric vector.
 #' @return Numeric scalar.
 #' @noRd
-matrix_log_sum_exp <- function(values) {
+mv_log_sum_exp <- function(values) {
 	if (!is.numeric(values)) {
 		stop("'values' must be a numeric vector.")
 	}
@@ -64,13 +64,13 @@ matrix_log_sum_exp <- function(values) {
 #' @param nstart Number of k-means restarts (used only for kmeans init).
 #' @return Initial parameter list (pi, M, U, V, cluster).
 #' @noRd
-matrix_init_dispatch <- function(x_list, g, init, nstart = 10) {
+mv_init_dispatch <- function(x_list, g, init, nstart = 10) {
 	if (init == "dbscan") {
-		matrix_mixture_dbscan_init(x_list, g = g)
+		mv_mixture_dbscan_init(x_list, g = g)
 	} else if (init == "emrefine") {
-		matrix_mixture_emrefine_init(x_list, g = g)
+		mv_mixture_emrefine_init(x_list, g = g)
 	} else {
-		matrix_mixture_kmeans_init(x_list, g = g, nstart = nstart)
+		mv_mixture_kmeans_init(x_list, g = g, nstart = nstart)
 	}
 }
 
@@ -84,12 +84,12 @@ matrix_init_dispatch <- function(x_list, g, init, nstart = 10) {
 #' @param n Number of observations.
 #' @return A matrix (n x g) of weighted log-densities for Gaussian components.
 #' @noRd
-matrix_e_step_log_density <- function(x_list, params, g, n) {
+mv_e_step_log_density <- function(x_list, params, g, n) {
 	log_density <- matrix(NA_real_, nrow = n, ncol = g)
 	for (component in seq_len(g)) {
 		for (i in seq_len(n)) {
 			log_density[i, component] <- log(params$pi[component]) +
-				matrix_variate_log_density(
+				mv_log_density(
 					x = x_list[[i]],
 					mean_matrix = params$M[[component]],
 					row_cov = params$U[[component]],
@@ -107,11 +107,11 @@ matrix_e_step_log_density <- function(x_list, params, g, n) {
 #' @param log_density Matrix of log-densities (n x K).
 #' @return Matrix of posterior responsibilities (n x K), rows sum to 1.
 #' @noRd
-matrix_normalize_responsibilities <- function(log_density) {
+mv_normalize_responsibilities <- function(log_density) {
 	n <- nrow(log_density)
 	responsibilities <- matrix(0, nrow = n, ncol = ncol(log_density))
 	for (i in seq_len(n)) {
-		normalizer <- matrix_log_sum_exp(log_density[i, ])
+		normalizer <- mv_log_sum_exp(log_density[i, ])
 		responsibilities[i, ] <- exp(log_density[i, ] - normalizer)
 	}
 	responsibilities
@@ -126,7 +126,7 @@ matrix_normalize_responsibilities <- function(log_density) {
 #' @param p Number of columns.
 #' @return Weighted mean matrix (r x p).
 #' @noRd
-matrix_weighted_mean <- function(x_list, weights, weights_sum, r, p) {
+mv_weighted_mean <- function(x_list, weights, weights_sum, r, p) {
 	n <- length(x_list)
 	mean_matrix <- matrix(0, r, p)
 	for (i in seq_len(n)) {
@@ -149,7 +149,7 @@ matrix_weighted_mean <- function(x_list, weights, weights_sum, r, p) {
 #' @param scale_trace Logical: if TRUE, enforce tr(U) = r identifiability constraint.
 #' @return Updated row covariance matrix (r x r), positive definite.
 #' @noRd
-matrix_update_row_cov <- function(x_list, mean_matrix, v_inv_target, weights,
+mv_update_row_cov <- function(x_list, mean_matrix, v_inv_target, weights,
                                   weights_sum, r, p, scale_trace = TRUE) {
 	n <- length(x_list)
 	v_spd <- make_spd(v_inv_target)
@@ -181,7 +181,7 @@ matrix_update_row_cov <- function(x_list, mean_matrix, v_inv_target, weights,
 #' @param p Number of columns.
 #' @return Updated column covariance matrix (p x p), positive definite.
 #' @noRd
-matrix_update_col_cov <- function(x_list, mean_matrix, u_inv_target, weights,
+mv_update_col_cov <- function(x_list, mean_matrix, u_inv_target, weights,
                                   weights_sum, r, p) {
 	n <- length(x_list)
 	col_cov <- matrix(0, p, p)
@@ -204,7 +204,7 @@ matrix_update_col_cov <- function(x_list, mean_matrix, u_inv_target, weights,
 #' @param init_method Character label for warnings (e.g. "K-means", "Random").
 #' @return A list with pi, M, U, V, cluster.
 #' @noRd
-matrix_compute_init_params <- function(x_list, g, cluster_assignments, init_method = "Initialization") {
+mv_compute_init_params <- function(x_list, g, cluster_assignments, init_method = "Initialization") {
 	n <- length(x_list)
 	r <- nrow(x_list[[1]])
 	p <- ncol(x_list[[1]])
@@ -268,7 +268,7 @@ matrix_compute_init_params <- function(x_list, g, cluster_assignments, init_meth
 #' @param x_list List of matrices.
 #' @return Numeric vector of finite Mahalanobis distances (sorted).
 #' @noRd
-matrix_component_distances <- function(fit, x_list) {
+mv_component_distances <- function(fit, x_list) {
 	keep_idx <- which(fit$cluster > 0)
 	if (length(keep_idx) < 2) {
 		return(numeric(0))
@@ -276,7 +276,7 @@ matrix_component_distances <- function(fit, x_list) {
 
 	distances <- vapply(keep_idx, function(i) {
 		comp <- fit$cluster[i]
-		matrix_mahalanobis(
+		mv_mahalanobis(
 			x = x_list[[i]],
 			mean_matrix = fit$M[[comp]],
 			row_cov = fit$U[[comp]],

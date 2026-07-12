@@ -7,8 +7,8 @@
 #'
 #' @return A list with elements `mean`, `row_cov`, and `col_cov`.
 #' @noRd
-matrix_init_whitening_basis <- function(x_list) {
-  x_list <- matrix_validate_x_list(x_list)
+mv_init_whitening_basis <- function(x_list) {
+  x_list <- mv_validate_x_list(x_list)
   n <- length(x_list)
   r <- nrow(x_list[[1]])
   p <- ncol(x_list[[1]])
@@ -39,11 +39,11 @@ matrix_init_whitening_basis <- function(x_list) {
 #' then vectorizes the result row-wise.
 #'
 #' @param x_list A list of numeric matrices.
-#' @param init_basis Whitening basis from `matrix_init_whitening_basis`.
+#' @param init_basis Whitening basis from `mv_init_whitening_basis`.
 #'
 #' @return A numeric matrix (n × (r*p)) of whitened, vectorized matrices.
 #' @noRd
-matrix_whitened_vectorized_matrices <- function(x_list, init_basis) {
+mv_whitened_vectorized_matrices <- function(x_list, init_basis) {
   row_whitener <- solve(chol(init_basis$row_cov))
   col_whitener <- t(solve(chol(init_basis$col_cov)))
 

@@ -9,16 +9,16 @@
 #'
 #' @return A list with `statistic`, `p.value`, `n_used`.
 #' @noRd
-matrix_noise_ks_score <- function(fit, x_list) {
+mv_noise_ks_score <- function(fit, x_list) {
   
   if (is.null(fit$cluster) || is.null(fit$M) ||
       is.null(fit$U) || is.null(fit$V)) {
     stop("'fit' must contain 'cluster', 'M', 'U', and 'V' components.")
   }
   
-  x_list <- matrix_validate_x_list(x_list)
+  x_list <- mv_validate_x_list(x_list)
   
-  distances <- matrix_component_distances(fit, x_list)
+  distances <- mv_component_distances(fit, x_list)
   
   if (length(distances) < 2 || length(unique(distances)) < 2) {
     return(list(
@@ -68,8 +68,8 @@ matrix_noise_ks_score <- function(fit, x_list) {
 #' @param n_points Integer: number of points in the grid.
 #' @return Numeric vector of candidate noise_k values.
 #' @noRd
-matrix_noise_hc_heuristic_grid <- function(x_list, n_points = 30) {
-  x_list <- matrix_validate_x_list(x_list)
+mv_noise_hc_heuristic_grid <- function(x_list, n_points = 30) {
+  x_list <- mv_validate_x_list(x_list)
   
   dimension <- nrow(x_list[[1]]) * ncol(x_list[[1]])
   

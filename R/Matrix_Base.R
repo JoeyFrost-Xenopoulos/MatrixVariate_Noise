@@ -57,7 +57,7 @@ make_spd <- function(mat, jitter = 1e-8, max_tries = 8) {
 #' forward/backsolve for numerical stability.
 #'
 #' @export
-matrix_mahalanobis <- function(x, mean_matrix, row_cov, col_cov) {
+mv_mahalanobis <- function(x, mean_matrix, row_cov, col_cov) {
 	if (!is.matrix(x) || !is.numeric(x)) {
 		stop("'x' must be a numeric matrix.")
 	}
@@ -106,7 +106,7 @@ matrix_mahalanobis <- function(x, mean_matrix, row_cov, col_cov) {
 #' avoid explicit matrix inversion.
 #'
 #' @noRd
-matrix_variate_log_density <- function(x, mean_matrix, row_cov, col_cov) {
+mv_log_density <- function(x, mean_matrix, row_cov, col_cov) {
 	if (!is.matrix(x) || !is.numeric(x)) {
 		stop("'x' must be a numeric matrix.")
 	}
@@ -195,17 +195,17 @@ matrix_variate_log_density <- function(x, mean_matrix, row_cov, col_cov) {
 #'   simulate_matrix_group(15, mean_2)
 #' )
 #'
-#' fit <- matrix_variate_mixture_fit(x_list, g=2, max_iter=50, verbose=TRUE)
+#' fit <- mv_mixture_fit(x_list, g=2, max_iter=50, verbose=TRUE)
 #' fit$cluster
 #' fit$pi
 #' }
 #'
 #' @export
-matrix_variate_mixture_fit <- function(x_list, g, max_iter = 100, tol = 1e-06,
+mv_mixture_fit <- function(x_list, g, max_iter = 100, tol = 1e-06,
 																			 nstart = 10, init = c("kmeans", "emrefine", "dbscan"),
 																			 verbose = FALSE) {
 	init <- match.arg(init)
-	x_list <- matrix_validate_x_list(x_list)
+	x_list <- mv_validate_x_list(x_list)
 	n <- length(x_list)
 	r <- nrow(x_list[[1]])
 	p <- ncol(x_list[[1]])
@@ -222,18 +222,18 @@ matrix_variate_mixture_fit <- function(x_list, g, max_iter = 100, tol = 1e-06,
 		))
 	}
 
-	params <- matrix_init_dispatch(x_list, g, init, nstart)
+	params <- mv_init_dispatch(x_list, g, init, nstart)
 	loglik_trace <- numeric(0)
 	responsibilities <- matrix(0, n, g)
 
 	# EM loop
 	for (iteration in seq_len(max_iter)) {
 		# E-step
-		log_density <- matrix_e_step_log_density(x_list, params, g, n)
-		responsibilities <- matrix_normalize_responsibilities(log_density)
+		log_density <- mv_e_step_log_density(x_list, params, g, n)
+		responsibilities <- mv_normalize_responsibilities(log_density)
 
 		# Observed data log-likelihood
-		current_loglik <- sum(apply(log_density, 1, matrix_log_sum_exp))
+		current_loglik <- sum(apply(log_density, 1, mv_log_sum_exp))
 		loglik_trace <- c(loglik_trace, current_loglik)
 
 		if (iteration > 1 && abs(loglik_trace[iteration] - loglik_trace[iteration - 1]) < tol) {
@@ -256,10 +256,10 @@ matrix_variate_mixture_fit <- function(x_list, g, max_iter = 100, tol = 1e-06,
 			weights <- responsibilities[, component]
 			weights_sum <- component_sizes[component]
 
-			mean_matrix <- matrix_weighted_mean(x_list, weights, weights_sum, r, p)
-			row_cov <- matrix_update_row_cov(x_list, mean_matrix, params$V[[component]],
+			mean_matrix <- mv_weighted_mean(x_list, weights, weights_sum, r, p)
+			row_cov <- mv_update_row_cov(x_list, mean_matrix, params$V[[component]],
 			                                 weights, weights_sum, r, p)
-			col_cov <- matrix_update_col_cov(x_list, mean_matrix, row_cov,
+			col_cov <- mv_update_col_cov(x_list, mean_matrix, row_cov,
 			                                 weights, weights_sum, r, p)
 
 			new_params$pi[component] <- weights_sum / n

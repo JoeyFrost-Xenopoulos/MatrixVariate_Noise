@@ -390,7 +390,7 @@ run_hc_fit <- function(x_list,
                         verbose = FALSE) {
 
   fit <- tryCatch(
-    matrix_variate_noise_fit(
+    mv_noise_fit(
       x_list = x_list,
       g = g,
       noise_type = noise_type,

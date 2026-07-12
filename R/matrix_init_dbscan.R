@@ -13,12 +13,12 @@
 #'
 #' @return A list containing initial parameters.
 #' @noRd
-matrix_mixture_dbscan_init <- function(x_list, g, eps = NULL, minPts = NULL) {
-  x_list <- matrix_validate_x_list(x_list)
+mv_mixture_dbscan_init <- function(x_list, g, eps = NULL, minPts = NULL) {
+  x_list <- mv_validate_x_list(x_list)
   n <- length(x_list)
 
   if (n < 2L) {
-    return(matrix_mixture_kmeans_init(x_list, g = g))
+    return(mv_mixture_kmeans_init(x_list, g = g))
   }
 
   x_matrix <- do.call(rbind, lapply(x_list, function(x) as.vector(x)))
@@ -32,10 +32,10 @@ matrix_mixture_dbscan_init <- function(x_list, g, eps = NULL, minPts = NULL) {
   minPts <- min(minPts, n)
 
   if (is.null(eps)) {
-    eps <- matrix_dbscan_heuristic_eps(x_scaled, minPts)
+    eps <- mv_dbscan_heuristic_eps(x_scaled, minPts)
   }
 
-  cluster_assignments <- matrix_dbscan_cluster_assignments(x_scaled, eps, minPts)
+  cluster_assignments <- mv_dbscan_cluster_assignments(x_scaled, eps, minPts)
   cluster_table <- sort(table(cluster_assignments[cluster_assignments > 0]), decreasing = TRUE)
 
   if (length(cluster_table) == 0L) {
@@ -43,7 +43,7 @@ matrix_mixture_dbscan_init <- function(x_list, g, eps = NULL, minPts = NULL) {
       "DBSCAN initialization found no dense clusters; falling back to k-means++ initialization.",
       call. = FALSE
     )
-    return(matrix_mixture_kmeans_init(x_list, g = g))
+    return(mv_mixture_kmeans_init(x_list, g = g))
   }
 
   selected_cluster_ids <- as.integer(names(cluster_table))[seq_len(min(g, length(cluster_table)))]
@@ -92,15 +92,15 @@ matrix_mixture_dbscan_init <- function(x_list, g, eps = NULL, minPts = NULL) {
         sprintf("DBSCAN initialization fallback to k-means++ after k-means failed: %s", conditionMessage(e)),
         call. = FALSE
       )
-      matrix_mixture_kmeans_init(x_list, g = g)$cluster
+      mv_mixture_kmeans_init(x_list, g = g)$cluster
     }
   )
 
   if (is.integer(km)) {
-    return(matrix_compute_init_params(x_list, g, km, init_method = "DBSCAN"))
+    return(mv_compute_init_params(x_list, g, km, init_method = "DBSCAN"))
   }
 
-  matrix_compute_init_params(x_list, g, km$cluster, init_method = "DBSCAN")
+  mv_compute_init_params(x_list, g, km$cluster, init_method = "DBSCAN")
 }
 
 #' DBSCAN Heuristic Epsilon
@@ -110,7 +110,7 @@ matrix_mixture_dbscan_init <- function(x_list, g, eps = NULL, minPts = NULL) {
 #'
 #' @return Numeric epsilon value.
 #' @noRd
-matrix_dbscan_heuristic_eps <- function(x_matrix, minPts) {
+mv_dbscan_heuristic_eps <- function(x_matrix, minPts) {
   n <- nrow(x_matrix)
   dist_matrix <- as.matrix(stats::dist(x_matrix))
   sorted_distances <- t(apply(dist_matrix, 1, sort))
@@ -138,7 +138,7 @@ matrix_dbscan_heuristic_eps <- function(x_matrix, minPts) {
 #'
 #' @return Integer vector of cluster assignments (0 = noise).
 #' @noRd
-matrix_dbscan_cluster_assignments <- function(x_matrix, eps, minPts) {
+mv_dbscan_cluster_assignments <- function(x_matrix, eps, minPts) {
   n <- nrow(x_matrix)
   dist_matrix <- as.matrix(stats::dist(x_matrix))
   visited <- rep(FALSE, n)

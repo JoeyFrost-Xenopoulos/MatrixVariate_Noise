@@ -28,7 +28,7 @@ x_list <- c(x_list, contam)
 ```{r}
 library(Ampharos)
 
-fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
+fit_hc <- Ampharos::mv_noise_fit(x_list, g = 2, noise_type = "hc",
                                              nstart = 10,
                                              init = "kmeans",
                                              estimate_k = TRUE,
@@ -40,7 +40,7 @@ cat('\nHC cluster counts (0 indicates noise):\n')
 print(table(fit_hc$cluster))
 print(fit_hc$noise)
 
-fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, noise_type = "hc",
+fit_hc <- Ampharos::mv_noise_fit(x_list, g = 2, noise_type = "hc",
                                              init = "dbscan",
                                              nstart = 10,
                                              estimate_k = TRUE,
@@ -52,7 +52,7 @@ cat('\nHC cluster counts (0 indicates noise):\n')
 print(table(fit_hc$cluster))
 print(fit_hc$noise)
 
-fit_hc <- Ampharos::matrix_variate_noise_fit(x_list, g = 2, estimate_k = TRUE, init = "emrefine", verbose = TRUE)
+fit_hc <- Ampharos::mv_noise_fit(x_list, g = 2, estimate_k = TRUE, init = "emrefine", verbose = TRUE)
 
 cat('HC fit mixing proportions:\n')
 print(fit_hc$pi)
@@ -89,7 +89,7 @@ plot(df$PC1, df$PC2, col = fit_hc$cluster + 1)
 ### BR-noise
 
 ```{r}
-fit_br <- matrix_variate_noise_fit(x_list, g = 2, noise_type = "br", 
+fit_br <- mv_noise_fit(x_list, g = 2, noise_type = "br", 
                                    nstart = 100, max_iter = 50, verbose = FALSE)
 
 cat('BR fit mixing proportions:\n')
@@ -173,13 +173,13 @@ cat('Viroli simulation: n =', length(x_list_viroli), ', groups =', n1_viroli, n2
 ### Viroli: HC-noise with Automatic K
 
 ```{r}
-fit_hc_viroli_k <- Ampharos::matrix_variate_noise_fit(x_list_viroli, g = 3, noise_type = "hc",
+fit_hc_viroli_k <- Ampharos::mv_noise_fit(x_list_viroli, g = 3, noise_type = "hc",
                                                       nstart = 10,
                                                     estimate_k = TRUE,
                                                     init = "kmeans",
                                                      verbose = TRUE)
 
-fit_hc_viroli_ecme <- Ampharos::matrix_variate_noise_fit(x_list_viroli, g = 3, noise_type = "hc",
+fit_hc_viroli_ecme <- Ampharos::mv_noise_fit(x_list_viroli, g = 3, noise_type = "hc",
                                                     estimate_k = TRUE,
                                                     init = "emrefine",
                                                      verbose = TRUE)
@@ -207,10 +207,10 @@ for(i in 1:length(x_list_viroli)) {
 }
 
 # Reshape each matrix into a vector for PCA
-matrix_vectors <- t(apply(matrices_array, 3, function(x) as.vector(t(x))))
+mv_vectors <- t(apply(matrices_array, 3, function(x) as.vector(t(x))))
 
 # Perform PCA
-pca_result <- prcomp(matrix_vectors, center = TRUE, scale. = FALSE)
+pca_result <- prcomp(mv_vectors, center = TRUE, scale. = FALSE)
 plot_df <- data.frame(
   PC1 = pca_result$x[,1],
   PC2 = pca_result$x[,2],
@@ -324,7 +324,7 @@ cat('Tomarchio simulation: n =', length(x_list_tomarchio), ', groups =', n1_toma
 ### Tomarchio: HC-noise with Automatic K
 
 ```{r}
-fit_hc_tomarchio <- Ampharos::matrix_variate_noise_fit(x_list_tomarchio, g = 2, noise_type = "hc",
+fit_hc_tomarchio <- Ampharos::mv_noise_fit(x_list_tomarchio, g = 2, noise_type = "hc",
                                                       estimate_k = TRUE,
                                                       verbose = TRUE)
 

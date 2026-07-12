@@ -12,7 +12,7 @@ goodness-of-fit.
 
 ```r
 # x_list is a list of r × p numeric matrices
-fit <- matrix_variate_noise_fit(x_list, g = 3, noise_type = "hc")
+fit <- mv_noise_fit(x_list, g = 3, noise_type = "hc")
 print(fit$pi)
 table(fit$cluster)
 plot(fit$logLik, type = "b")
@@ -22,8 +22,8 @@ plot(fit$logLik, type = "b")
 
 | Function | Description |
 |----------|-------------|
-| `matrix_variate_mixture_fit()` | Standard EM mixture model (no noise) |
-| `matrix_variate_noise_fit()` | Noise mixture with HC or BR noise component |
+| `mv_mixture_fit()` | Standard EM mixture model (no noise) |
+| `mv_noise_fit()` | Noise mixture with HC or BR noise component |
 
 ## Initialization Schemes
 

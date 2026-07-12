@@ -30,7 +30,7 @@
 #'   `estimate_k = TRUE`, also includes `k_grid` and `ks_scores`.
 #'
 #' @export
-matrix_variate_noise_fit <- function(x_list,
+mv_noise_fit <- function(x_list,
                                       g,
                                       noise_type = c("hc", "br"),
                                       max_iter = 100,
@@ -45,7 +45,7 @@ matrix_variate_noise_fit <- function(x_list,
                                       verbose = FALSE) {
   noise_type <- match.arg(noise_type)
   init <- match.arg(init)
-  x_list <- matrix_validate_x_list(x_list)
+  x_list <- mv_validate_x_list(x_list)
 
   if (!is.numeric(g) || length(g) != 1 || g < 1) {
     stop("'g' must be a positive integer specifying the number of mixture components.")
@@ -74,7 +74,7 @@ matrix_variate_noise_fit <- function(x_list,
     # Generate dimension-aware grid if not provided
     if (is.null(k_grid)) {
       if (adaptive_grid) {
-        k_grid <- matrix_noise_hc_heuristic_grid(x_list)
+        k_grid <- mv_noise_hc_heuristic_grid(x_list)
         
         if (verbose) {
           cat(
@@ -108,7 +108,7 @@ matrix_variate_noise_fit <- function(x_list,
       }
       
       # Step 1: HC fit with candidate k
-      fit_noise <- matrix_variate_noise_fit_impl(
+      fit_noise <- mv_noise_fit_impl(
         x_list = x_list,
         g = g,
         noise_type = "hc",
@@ -146,7 +146,7 @@ matrix_variate_noise_fit <- function(x_list,
       
       # Step 3: Refit Gaussian mixture on cleaned subset
       fit_clean <- tryCatch(
-        matrix_variate_mixture_fit(
+        mv_mixture_fit(
           x_list = x_clean,
           g = g,
           max_iter = max_iter,
@@ -181,7 +181,7 @@ matrix_variate_noise_fit <- function(x_list,
       
       # Step 4: KS goodness-of-fit score
       ks_result <- tryCatch(
-        matrix_noise_ks_score(fit_clean, x_clean),
+        mv_noise_ks_score(fit_clean, x_clean),
         error = function(e) {
           warning(sprintf(
             "KS scoring failed for k = %e: %s",
@@ -227,7 +227,7 @@ matrix_variate_noise_fit <- function(x_list,
     }
     
     # Final HC fit on FULL dataset using selected k
-    final_fit <- matrix_variate_noise_fit_impl(
+    final_fit <- mv_noise_fit_impl(
       x_list = x_list,
       g = g,
       noise_type = "hc",
@@ -257,7 +257,7 @@ matrix_variate_noise_fit <- function(x_list,
   }
   
   # Standard fitting (no automatic selection)
-  matrix_variate_noise_fit_impl(
+  mv_noise_fit_impl(
     x_list = x_list,
     g = g,
     noise_type = noise_type,
@@ -275,10 +275,10 @@ matrix_variate_noise_fit <- function(x_list,
 #' Core Matrix-Variate Noise Mixture Fit
 #'
 #' Internal implementation of the EM loop for the matrix-variate mixture with a
-#' noise component. Called by `matrix_variate_noise_fit()`.
+#' noise component. Called by `mv_noise_fit()`.
 #'
 #' @noRd
-matrix_variate_noise_fit_impl <- function(x_list,
+mv_noise_fit_impl <- function(x_list,
                                           g,
                                           noise_type = c("hc", "br"),
                                           max_iter = 100,
@@ -291,18 +291,18 @@ matrix_variate_noise_fit_impl <- function(x_list,
                                           verbose = FALSE) {
   noise_type <- match.arg(noise_type)
   init <- match.arg(init)
-  x_list <- matrix_validate_x_list(x_list)
+  x_list <- mv_validate_x_list(x_list)
   
   n <- length(x_list)
   r <- nrow(x_list[[1]])
   p <- ncol(x_list[[1]])
   
-  params <- matrix_init_dispatch(x_list, g, init, nstart)
+  params <- mv_init_dispatch(x_list, g, init, nstart)
   
   # For BR noise compute a convex hull over the vectorized matrices
   noise_support <- NULL
   if (noise_type == "br") {
-    noise_support <- matrix_noise_convex_hull_support(x_list, jitter = noise_jitter)
+    noise_support <- mv_noise_convex_hull_support(x_list, jitter = noise_jitter)
   }
   
   # Append noise mixing proportion as the last component
@@ -319,18 +319,18 @@ matrix_variate_noise_fit_impl <- function(x_list,
   noise_log_density <- if (noise_type == "hc") {
     rep(log(noise_k), n)
   } else {
-    matrix_noise_br_log_density(x_list, noise_support)
+    mv_noise_br_log_density(x_list, noise_support)
   }
   
   for (iteration in seq_len(max_iter)) {
     # E-step: Gaussian components
-    log_density_gauss <- matrix_e_step_log_density(x_list, params, g, n)
+    log_density_gauss <- mv_e_step_log_density(x_list, params, g, n)
     log_density <- cbind(log_density_gauss, log(params$pi[g + 1]) + noise_log_density)
     
-    responsibilities <- matrix_normalize_responsibilities(log_density)
+    responsibilities <- mv_normalize_responsibilities(log_density)
     
     # Observed-data log-likelihood
-    current_loglik <- sum(apply(log_density, 1, matrix_log_sum_exp))
+    current_loglik <- sum(apply(log_density, 1, mv_log_sum_exp))
     loglik_trace <- c(loglik_trace, current_loglik)
     
     if (iteration > 1 &&
@@ -356,10 +356,10 @@ matrix_variate_noise_fit_impl <- function(x_list,
       weights <- component_responsibilities[, component]
       weights_sum <- component_sizes[component]
       
-      mean_matrix <- matrix_weighted_mean(x_list, weights, weights_sum, r, p)
-      row_cov <- matrix_update_row_cov(x_list, mean_matrix, params$V[[component]],
+      mean_matrix <- mv_weighted_mean(x_list, weights, weights_sum, r, p)
+      row_cov <- mv_update_row_cov(x_list, mean_matrix, params$V[[component]],
                                        weights, weights_sum, r, p)
-      col_cov <- matrix_update_col_cov(x_list, mean_matrix, row_cov,
+      col_cov <- mv_update_col_cov(x_list, mean_matrix, row_cov,
                                        weights, weights_sum, r, p)
       
       new_params$pi[component] <- weights_sum / n

@@ -9,8 +9,8 @@
 #'
 #' @return A list containing initial parameters.
 #' @noRd
-matrix_mixture_emrefine_init <- function(x_list, g, max_iter = 100) {
-  params <- matrix_mixture_kmeans_init(x_list, g = g)
+mv_mixture_emrefine_init <- function(x_list, g, max_iter = 100) {
+  params <- mv_mixture_kmeans_init(x_list, g = g)
   n <- length(x_list)
   r <- nrow(x_list[[1]])
   p <- ncol(x_list[[1]])
@@ -19,8 +19,8 @@ matrix_mixture_emrefine_init <- function(x_list, g, max_iter = 100) {
   colnames(responsibilities) <- paste0("component_", seq_len(g))
 
   for (iteration in seq_len(max_iter)) {
-    log_density <- matrix_e_step_log_density(x_list, params, g, n)
-    responsibilities <- matrix_normalize_responsibilities(log_density)
+    log_density <- mv_e_step_log_density(x_list, params, g, n)
+    responsibilities <- mv_normalize_responsibilities(log_density)
 
     component_sizes <- colSums(responsibilities)
     new_params <- params
@@ -37,10 +37,10 @@ matrix_mixture_emrefine_init <- function(x_list, g, max_iter = 100) {
       weights <- responsibilities[, component]
       weights_sum <- component_sizes[component]
 
-      mean_matrix <- matrix_weighted_mean(x_list, weights, weights_sum, r, p)
-      row_cov <- matrix_update_row_cov(x_list, mean_matrix, params$V[[component]],
+      mean_matrix <- mv_weighted_mean(x_list, weights, weights_sum, r, p)
+      row_cov <- mv_update_row_cov(x_list, mean_matrix, params$V[[component]],
                                        weights, weights_sum, r, p)
-      col_cov <- matrix_update_col_cov(x_list, mean_matrix, row_cov,
+      col_cov <- mv_update_col_cov(x_list, mean_matrix, row_cov,
                                        weights, weights_sum, r, p)
 
       new_params$pi[component] <- weights_sum / n
