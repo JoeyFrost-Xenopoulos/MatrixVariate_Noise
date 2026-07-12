@@ -1,0 +1,119 @@
+---
+title: "MM algorithm Matrix"
+format: pdf
+---
+
+The objective function
+$$
+\ell(\Theta) = \sum_{i=1}^n \log[\pi_0k+\sum_{g=1}^G\pi_g\phi_{r\times c}(\mathbf{X}_i|\mathbf{M}_g,\mathbf{U}_g, \mathbf{V}_g)]
+$$
+has exactly the same log-sum structure as an ordinary finite mixture likelihood.
+
+Let
+$$
+f(\mathbf{X}_i) = \pi_0k + \sum_{g=1}^G\pi_g\phi_g(\mathbf{X}_i)
+$$
+
+where
+$$
+\phi_g(\mathbf{X}_i) = \phi_{r\times c}(\mathbf{X}_i|\mathbf{M}_g,\mathbf{U}_g, \mathbf{V}_g)
+$$
+
+then
+$$
+\ell(\theta) = \sum_{i=1}^n\log f(\mathbf{X}_i) \quad \text{with} \ \sum_{g=0}^Gz_{ig} = 1, \ z_{ig} \in \{0,1\}, \ g = 0,\dots, G.
+$$
+As always component 0 is noise. 
+
+Using jensen's inequality we define current parameter estimates $\Theta^{(t)}$.
+Let
+$$
+\tau_{ig}^{(t)} = P(z_{ig} = 1|\mathbf{X}_i, \Theta^{(t)})
+$$
+
+then
+$$
+\tau_{ig}^{(t)} = \frac{\pi_g^{(t)}\phi_g^{(t)}(\mathbf{X}_i)}{\pi_0^{(t)}k+\sum_{h=1}^G\pi_g^{(t)}\phi_h^{(t)}(\mathbf{X_i})}, \ \text{for} \ g\geq 1
+$$
+
+and
+$$
+\tau_{i0}^{(t)} = \frac{\pi_0^{(t)}k}{\pi_0^{(t)}k+\sum_{h=1}^G\pi_g^{(t)}\phi_h^{(t)}(\mathbf{X_i})}.
+$$
+
+Using
+$$
+\log\left(\sum_j a_j \right) \geq \sum_j\omega_j\log\frac{a_j}{\omega_j}
+$$
+
+the log-likelihood is minorized by
+$$
+Q(\Theta|\Theta^{(t)}) = \sum_{i=1}^n\sum_{g=0}^G\tau_{ig}^{(t)}\log s_{ig}(\Theta) - \sum_{i=1}^n\sum_{g=0}\tau_{ig}^{(t)}\log \tau_{ig}^{(t)}
+$$
+
+So our explicit surrogate is done by substituting $s_{ig} = \pi_g\phi_g(\mathbf{X}_i)$ and $s_{i0} = \pi_0k$. Gives
+$$
+Q = \sum_i\tau_{i0}^{(t)}\log(\pi_0k) + \sum_i\sum_{g=1}^G\tau_{ig}^{(t)}\left[\log\pi_g+\log\phi_g(\mathbf{X_i}) \right]
+$$
+
+Ignoring constants
+$$
+Q = \sum_{g=0}^GN_g^{(t)}\log\pi_g-\frac{1}{2}\sum_{g=1}^G\sum_i\tau_{ig}^{(t)}D_{ig}- \sum_{g=1}^G\frac{N_g^{(t)}c}{2}\log|\mathbf{U}_g| - \sum_{g=1}^G\frac{N_g^{(t)}r}{2}\log|\mathbf{V}_g|
+$$
+
+where
+$$
+N_g^{(t)} = \sum_i\tau_{ig}^{(t)}
+$$
+
+and
+$$
+D_{ig} = \text{tr}(\mathbf{U}^{-1}_g(\mathbf{X}_i-\mathbf{M}_g)\mathbf{V}_g^{-1}(\mathbf{X}_i-\mathbf{M}_g)^\top)
+$$
+
+Maximizing the minorizer we get these updates.
+Mixing proportions
+$$
+\sum_{g=0}^GN_g^{(t)}\log\pi_g \quad \text{subject to} \quad \sum_{g=0}^G\pi_g = 1
+$$
+
+gives the update
+$$
+\pi_g^{(t+1)} = \frac{N_g^{(t)}}{n} \quad \text{for} \ g= 0\dots, G
+$$
+
+Means and Covariances
+$$
+\begin{align}
+{\mathbf{M}_g^{(t+1)}} &= \frac{\sum_i\tau_{ig}^{(t)}\mathbf{X}_i}{N_g^{(t)}} \\
+
+{\mathbf{U}_g^{(t+1)}} &= \frac{1}{cN_g^{(t)}}\sum_{i}\tau_{ig}^{(t)}(\mathbf{X}_i - {\mathbf{M}_g^{(t+1)}}){\mathbf{V}_g}^{-1}(\mathbf{X}_i - {\mathbf{M}^{(t+1)}_g})^\top \\
+
+\hat{\mathbf{V}} &= \frac{1}{rN_g^{(t)}}\sum_{i}\tau_{ig}^{(t)}(\mathbf{X}_i - {\mathbf{M}_g^{(t+1)}}){\mathbf{U}_g}^{-1}(\mathbf{X}_i - {\mathbf{M}^{(t+1)}_g})^\top
+\end{align}
+$$
+
+
+Review, at iteration t we compute
+$$
+\tau_{i0}^{(t)} = \frac{\pi_0^{(t)}k}{\pi_0^{(t)}k+\sum_{h=1}^G\pi_g^{(t)}\phi_h^{(t)}(\mathbf{X_i})} \\
+
+
+\tau_{ig}^{(t)} = \frac{\pi_g^{(t)}\phi_g^{(t)}(\mathbf{X}_i)}{\pi_0^{(t)}k+\sum_{h=1}^G\pi_g^{(t)}\phi_h^{(t)}(\mathbf{X_i})}
+$$
+
+Then we construct
+$$
+Q(\Theta|\Theta^{(t)})
+$$
+
+Then we maximize Q with respect to parameter vector
+$$
+\{\pi_g, \mathbf{M}_g, \mathbf{U}_g, \mathbf{V}_g\}
+$$
+
+
+
+
+
+

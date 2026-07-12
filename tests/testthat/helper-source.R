@@ -10,7 +10,10 @@ if (!dir.exists(r_dir)) {
 source_order <- c(
   "Utils.R",
   "Matrix_Base.R",
-  "Matrix_Init.R",
+  "Init_Whiten.R",
+  "Init_Kmeans.R",
+  "Init_DBSCAN.R",
+  "Init_EMRefine.R",
   "Matrix_Noise_BR.R",
   "KS_Score.R",
   "Matrix_Noise.R",

@@ -10,3 +10,14 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 Imports:
     geometry
+Collate: 
+    'Diagnostics.R'
+    'Init_Whiten.R'
+    'Init_Kmeans.R'
+    'Init_DBSCAN.R'
+    'Init_EMRefine.R'
+    'KS_Score.R'
+    'Matrix_Base.R'
+    'Matrix_Noise.R'
+    'Matrix_Noise_BR.R'
+    'Utils.R'
