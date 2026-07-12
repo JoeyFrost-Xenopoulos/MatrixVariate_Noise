@@ -13,7 +13,6 @@
 #'
 #' @return A list containing initial parameters.
 #' @noRd
-#' @include Init_Kmeans.R
 matrix_mixture_dbscan_init <- function(x_list, g, eps = NULL, minPts = NULL) {
   x_list <- matrix_validate_x_list(x_list)
   n <- length(x_list)

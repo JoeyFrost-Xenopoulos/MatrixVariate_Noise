@@ -9,7 +9,6 @@
 #'
 #' @return A list containing initial parameters.
 #' @noRd
-#' @include Init_Kmeans.R
 matrix_mixture_emrefine_init <- function(x_list, g, max_iter = 100) {
   params <- matrix_mixture_kmeans_init(x_list, g = g)
   n <- length(x_list)

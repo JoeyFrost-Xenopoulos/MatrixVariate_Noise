@@ -1,6 +1,6 @@
 # Ampharos
 
-<img src="data/mde_icon_2.png" align="right" width="140" alt="Drifloon hex sticker" />
+<img src="man/figures/mde_icon_2.png" align="right" width="140" alt="Drifloon hex sticker" />
 
 Matrix-variate Gaussian mixture models with explicit background noise
 components. Supports EM and MM estimation, four initialization schemes

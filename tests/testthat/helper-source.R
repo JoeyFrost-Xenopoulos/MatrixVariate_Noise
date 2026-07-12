@@ -8,15 +8,15 @@ if (!dir.exists(r_dir)) {
 }
 
 source_order <- c(
-  "Utils.R",
-  "Matrix_Base.R",
-  "Init_Whiten.R",
-  "Init_Kmeans.R",
-  "Init_DBSCAN.R",
-  "Init_EMRefine.R",
-  "Matrix_Noise_BR.R",
-  "KS_Score.R",
-  "Matrix_Noise.R"
+  "matrix_utils.R",
+  "matrix_base.R",
+  "matrix_init_whiten.R",
+  "matrix_init_kmeans.R",
+  "matrix_init_dbscan.R",
+  "matrix_init_emrefine.R",
+  "matrix_noise_br.R",
+  "ks_score.R",
+  "matrix_noise.R"
 )
 
 for (f in source_order) {

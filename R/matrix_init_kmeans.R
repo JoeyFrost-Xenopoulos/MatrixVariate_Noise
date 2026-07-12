@@ -6,7 +6,6 @@
 #'
 #' @return A list containing initial parameters.
 #' @noRd
-#' @include Init_Whiten.R
 matrix_mixture_kmeans_init <- function(x_list, g, nstart = 10) {
   x_list <- matrix_validate_x_list(x_list)
   n <- length(x_list)
