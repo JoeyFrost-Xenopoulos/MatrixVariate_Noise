@@ -69,7 +69,7 @@ mv_noise_fit <- function(x_list,
   # Automatic k selection for HC noise
   if (noise_type == "hc" && estimate_k) {
     if (verbose)
-      cat("Selecting optimal k using %s KS test...\n")
+      cat("Selecting optimal k using KS test...\n")
     
     # Generate dimension-aware grid if not provided
     if (is.null(k_grid)) {
@@ -330,7 +330,7 @@ mv_noise_fit_impl <- function(x_list,
     responsibilities <- mv_normalize_responsibilities(log_density)
     
     # Observed-data log-likelihood
-    current_loglik <- sum(apply(log_density, 1, mv_log_sum_exp))
+    current_loglik <- mv_loglik(log_density)
     loglik_trace <- c(loglik_trace, current_loglik)
     
     if (iteration > 1 &&
@@ -340,36 +340,9 @@ mv_noise_fit_impl <- function(x_list,
     
     # M-step
     component_responsibilities <- responsibilities[, seq_len(g), drop = FALSE]
-    component_sizes <- colSums(component_responsibilities)
-    noise_size <- sum(responsibilities[, g + 1])
-    new_params <- params
-    
-    for (component in seq_len(g)) {
-      if (component_sizes[component] <= 0) {
-        warning(sprintf(
-          "Component %d has zero effective membership at iteration %d; skipping update.",
-          component, iteration
-        ), call. = FALSE)
-        next
-      }
-      
-      weights <- component_responsibilities[, component]
-      weights_sum <- component_sizes[component]
-      
-      mean_matrix <- mv_weighted_mean(x_list, weights, weights_sum, r, p)
-      row_cov <- mv_update_row_cov(x_list, mean_matrix, params$V[[component]],
-                                       weights, weights_sum, r, p)
-      col_cov <- mv_update_col_cov(x_list, mean_matrix, row_cov,
-                                       weights, weights_sum, r, p)
-      
-      new_params$pi[component] <- weights_sum / n
-      new_params$M[[component]] <- mean_matrix
-      new_params$U[[component]] <- row_cov
-      new_params$V[[component]] <- col_cov
-    }
-    
-    # Update noise mixing proportion
-    new_params$pi[g + 1] <- noise_size / n
+    new_params <- mv_em_mstep(params, x_list, component_responsibilities, g, n, r, p,
+                              warn_zero = TRUE)
+    new_params$pi[g + 1] <- sum(responsibilities[, g + 1]) / n
     new_params$pi <- new_params$pi / sum(new_params$pi)
     params <- new_params
     

@@ -117,6 +117,75 @@ mv_normalize_responsibilities <- function(log_density) {
 	responsibilities
 }
 
+#' Observed-Data Log-Likelihood from Log-Densities
+#'
+#' Sums the row-wise log-sum-exp of a log-density matrix.
+#'
+#' @param log_density Matrix of log-densities (n x K).
+#' @return Numeric scalar: the observed-data log-likelihood.
+#' @noRd
+mv_loglik <- function(log_density) {
+	sum(apply(log_density, 1, mv_log_sum_exp))
+}
+
+#' Shared EM M-Step
+#'
+#' Updates the parameters of the first `g` Gaussian components from posterior
+#' responsibilities. Shared by `mv_mixture_fit`, `mv_noise_fit_impl`,
+#' `mv_short_em_burn_in`, and `mv_mixture_emrefine_init` so the per-component
+#' update logic lives in exactly one place.
+#'
+#' @param params Current parameter list (pi, M, U, V).
+#' @param x_list Validated list of matrices.
+#' @param responsibilities Posterior responsibility matrix (n x g) for the
+#'   Gaussian components only.
+#' @param g Number of Gaussian components.
+#' @param n Number of observations.
+#' @param r Number of rows.
+#' @param p Number of columns.
+#' @param warn_zero Logical: emit a warning when a component has zero effective
+#'   membership (used by full fits and emrefine, not by burn-in).
+#' @return A new parameter list with component pi, M, U, V updated. The global
+#'   mixing proportions are NOT renormalized here; callers renormalize over the
+#'   components they manage (g, or g + 1 for the noise model).
+#' @noRd
+mv_em_mstep <- function(params, x_list, responsibilities, g, n, r, p,
+                         warn_zero = FALSE) {
+	component_sizes <- colSums(responsibilities)
+	new_params <- params
+
+	for (component in seq_len(g)) {
+		if (component_sizes[component] <= 0) {
+			if (warn_zero) {
+				warning(
+					sprintf(
+						"Component %d has zero effective membership; skipping update.",
+						component
+					),
+					call. = FALSE
+				)
+			}
+			next
+		}
+
+		weights <- responsibilities[, component]
+		weights_sum <- component_sizes[component]
+
+		mean_matrix <- mv_weighted_mean(x_list, weights, weights_sum, r, p)
+		row_cov <- mv_update_row_cov(x_list, mean_matrix, params$V[[component]],
+		                              weights, weights_sum, r, p)
+		col_cov <- mv_update_col_cov(x_list, mean_matrix, row_cov,
+		                              weights, weights_sum, r, p)
+
+		new_params$pi[component] <- weights_sum / n
+		new_params$M[[component]] <- mean_matrix
+		new_params$U[[component]] <- row_cov
+		new_params$V[[component]] <- col_cov
+	}
+
+	new_params
+}
+
 #' Compute Weighted Mean Matrix (M-Step)
 #'
 #' @param x_list List of matrices.

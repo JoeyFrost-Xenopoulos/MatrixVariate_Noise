@@ -233,7 +233,7 @@ mv_mixture_fit <- function(x_list, g, max_iter = 100, tol = 1e-06,
 		responsibilities <- mv_normalize_responsibilities(log_density)
 
 		# Observed data log-likelihood
-		current_loglik <- sum(apply(log_density, 1, mv_log_sum_exp))
+		current_loglik <- mv_loglik(log_density)
 		loglik_trace <- c(loglik_trace, current_loglik)
 
 		if (iteration > 1 && abs(loglik_trace[iteration] - loglik_trace[iteration - 1]) < tol) {
@@ -241,33 +241,8 @@ mv_mixture_fit <- function(x_list, g, max_iter = 100, tol = 1e-06,
 		}
 
 		# M-step
-		component_sizes <- colSums(responsibilities)
-		new_params <- params
-
-		for (component in seq_len(g)) {
-			if (component_sizes[component] <= 0) {
-				warning(sprintf(
-					"Component %d has zero effective membership at iteration %d; skipping update.",
-					component, iteration
-				), call. = FALSE)
-				next
-			}
-
-			weights <- responsibilities[, component]
-			weights_sum <- component_sizes[component]
-
-			mean_matrix <- mv_weighted_mean(x_list, weights, weights_sum, r, p)
-			row_cov <- mv_update_row_cov(x_list, mean_matrix, params$V[[component]],
-			                                 weights, weights_sum, r, p)
-			col_cov <- mv_update_col_cov(x_list, mean_matrix, row_cov,
-			                                 weights, weights_sum, r, p)
-
-			new_params$pi[component] <- weights_sum / n
-			new_params$M[[component]] <- mean_matrix
-			new_params$U[[component]] <- row_cov
-			new_params$V[[component]] <- col_cov
-		}
-
+		new_params <- mv_em_mstep(params, x_list, responsibilities, g, n, r, p,
+		                          warn_zero = TRUE)
 		new_params$pi <- new_params$pi / sum(new_params$pi)
 		params <- new_params
 

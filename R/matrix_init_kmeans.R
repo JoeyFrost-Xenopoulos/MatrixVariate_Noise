@@ -98,7 +98,7 @@ mv_kmeanspp_centers <- function(x_matrix, g, n) {
 mv_initialization_loglik <- function(params, x_list, g) {
   n <- length(x_list)
   log_density <- mv_e_step_log_density(x_list, params, g, n)
-  sum(apply(log_density, 1, mv_log_sum_exp))
+  mv_loglik(log_density)
 }
 
 #' Short EM Burn-In for Initialization
@@ -127,29 +127,8 @@ mv_short_em_burn_in <- function(params, x_list, g, max_iter = 3L) {
   for (iteration in seq_len(max_iter)) {
     log_density <- mv_e_step_log_density(x_list, params, g, n)
     responsibilities <- mv_normalize_responsibilities(log_density)
-    component_sizes <- colSums(responsibilities)
-    new_params <- params
-
-    for (component in seq_len(g)) {
-      if (component_sizes[component] <= 0) {
-        next
-      }
-
-      weights <- responsibilities[, component]
-      weights_sum <- component_sizes[component]
-
-      mean_matrix <- mv_weighted_mean(x_list, weights, weights_sum, r, p)
-      row_cov <- mv_update_row_cov(x_list, mean_matrix, params$V[[component]],
-                                       weights, weights_sum, r, p)
-      col_cov <- mv_update_col_cov(x_list, mean_matrix, row_cov,
-                                       weights, weights_sum, r, p)
-
-      new_params$pi[component] <- weights_sum / n
-      new_params$M[[component]] <- mean_matrix
-      new_params$U[[component]] <- row_cov
-      new_params$V[[component]] <- col_cov
-    }
-
+    new_params <- mv_em_mstep(params, x_list, responsibilities, g, n, r, p,
+                              warn_zero = FALSE)
     if (sum(new_params$pi) > 0) {
       new_params$pi <- new_params$pi / sum(new_params$pi)
     }

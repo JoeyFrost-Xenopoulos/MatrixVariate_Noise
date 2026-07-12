@@ -22,33 +22,8 @@ mv_mixture_emrefine_init <- function(x_list, g, max_iter = 100) {
     log_density <- mv_e_step_log_density(x_list, params, g, n)
     responsibilities <- mv_normalize_responsibilities(log_density)
 
-    component_sizes <- colSums(responsibilities)
-    new_params <- params
-
-    for (component in seq_len(g)) {
-      if (component_sizes[component] <= 0) {
-        warning(sprintf(
-          "EM-refine initialization: component %d has zero effective membership at iteration %d; skipping update.",
-          component, iteration
-        ), call. = FALSE)
-        next
-      }
-
-      weights <- responsibilities[, component]
-      weights_sum <- component_sizes[component]
-
-      mean_matrix <- mv_weighted_mean(x_list, weights, weights_sum, r, p)
-      row_cov <- mv_update_row_cov(x_list, mean_matrix, params$V[[component]],
-                                       weights, weights_sum, r, p)
-      col_cov <- mv_update_col_cov(x_list, mean_matrix, row_cov,
-                                       weights, weights_sum, r, p)
-
-      new_params$pi[component] <- weights_sum / n
-      new_params$M[[component]] <- mean_matrix
-      new_params$U[[component]] <- row_cov
-      new_params$V[[component]] <- col_cov
-    }
-
+    new_params <- mv_em_mstep(params, x_list, responsibilities, g, n, r, p,
+                              warn_zero = TRUE)
     new_params$pi <- new_params$pi / sum(new_params$pi)
     params <- new_params
   }
