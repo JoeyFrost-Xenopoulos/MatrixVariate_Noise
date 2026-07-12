@@ -16,7 +16,7 @@
 #' 2. Attempts Cholesky decomposition with increasing jitter amounts
 #' 3. Returns the first successful candidate or errors if max_tries exceeded
 #'
-#' @keywords internal
+#' @noRd
 make_spd <- function(mat, jitter = 1e-8, max_tries = 8) {
 	if (!is.matrix(mat) || !is.numeric(mat)) {
 		stop("'mat' must be a numeric matrix.")
@@ -105,7 +105,7 @@ matrix_mahalanobis <- function(x, mean_matrix, row_cov, col_cov) {
 #' Computation uses Cholesky decomposition for numerical stability and to
 #' avoid explicit matrix inversion.
 #'
-#' @keywords internal
+#' @noRd
 matrix_variate_log_density <- function(x, mean_matrix, row_cov, col_cov) {
 	if (!is.matrix(x) || !is.numeric(x)) {
 		stop("'x' must be a numeric matrix.")

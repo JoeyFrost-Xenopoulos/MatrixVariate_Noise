@@ -272,6 +272,12 @@ matrix_variate_noise_fit <- function(x_list,
   )
 }
 
+#' Core Matrix-Variate Noise Mixture Fit
+#'
+#' Internal implementation of the EM loop for the matrix-variate mixture with a
+#' noise component. Called by `matrix_variate_noise_fit()`.
+#'
+#' @noRd
 matrix_variate_noise_fit_impl <- function(x_list,
                                           g,
                                           noise_type = c("hc", "br"),

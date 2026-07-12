@@ -8,7 +8,7 @@
 #' @param x_list List of matrices used for fitting.
 #'
 #' @return A list with `statistic`, `p.value`, `n_used`.
-#' @keywords internal
+#' @noRd
 matrix_noise_ks_score <- function(fit, x_list) {
   
   if (is.null(fit$cluster) || is.null(fit$M) ||
@@ -67,7 +67,7 @@ matrix_noise_ks_score <- function(fit, x_list) {
 #' @param x_list List of matrices used for fitting.
 #' @param n_points Integer: number of points in the grid.
 #' @return Numeric vector of candidate noise_k values.
-#' @keywords internal
+#' @noRd
 matrix_noise_hc_heuristic_grid <- function(x_list, n_points = 30) {
   x_list <- matrix_validate_x_list(x_list)
   

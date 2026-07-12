@@ -5,7 +5,7 @@
 #'
 #' @return A list with the vectorized points, the convex hull object, and the
 #'   log-volume of the hull.
-#' @keywords internal
+#' @noRd
 matrix_noise_convex_hull_support <- function(x_list, jitter = 1e-08) {
 	x_list <- matrix_validate_x_list(x_list)
 	noise_matrix <- do.call(rbind, lapply(x_list, function(x) as.vector(x)))
@@ -45,7 +45,7 @@ matrix_noise_convex_hull_support <- function(x_list, jitter = 1e-08) {
 #' @param support Convex-hull support from `matrix_noise_convex_hull_support()`.
 #'
 #' @return Numeric vector of log-densities.
-#' @keywords internal
+#' @noRd
 matrix_noise_br_log_density <- function(x_list, support) {
 	vapply(x_list, function(x) {
 		vec_x <- as.vector(x)

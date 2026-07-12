@@ -12,7 +12,7 @@
 #'   dimension-aware heuristic is used.
 #'
 #' @return A list containing initial parameters.
-#' @keywords internal
+#' @noRd
 #' @include Init_Kmeans.R
 matrix_mixture_dbscan_init <- function(x_list, g, eps = NULL, minPts = NULL) {
   x_list <- matrix_validate_x_list(x_list)
@@ -110,7 +110,7 @@ matrix_mixture_dbscan_init <- function(x_list, g, eps = NULL, minPts = NULL) {
 #' @param minPts Minimum neighborhood size.
 #'
 #' @return Numeric epsilon value.
-#' @keywords internal
+#' @noRd
 matrix_dbscan_heuristic_eps <- function(x_matrix, minPts) {
   n <- nrow(x_matrix)
   dist_matrix <- as.matrix(stats::dist(x_matrix))
@@ -138,7 +138,7 @@ matrix_dbscan_heuristic_eps <- function(x_matrix, minPts) {
 #' @param minPts Minimum neighborhood size.
 #'
 #' @return Integer vector of cluster assignments (0 = noise).
-#' @keywords internal
+#' @noRd
 matrix_dbscan_cluster_assignments <- function(x_matrix, eps, minPts) {
   n <- nrow(x_matrix)
   dist_matrix <- as.matrix(stats::dist(x_matrix))

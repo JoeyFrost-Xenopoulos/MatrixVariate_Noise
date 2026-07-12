@@ -5,7 +5,7 @@
 #' @param nstart Integer: number of independent starts (default: 10)
 #'
 #' @return A list containing initial parameters.
-#' @keywords internal
+#' @noRd
 #' @include Init_Whiten.R
 matrix_mixture_kmeans_init <- function(x_list, g, nstart = 10) {
   x_list <- matrix_validate_x_list(x_list)
@@ -59,7 +59,7 @@ matrix_mixture_kmeans_init <- function(x_list, g, nstart = 10) {
 #' @param n Number of observations.
 #'
 #' @return A numeric matrix (g × d) of selected centers.
-#' @keywords internal
+#' @noRd
 matrix_kmeanspp_centers <- function(x_matrix, g, n) {
   centers_idx <- integer(g)
   centers_idx[1] <- sample.int(n, 1)
@@ -95,7 +95,7 @@ matrix_kmeanspp_centers <- function(x_matrix, g, n) {
 #' @param g Number of components.
 #'
 #' @return Numeric log-likelihood.
-#' @keywords internal
+#' @noRd
 matrix_initialization_loglik <- function(params, x_list, g) {
   n <- length(x_list)
   log_density <- matrix_e_step_log_density(x_list, params, g, n)
@@ -113,7 +113,7 @@ matrix_initialization_loglik <- function(params, x_list, g) {
 #' @param max_iter Maximum iterations (default: 3).
 #'
 #' @return Refined parameter list with cluster assignments.
-#' @keywords internal
+#' @noRd
 matrix_short_em_burn_in <- function(params, x_list, g, max_iter = 3L) {
   x_list <- matrix_validate_x_list(x_list)
   n <- length(x_list)

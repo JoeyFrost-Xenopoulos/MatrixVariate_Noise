@@ -8,7 +8,7 @@
 #' @param max_iter Integer: maximum EM iterations (default: 100)
 #'
 #' @return A list containing initial parameters.
-#' @keywords internal
+#' @noRd
 #' @include Init_Kmeans.R
 matrix_mixture_emrefine_init <- function(x_list, g, max_iter = 100) {
   params <- matrix_mixture_kmeans_init(x_list, g = g)
