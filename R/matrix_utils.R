@@ -62,16 +62,20 @@ mv_log_sum_exp <- function(values) {
 #' @param g Number of components.
 #' @param init One of "kmeans", "emrefine", or "dbscan".
 #' @param nstart Number of k-means restarts (used only for kmeans init).
+#' @param use_parallel Logical: enable parallel nstart restarts for kmeans init.
+#' @param n_cores Integer: number of parallel workers (NULL = auto).
 #' @return Initial parameter list (pi, M, U, V, cluster).
 #' @noRd
-mv_init_dispatch <- function(x_list, g, init, nstart = 10) {
-	if (init == "dbscan") {
-		mv_mixture_dbscan_init(x_list, g = g)
-	} else if (init == "emrefine") {
-		mv_mixture_emrefine_init(x_list, g = g)
-	} else {
-		mv_mixture_kmeans_init(x_list, g = g, nstart = nstart)
-	}
+mv_init_dispatch <- function(x_list, g, init, nstart = 10,
+                             use_parallel = FALSE, n_cores = NULL) {
+  if (init == "dbscan") {
+    mv_mixture_dbscan_init(x_list, g = g)
+  } else if (init == "emrefine") {
+    mv_mixture_emrefine_init(x_list, g = g)
+  } else {
+    mv_mixture_kmeans_init(x_list, g = g, nstart = nstart,
+                           use_parallel = use_parallel, n_cores = n_cores)
+  }
 }
 
 #' Compute E-Step Log-Densities for Gaussian Components

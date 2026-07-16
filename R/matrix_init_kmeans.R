@@ -3,10 +3,15 @@
 #' @param x_list A list of numeric matrices, each of dimension r × p
 #' @param g Integer: number of mixture components
 #' @param nstart Integer: number of independent starts (default: 10)
+#' @param use_parallel Logical: if `TRUE`, evaluate the `nstart` restarts in
+#'   parallel (future / multisession workers). `FALSE` is the sequential
+#'   fallback used for debugging.
+#' @param n_cores Integer: number of parallel workers (NULL = auto).
 #'
 #' @return A list containing initial parameters.
 #' @noRd
-mv_mixture_kmeans_init <- function(x_list, g, nstart = 10) {
+mv_mixture_kmeans_init <- function(x_list, g, nstart = 10,
+                                   use_parallel = FALSE, n_cores = NULL) {
   x_list <- mv_validate_x_list(x_list)
   n <- length(x_list)
 
@@ -18,10 +23,9 @@ mv_mixture_kmeans_init <- function(x_list, g, nstart = 10) {
   init_basis <- mv_init_whitening_basis(x_list)
   x_matrix <- mv_whitened_vectorized_matrices(x_list, init_basis)
 
-  best_fit <- NULL
-  best_score <- -Inf
-
-  for (restart in seq_len(nstart)) {
+  # One independent restart: seed k-means++, score via short EM burn-in. Each
+  # restart is fully self-contained so it can run in its own worker.
+  run_one_restart <- function(restart) {
     centers <- mv_kmeanspp_centers(x_matrix, g, n)
     fit <- tryCatch(
       kmeans(x_matrix, centers = centers, nstart = 1),
@@ -29,16 +33,35 @@ mv_mixture_kmeans_init <- function(x_list, g, nstart = 10) {
     )
 
     if (is.null(fit)) {
-      next
+      return(list(fit = NULL, score = -Inf))
     }
 
     candidate <- mv_compute_init_params(x_list, g, fit$cluster, init_method = "K-means")
     candidate <- mv_short_em_burn_in(candidate, x_list, g, max_iter = 3L)
     score <- mv_initialization_loglik(candidate, x_list, g)
 
-    if (is.finite(score) && score > best_score) {
-      best_score <- score
-      best_fit <- candidate
+    list(fit = candidate, score = score)
+  }
+
+  config <- mv_parallel_config(
+    use_parallel = use_parallel,
+    n_cores = n_cores,
+    requested = "restart",
+    n_tasks = nstart
+  )
+
+  if (config$active) {
+    results <- mv_future_lapply(seq_len(nstart), run_one_restart, config)
+  } else {
+    results <- lapply(seq_len(nstart), run_one_restart)
+  }
+
+  best_fit <- NULL
+  best_score <- -Inf
+  for (res in results) {
+    if (is.finite(res$score) && res$score > best_score) {
+      best_score <- res$score
+      best_fit <- res$fit
     }
   }
 

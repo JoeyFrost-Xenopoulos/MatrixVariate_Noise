@@ -32,7 +32,8 @@ fit_hc <- Ampharos::mv_noise_fit(x_list, g = 2, noise_type = "hc",
                                              nstart = 10,
                                              init = "kmeans",
                                              estimate_k = TRUE,
-                                             verbose = TRUE)
+                                             verbose = TRUE,
+                                             use_parallel = TRUE)
 
 cat('HC fit mixing proportions:\n')
 print(fit_hc$pi)

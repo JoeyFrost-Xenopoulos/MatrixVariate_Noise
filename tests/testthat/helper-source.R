@@ -16,6 +16,7 @@ source_order <- c(
   "matrix_init_emrefine.R",
   "matrix_noise_br.R",
   "ks_score.R",
+  "matrix_parallel.R",
   "matrix_noise.R"
 )
 

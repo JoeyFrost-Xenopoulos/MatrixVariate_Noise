@@ -158,6 +158,9 @@ mv_log_density <- function(x, mean_matrix, row_cov, col_cov) {
 #' @param nstart Integer: number of k-means restarts for initialization (default: 10). Ignored unless `init = "kmeans"`.
 #' @param init Character: initialization scheme. `"kmeans"` (default), `"emrefine"`, or `"dbscan"`.
 #' @param verbose Logical: print iteration progress (default: FALSE)
+#' @param use_parallel Logical: if `TRUE`, run the k-means `nstart` restarts in
+#'   parallel via the **future** package. `FALSE` (default) runs sequentially.
+#' @param n_cores Integer: number of parallel workers (NULL = auto).
 #'
 #' @return A list containing:
 #' - `pi`: numeric vector of length g with final mixing proportions.
@@ -203,7 +206,8 @@ mv_log_density <- function(x, mean_matrix, row_cov, col_cov) {
 #' @export
 mv_mixture_fit <- function(x_list, g, max_iter = 100, tol = 1e-06,
 																			 nstart = 10, init = c("kmeans", "emrefine", "dbscan"),
-																			 verbose = FALSE) {
+																			 verbose = FALSE, use_parallel = FALSE,
+																			 n_cores = NULL) {
 	init <- match.arg(init)
 	x_list <- mv_validate_x_list(x_list)
 	n <- length(x_list)
@@ -222,7 +226,8 @@ mv_mixture_fit <- function(x_list, g, max_iter = 100, tol = 1e-06,
 		))
 	}
 
-	params <- mv_init_dispatch(x_list, g, init, nstart)
+	params <- mv_init_dispatch(x_list, g, init, nstart,
+	                          use_parallel = use_parallel, n_cores = n_cores)
 	loglik_trace <- numeric(0)
 	responsibilities <- matrix(0, n, g)
 
