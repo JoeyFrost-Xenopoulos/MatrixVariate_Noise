@@ -4,11 +4,21 @@
 ## kmeans initialization with automatic k selection (estimate_k = TRUE,
 ## no k_grid supplied -> adaptive heuristic grid + nstart restarts).
 
+## Run (after load_all in the package root, or an installed library):
+##   devtools::load_all()
+##   source("scripts/benchmark_ncores_mv_noise_fit.R")
+
 suppressPackageStartupMessages({
   library(future)
   library(future.apply)
-  #library(Ampharos)
 })
+
+## Ensure the Ampharos namespace is available (via devtools::load_all() or an
+## installed library() call) without forcing a double-load.
+if (!requireNamespace("Ampharos", quietly = TRUE)) {
+  stop("Ampharos is not available. Run devtools::load_all() in the package root",
+       " or install.packages() / library(Ampharos) first.")
+}
 
 set.seed(20260716)
 
