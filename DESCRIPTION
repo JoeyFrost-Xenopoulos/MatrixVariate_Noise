@@ -1,6 +1,6 @@
 Package: Ampharos
 Title: Matrix-Variate Clustering
-Version: 0.0.0.9000
+Version: 0.0.1
 Authors@R: 
     person("Joey", "Frost-Xenopoulos", , "joeyfrostxenopoulos@trentu.ca", role = c("aut", "cre"))
 Description: Matrix-variate clustering algorithms with noise. 

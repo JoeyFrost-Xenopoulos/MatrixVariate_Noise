@@ -7,7 +7,7 @@
 suppressPackageStartupMessages({
   library(future)
   library(future.apply)
-  library(Ampharos)
+  #library(Ampharos)
 })
 
 set.seed(20260716)
