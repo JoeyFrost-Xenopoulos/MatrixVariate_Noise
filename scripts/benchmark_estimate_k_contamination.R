@@ -19,12 +19,13 @@
 ##   devtools::load_all()
 ##   source("scripts/benchmark_estimate_k_contamination.R")
 
-## Ensure the Ampharos namespace is available (via devtools::load_all() or an
-## installed library() call) without forcing a double-load.
+## Ensure the Ampharos namespace is attached so bare `mv_noise_fit` resolves,
+## whether it was brought in by devtools::load_all() or an installed library().
 if (!requireNamespace("Ampharos", quietly = TRUE)) {
   stop("Ampharos is not available. Run devtools::load_all() in the package root",
        " or install.packages() / library(Ampharos) first.")
 }
+suppressPackageStartupMessages(library("Ampharos"))
 
 set.seed(20260716)
 
@@ -34,7 +35,7 @@ g <- 2                               # number of true Gaussian components
 n_clean_per_group <- 20             # clean matrices per true component
 max_iter <- 40
 nstart <- 20
-init_methods <- c("kmeans")         # initialization strategies to sweep
+init_methods <- c("kmeans", "dbscan")         # initialization strategies to sweep
                                   # (add "emrefine", "dbscan" if desired)
 reps <- 4                           # replicate datasets per scenario
 
@@ -174,6 +175,11 @@ cat(sprintf(
 ))
 
 results <- list()
+details <- data.frame(
+  init = character(0), contamination = numeric(0), rep = integer(0),
+  auto_k = numeric(0), auto_ok = logical(0), recovered_k = numeric(0),
+  stringsAsFactors = FALSE
+)
 
 for (init in init_methods) {
   for (cl in contamination_levels) {
@@ -190,6 +196,13 @@ for (init in init_methods) {
       auto_ks <- c(auto_ks, out$auto_k)
       if (out$auto_ok) auto_success <- auto_success + 1L
       if (!is.na(out$found_k)) found_ks <- c(found_ks, out$found_k)
+
+      details <- rbind(details, data.frame(
+        init = init, contamination = cl, rep = rep_i,
+        auto_k = out$auto_k, auto_ok = out$auto_ok,
+        recovered_k = if (is.na(out$found_k)) NA_real_ else out$found_k,
+        stringsAsFactors = FALSE
+      ))
 
       cat(sprintf(
         "  rep %d: auto_k=%.3e auto_ok=%s recovered_k=%s\n",
@@ -251,5 +264,20 @@ for (nm in names(results)) {
   ))
 }
 print(summ, row.names = FALSE)
+
+## ============================================================ write CSVs
+## Save both the per-replicate detail and the per-scenario summary to CSV so the
+## results can be inspected / plotted outside R.
+out_dir <- file.path("scripts", "benchmark_output")
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+detail_csv <- file.path(out_dir, "estimate_k_contamination_detail.csv")
+summary_csv <- file.path(out_dir, "estimate_k_contamination_summary.csv")
+
+utils::write.csv(details, detail_csv, row.names = FALSE)
+utils::write.csv(summ, summary_csv, row.names = FALSE)
+
+cat(sprintf("\nWrote detail  -> %s\n", detail_csv))
+cat(sprintf("Wrote summary -> %s\n", summary_csv))
 
 cat("\nDone.\n")
