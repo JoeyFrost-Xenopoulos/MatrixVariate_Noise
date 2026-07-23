@@ -300,7 +300,15 @@ mv_hc_benchmark_get_k_grid <- function(x_list, k_grid = NULL) {
   mv_hc_benchmark_default_k_grid(x_list)
 }
 
-mv_hc_benchmark_collapse_ranges <- function(k_values, indices) {
+mv_hc_benchmark_collapse_ranges <- function(k_values = NULL, indices, k_grid = NULL) {
+  if (is.null(k_values) && !is.null(k_grid)) {
+    k_values <- k_grid
+  }
+
+  if (is.null(k_values)) {
+    stop("Either 'k_values' or 'k_grid' must be provided.")
+  }
+
   if (!length(indices)) {
     return(data.frame(
       k_min = numeric(0),
@@ -527,7 +535,7 @@ mv_hc_benchmark_exhaustive_k <- function(x_list,
     score_values <- per_k_table[[select_by]]
     best_value <- max(score_values, na.rm = TRUE)
     best_indices <- which(abs(score_values - best_value) <= sqrt(.Machine$double.eps))
-    best_ranges <- mv_hc_benchmark_collapse_ranges(k_grid = per_k_table$k, indices = best_indices)
+    best_ranges <- mv_hc_benchmark_collapse_ranges(k_values = per_k_table$k, indices = best_indices)
 
     all_results[[initialization]] <- list(
       results = per_k_table,
