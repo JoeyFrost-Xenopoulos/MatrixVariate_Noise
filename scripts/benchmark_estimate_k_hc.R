@@ -544,3 +544,85 @@ mv_hc_benchmark_run <- function(n_per_group,
     exhaustive = exhaustive_results
   )
 }
+
+mv_hc_benchmark_save_results <- function(results,
+                                        output_dir,
+                                        prefix = "hc_benchmark") {
+  if (missing(results) || is.null(results)) {
+    stop("'results' must be a benchmark result object.")
+  }
+
+  if (missing(output_dir) || !nzchar(output_dir)) {
+    stop("'output_dir' must be a non-empty path.")
+  }
+
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+  auto_path <- file.path(output_dir, paste0(prefix, "_auto_selection.csv"))
+  exhaustive_path <- file.path(output_dir, paste0(prefix, "_exhaustive.csv"))
+  ranges_path <- file.path(output_dir, paste0(prefix, "_best_k_ranges.csv"))
+
+  if (is.data.frame(results)) {
+    utils::write.csv(results, auto_path, row.names = FALSE)
+    return(invisible(list(auto_selection = auto_path)))
+  }
+
+  if (!is.list(results) || is.null(results$auto_selection) || is.null(results$exhaustive)) {
+    stop("'results' must be a data frame or a benchmark run object returned by mv_hc_benchmark_run().")
+  }
+
+  utils::write.csv(results$auto_selection, auto_path, row.names = FALSE)
+
+  exhaustive_rows <- list()
+  range_rows <- list()
+  row_index <- 1L
+
+  for (run_id in seq_along(results$exhaustive)) {
+    run_result <- results$exhaustive[[run_id]]
+
+    if (!is.list(run_result) || is.null(run_result)) {
+      next
+    }
+
+    for (initialization in names(run_result)) {
+      init_result <- run_result[[initialization]]
+
+      if (is.null(init_result$results)) {
+        next
+      }
+
+      init_table <- init_result$results
+      init_table$run_id <- run_id
+      init_table$initialization <- initialization
+      init_table$select_by <- init_result$select_by
+      init_table$best_value <- init_result$best_value
+      exhaustive_rows[[row_index]] <- init_table
+      row_index <- row_index + 1L
+
+      if (!is.null(init_result$best_k_ranges) && nrow(init_result$best_k_ranges) > 0) {
+        best_ranges <- init_result$best_k_ranges
+        best_ranges$run_id <- run_id
+        best_ranges$initialization <- initialization
+        best_ranges$select_by <- init_result$select_by
+        best_ranges$best_value <- init_result$best_value
+        range_rows[[length(range_rows) + 1L]] <- best_ranges
+      }
+    }
+  }
+
+  if (length(exhaustive_rows) > 0) {
+    exhaustive_table <- do.call(rbind, exhaustive_rows)
+    utils::write.csv(exhaustive_table, exhaustive_path, row.names = FALSE)
+  }
+
+  if (length(range_rows) > 0) {
+    ranges_table <- do.call(rbind, range_rows)
+    utils::write.csv(ranges_table, ranges_path, row.names = FALSE)
+  }
+
+  invisible(list(
+    auto_selection = auto_path,
+    exhaustive = if (length(exhaustive_rows) > 0) exhaustive_path else NULL,
+    best_k_ranges = if (length(range_rows) > 0) ranges_path else NULL
+  ))
+}
