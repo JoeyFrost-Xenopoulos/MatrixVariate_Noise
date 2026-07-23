@@ -533,9 +533,21 @@ mv_hc_benchmark_exhaustive_k <- function(x_list,
 
     per_k_table <- do.call(rbind, per_k_results)
     score_values <- per_k_table[[select_by]]
-    best_value <- max(score_values, na.rm = TRUE)
-    best_indices <- which(abs(score_values - best_value) <= sqrt(.Machine$double.eps))
-    best_ranges <- mv_hc_benchmark_collapse_ranges(k_values = per_k_table$k, indices = best_indices)
+    finite_scores <- is.finite(score_values)
+
+    if (!any(finite_scores)) {
+      best_value <- NA_real_
+      best_indices <- integer(0)
+      best_ranges <- data.frame(
+        k_min = numeric(0),
+        k_max = numeric(0),
+        n_values = integer(0)
+      )
+    } else {
+      best_value <- max(score_values[finite_scores])
+      best_indices <- which(finite_scores & abs(score_values - best_value) <= sqrt(.Machine$double.eps))
+      best_ranges <- mv_hc_benchmark_collapse_ranges(k_values = per_k_table$k, indices = best_indices)
+    }
 
     all_results[[initialization]] <- list(
       results = per_k_table,
