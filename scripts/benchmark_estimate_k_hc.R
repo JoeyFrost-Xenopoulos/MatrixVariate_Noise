@@ -257,9 +257,7 @@ mv_hc_benchmark_score <- function(predicted, truth, g = max(truth, predicted, na
   )
 }
 
-mv_hc_benchmark_default_k_grid <- function(x_list, n_points = 30L) {
-  row_count <- nrow(x_list[[1]])
-  col_count <- ncol(x_list[[1]])
+mv_hc_benchmark_grid_for_dims <- function(row_count, col_count, n_points = 60L) {
   dimension <- row_count * col_count
 
   if (!is.finite(dimension) || dimension <= 0) {
@@ -267,7 +265,7 @@ mv_hc_benchmark_default_k_grid <- function(x_list, n_points = 30L) {
   }
 
   center_log10 <- -0.75 * dimension
-  half_width <- max(6, ceiling(dimension / 2))
+  half_width <- max(8, ceiling(dimension))
   lower_log10 <- max(log10(.Machine$double.xmin), center_log10 - half_width)
   upper_log10 <- center_log10 + half_width
 
@@ -279,6 +277,27 @@ mv_hc_benchmark_default_k_grid <- function(x_list, n_points = 30L) {
   }
 
   sort(unique(grid))
+}
+
+mv_hc_benchmark_default_k_grid <- function(x_list, n_points = 60L) {
+  mv_hc_benchmark_grid_for_dims(
+    row_count = nrow(x_list[[1]]),
+    col_count = ncol(x_list[[1]]),
+    n_points = n_points
+  )
+}
+
+mv_hc_benchmark_get_k_grid <- function(x_list, k_grid = NULL) {
+  if (!is.null(k_grid)) {
+    k_grid <- sort(unique(as.numeric(k_grid)))
+    k_grid <- k_grid[is.finite(k_grid) & k_grid > 0]
+
+    if (length(k_grid) >= 2L) {
+      return(k_grid)
+    }
+  }
+
+  mv_hc_benchmark_default_k_grid(x_list)
 }
 
 mv_hc_benchmark_collapse_ranges <- function(k_values, indices) {
@@ -323,32 +342,63 @@ mv_hc_benchmark_estimate_k <- function(x_list,
                                        use_parallel = FALSE,
                                        n_cores = NULL,
                                        verbose = FALSE) {
-  if (is.null(k_grid)) {
-    k_grid <- mv_hc_benchmark_default_k_grid(x_list)
-  }
+  k_grid <- mv_hc_benchmark_get_k_grid(x_list, k_grid)
 
   results <- vector("list", length(initializations))
 
   for (initialization_index in seq_along(initializations)) {
     initialization <- initializations[initialization_index]
+    fit_error <- NULL
     fit_time <- system.time({
-      fit <- mv_noise_fit(
-        x_list = x_list,
-        g = g,
-        noise_type = "hc",
-        max_iter = max_iter,
-        tol = tol,
-        nstart = nstart,
-        estimate_k = TRUE,
-        k_grid = k_grid,
-        adaptive_grid = adaptive_grid,
-        noise_pi_init = noise_pi_init,
-        init = initialization,
-        verbose = verbose,
-        use_parallel = use_parallel,
-        n_cores = n_cores
+      fit <- tryCatch(
+        mv_noise_fit(
+          x_list = x_list,
+          g = g,
+          noise_type = "hc",
+          max_iter = max_iter,
+          tol = tol,
+          nstart = nstart,
+          estimate_k = TRUE,
+          k_grid = k_grid,
+          adaptive_grid = adaptive_grid,
+          noise_pi_init = noise_pi_init,
+          init = initialization,
+          verbose = verbose,
+          use_parallel = use_parallel,
+          n_cores = n_cores
+        ),
+        error = function(e) {
+          fit_error <<- conditionMessage(e)
+          NULL
+        }
       )
     })
+
+    if (is.null(fit)) {
+      results[[initialization_index]] <- data.frame(
+        initialization = initialization,
+        contamination = contamination,
+        selected_k = NA_real_,
+        overall_accuracy = NA_real_,
+        balanced_accuracy = NA_real_,
+        non_noise_accuracy = NA_real_,
+        noise_accuracy = NA_real_,
+        noise_precision = NA_real_,
+        noise_recall = NA_real_,
+        noise_f1 = NA_real_,
+        logLik = NA_real_,
+        iterations = NA_integer_,
+        converged = FALSE,
+        elapsed_sec = unname(fit_time["elapsed"]),
+        status = "failed",
+        error_message = fit_error,
+        k_grid_n = length(k_grid),
+        k_grid_min = min(k_grid),
+        k_grid_max = max(k_grid),
+        stringsAsFactors = FALSE
+      )
+      next
+    }
 
     score <- mv_hc_benchmark_score(fit$cluster, truth, g = g)
     selected_k <- fit$k_selection$selected_k
@@ -368,6 +418,11 @@ mv_hc_benchmark_estimate_k <- function(x_list,
       iterations = fit$iterations,
       converged = fit$converged,
       elapsed_sec = unname(fit_time["elapsed"]),
+      status = "ok",
+      error_message = NA_character_,
+      k_grid_n = length(k_grid),
+      k_grid_min = min(k_grid),
+      k_grid_max = max(k_grid),
       stringsAsFactors = FALSE
     )
   }
@@ -390,9 +445,7 @@ mv_hc_benchmark_exhaustive_k <- function(x_list,
                                          verbose = FALSE) {
   select_by <- match.arg(select_by)
 
-  if (is.null(k_grid)) {
-    k_grid <- mv_hc_benchmark_default_k_grid(x_list)
-  }
+  k_grid <- mv_hc_benchmark_get_k_grid(x_list, k_grid)
 
   all_results <- list()
 
@@ -401,23 +454,52 @@ mv_hc_benchmark_exhaustive_k <- function(x_list,
 
     for (k_index in seq_along(k_grid)) {
       candidate_k <- k_grid[k_index]
+      fit_error <- NULL
       fit_time <- system.time({
-        fit <- mv_noise_fit(
-          x_list = x_list,
-          g = g,
-          noise_type = "hc",
-          max_iter = max_iter,
-          tol = tol,
-          nstart = nstart,
-          estimate_k = FALSE,
-          noise_k = candidate_k,
-          noise_pi_init = noise_pi_init,
-          init = initialization,
-          verbose = verbose,
-          use_parallel = use_parallel,
-          n_cores = n_cores
+        fit <- tryCatch(
+          mv_noise_fit(
+            x_list = x_list,
+            g = g,
+            noise_type = "hc",
+            max_iter = max_iter,
+            tol = tol,
+            nstart = nstart,
+            estimate_k = FALSE,
+            noise_k = candidate_k,
+            noise_pi_init = noise_pi_init,
+            init = initialization,
+            verbose = verbose,
+            use_parallel = use_parallel,
+            n_cores = n_cores
+          ),
+          error = function(e) {
+            fit_error <<- conditionMessage(e)
+            NULL
+          }
         )
       })
+
+      if (is.null(fit)) {
+        per_k_results[[k_index]] <- data.frame(
+          initialization = initialization,
+          k = candidate_k,
+          overall_accuracy = NA_real_,
+          balanced_accuracy = NA_real_,
+          non_noise_accuracy = NA_real_,
+          noise_accuracy = NA_real_,
+          noise_precision = NA_real_,
+          noise_recall = NA_real_,
+          noise_f1 = NA_real_,
+          logLik = NA_real_,
+          iterations = NA_integer_,
+          converged = FALSE,
+          elapsed_sec = unname(fit_time["elapsed"]),
+          status = "failed",
+          error_message = fit_error,
+          stringsAsFactors = FALSE
+        )
+        next
+      }
 
       score <- mv_hc_benchmark_score(fit$cluster, truth, g = g)
 
@@ -435,6 +517,8 @@ mv_hc_benchmark_exhaustive_k <- function(x_list,
         iterations = fit$iterations,
         converged = fit$converged,
         elapsed_sec = unname(fit_time["elapsed"]),
+        status = "ok",
+        error_message = NA_character_,
         stringsAsFactors = FALSE
       )
     }
@@ -481,6 +565,22 @@ mv_hc_benchmark_run <- function(n_per_group,
 
   if (!is.null(seed)) {
     set.seed(seed)
+  }
+
+  benchmark_means <- if (is.null(component_means)) {
+    mv_hc_benchmark_default_means(g = g)
+  } else {
+    component_means
+  }
+
+  if (is.null(k_grid)) {
+    k_grid <- mv_hc_benchmark_grid_for_dims(
+      row_count = nrow(benchmark_means[[1]]),
+      col_count = ncol(benchmark_means[[1]]),
+      n_points = 60L
+    )
+  } else {
+    k_grid <- mv_hc_benchmark_get_k_grid(benchmark_means, k_grid)
   }
 
   auto_selection_results <- list()

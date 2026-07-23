@@ -14,6 +14,12 @@ benchmark_output_dir <- file.path(
   paste0("hc_benchmark_", format(Sys.time(), "%Y%m%d_%H%M%S"))
 )
 
+benchmark_k_grid <- mv_hc_benchmark_grid_for_dims(
+  row_count = 2,
+  col_count = 3,
+  n_points = 120L
+)
+
 benchmark_run <- mv_hc_benchmark_run(
   n_per_group = c(10, 10),
   contamination_levels = c(0, 0.05, 0.10, 0.20),
@@ -28,6 +34,7 @@ benchmark_run <- mv_hc_benchmark_run(
   tol = 1e-06,
   nstart = 25,
   adaptive_grid = TRUE,
+  k_grid = benchmark_k_grid,
   noise_pi_init = 0.05,
   use_parallel = FALSE,
   seed = 123,
