@@ -3,8 +3,7 @@
 <img src="man/figures/mde_icon_2.png" align="right" width="140" alt="Drifloon hex sticker" />
 
 Matrix-variate Gaussian mixture models with explicit background noise
-components. Supports EM and MM estimation, four initialization schemes
-(k-means, k-means++, random, emrefine), two noise types (HC improper constant, BR
+components. Supports multiple initalization schemes, two noise types (HC improper constant, BR
 convex-hull uniform), and automatic noise-level selection via KS
 goodness-of-fit.
 
@@ -31,8 +30,6 @@ All fitting functions accept an `init` argument:
 
 - **`"kmeans++"`** — K-means++ seeding (Arthur & Vassilvitskii, 2007): selects initial centers via D^2 weighting for better spread, then runs k-means. More robust than plain k-means on overlapping clusters.
 - **`"emrefine"`** — Starts with random assignment, then runs a few EM iterations to refine. Balances speed and quality.
-
-See `scripts/compare_initializations.R` for a benchmark comparing these schemes.
 
 ## Noise Types
 
