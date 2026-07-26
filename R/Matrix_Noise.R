@@ -366,6 +366,16 @@ mv_noise_fit_impl <- function(x_list,
     mv_noise_br_log_density(x_list, noise_support)
   }
   
+  if (verbose) {
+    noise_label <- if (noise_type == "hc") {
+      sprintf("HC (k=%.4e)", noise_k)
+    } else {
+      sprintf("BR convex-hull")
+    }
+    message(sprintf("Fitting: %d components + %s noise, max_iter=%d",
+                    g, noise_label, max_iter))
+  }
+  
   for (iteration in seq_len(max_iter)) {
     # E-step: Gaussian components
     log_density_gauss <- mv_e_step_log_density(x_list, params, g, n)
@@ -401,11 +411,17 @@ mv_noise_fit_impl <- function(x_list,
     }
   }
   
-  # Hard assignments pick the component with maximum posterior; map noise -> 0
   cluster_membership <- max.col(responsibilities, ties.method = "first")
   cluster_membership[cluster_membership == g + 1] <- 0L
   
-  list(
+  iterations <- length(loglik_trace)
+  
+  if (verbose) {
+    message(sprintf("Converged in %d iterations (max_iter=%d).",
+                    iterations, max_iter))
+  }
+  
+  structure(list(
     pi = params$pi,
     M = params$M,
     U = params$U,
@@ -413,8 +429,8 @@ mv_noise_fit_impl <- function(x_list,
     z = responsibilities,
     cluster = cluster_membership,
     logLik = loglik_trace,
-    iterations = length(loglik_trace),
-    converged = length(loglik_trace) < max_iter,
+    iterations = iterations,
+    converged = iterations < max_iter,
     noise = list(
       type = noise_type,
       pi = params$pi[g + 1],
@@ -424,5 +440,5 @@ mv_noise_fit_impl <- function(x_list,
         NA_real_,
       hull = noise_support
     )
-  )
+  ), class = "mv_noise_fit")
 }

@@ -230,6 +230,10 @@ mv_mixture_fit <- function(x_list, g, max_iter = 100, tol = 1e-06,
 	                          use_parallel = use_parallel, n_cores = n_cores)
 	loglik_trace <- numeric(0)
 	responsibilities <- matrix(0, n, g)
+	
+	if (verbose) {
+	  message(sprintf("Fitting: %d components, max_iter=%d", g, max_iter))
+	}
 
 	# EM loop
 	for (iteration in seq_len(max_iter)) {
@@ -255,10 +259,15 @@ mv_mixture_fit <- function(x_list, g, max_iter = 100, tol = 1e-06,
 			message(sprintf("Iteration %d: log-likelihood = %.4f", iteration, current_loglik))
 		}
 	}
+	
+	if (verbose) {
+	  message(sprintf("Converged in %d iterations (max_iter=%d).",
+	                  length(loglik_trace), max_iter))
+	}
 
 	cluster_membership <- max.col(responsibilities, ties.method = "first")
 
-	list(
+	structure(list(
 		pi = params$pi,
 		M = params$M,
 		U = params$U,
@@ -268,5 +277,5 @@ mv_mixture_fit <- function(x_list, g, max_iter = 100, tol = 1e-06,
 		logLik = loglik_trace,
 		iterations = length(loglik_trace),
 		converged = length(loglik_trace) < max_iter
-	)
+	), class = "mv_mixture_fit")
 }

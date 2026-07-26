@@ -7,20 +7,12 @@ Ampharos R Package — Development Tasks
    Implement predict() for mv_mixture_fit and mv_noise_fit objects so users can
    classify new matrix observations with the fitted model.
 
-3. Add print() and summary() methods
-   Provide concise print() and richer summary() for fitted model objects, including
-   component sizes, mixing proportions, convergence status, and noise summary, and more.
+3. Add in a progress bar.
 
 9. Add AIC/BIC computation
    Implement AIC and BIC methods for fitted models to support model selection
    across different g and noise_k values. This is another test to see if BIC can be more valid than the current KS score.
    Could be an alternate in parameters of mv_noise_fit for estimate_k. But there is probably a btter method. 
-
-10. Fix verbose output in mv_noise_fit_impl for BR noise
-    When noise_type == "br", the verbose message still prints noise_k, which is
-    misleading since BR noise does not use noise_k. Print noise_type instead.
-
-10.5 Flesh out verbose output. Since when you parallelize you cannot see the output, change the expected output in this case. Or think about a better general output (progress bar)
 
 12. Populate new vignettes. (The current vignettes are just mini test qmds and writeups for me, vignettes/MM_Prop.qmd, Noise.qmd, and Noise_Tests.qmd)
     Write vignettes for MM, noise usage, and diagnostic testing.
