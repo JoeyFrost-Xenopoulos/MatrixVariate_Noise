@@ -1,43 +1,4 @@
-Ampharos R Package — Development Tasks
-========================================
-
-1. Create testthat files for each of the R/ files. 
-
-2. Add predict() method
-   Implement predict() for mv_mixture_fit and mv_noise_fit objects so users can
-   classify new matrix observations with the fitted model.
-
-3. Add in a progress bar.
-
-9. Add AIC/BIC computation
-   Implement AIC and BIC methods for fitted models to support model selection
-   across different g and noise_k values. This is another test to see if BIC can be more valid than the current KS score.
-   Could be an alternate in parameters of mv_noise_fit for estimate_k. But there is probably a btter method. 
-
-12. Populate new vignettes. (The current vignettes are just mini test qmds and writeups for me, vignettes/MM_Prop.qmd, Noise.qmd, and Noise_Tests.qmd)
-    Write vignettes for MM, noise usage, and diagnostic testing.
-
-12.5 Write vignette: noise estimation workflow
-    Create a vignette showing how to use estimate_k = TRUE, how to inspect
-    k_selection diagnostics, and how to compare noise types (HC vs BR).
-
-14. Add BIC-based selection of g
-    Provide a function (or argument in mv_noise_fit) that searches a grid of g
-    values and selects the one minimizing BIC.
-
-15. Validate mv_noise_br_log_density input
-    mv_noise_br_log_density currently assumes x_list elements are matrices but
-    does not validate. Add input checks or rely on mv_validate_x_list upstream.
-
-17. Add robustness checks in mv_em_mstep
-    When a component has zero effective membership, the M-step skips it but leaves
-    stale parameters in new_params. Consider re-initializing or removing the
-    component, or at least warn the user more prominently.
-
-18. Ensure DESCRIPTION license field is valid SPDX
-    "MIT" is fine, but verify the package passes R CMD check without NOTEs about
-    license validity.
-
-20. Run and fix R CMD check
-    Run R CMD check on the package and address all ERRORs, WARNINGs, and NOTEs.
-    Pay special attention to package dependencies, documentation, and tests.
+1. Plot final log likelihood of k solutions from estimate_k to see if there is trend
+1.5 might have to penalize the log likelihood somehow because it is a improper distribution
+2. Plot actual KS scores against k solutions, then parametrically boostrap distribution and compare
+3. Any other ideas on k detection schemes, figuring out regions of which k solutions are the same
