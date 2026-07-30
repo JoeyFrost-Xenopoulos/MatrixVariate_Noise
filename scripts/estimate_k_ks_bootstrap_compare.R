@@ -4,9 +4,16 @@
 #'   1. Fit the HC noise model, remove noise, refit the clean mixture.
 #'   2. Collect the actual KS statistic (observation-derived distances vs chi-square).
 #'   3. Generate B parametric bootstrap samples from the refitted mixture and
-#'      score each one, building an empirical null distribution for that k.
-#' The script overlays the actual KS curve with the bootstrap mean ± 95 % band
-#' so you can visualise whether the chosen k is consistent with the fitted model.
+#'      re-run the entire k-selection chain on each bootstrap replicate,
+#'      collecting the conditional bootstrap KS score for each candidate k.
+#'
+#' NOTE — the bootstrap null is **conditional** on the fitted mixture at each k:
+#' it assesses calibration of the KS as a goodness-of-fit test for that specific
+#' model, not the uncertainty in the overall k-selection procedure itself.
+#' A large gap between the actual KS curve and the bootstrap null either means
+#' the model is misspecified at that k or that the KS statistic has heavy tails
+#' under the fitted model; both have the same diagnostic consequence: don't
+#' treat the bootstrap curve as a parametric p-value for k.
 #'
 #' @param B Number of bootstrap replicates per k candidate
 #' @param n_cores Workers for bootstrap layer
@@ -19,11 +26,22 @@ library(future.apply)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Local matrix-variate simulation helpers (no dependency on Ampharos internals)
+#
+# IMPORTANT: Ampharos stores U and V as covariance matrices (not Cholesky
+# factors), as confirmed by mv_log_density in Matrix_Base.R which calls
+# chol(U), chol(V) and uses chol2inv / backsolve to compute the quadratic
+# form.  Therefore the correct draw from MN_rp(M, U, V) is:
+#
+#   X = M + U^{1/2}  Z  (V^{1/2})^T,   Z ~ N(0, I_{r×p})
+#
+# NOT  M + U Z V,  which applies U and V as raw transformation matrices and
+# produces X with an entirely wrong covariance unless U = V = I.
 # ──────────────────────────────────────────────────────────────────────────────
 rmv_matrix_one <- function(mean_mat, row_cov, col_cov) {
   r <- nrow(mean_mat)
   p <- ncol(mean_mat)
-  mean_mat + row_cov %*% matrix(rnorm(r * p), r, p) %*% col_cov
+  Z <- matrix(rnorm(r * p), r, p)
+  mean_mat + chol(row_cov) %*% Z %*% t(chol(col_cov))
 }
 
 rmv_mixture <- function(n, pi, M, U, V, rows, cols) {
@@ -122,7 +140,7 @@ init_plan <- tryCatch(
 single_candidate <- function(idx) {
   current_k <- k_grid[idx]
 
-  fit_noise <- mv_noise_fit_impl(
+  fit_noise <- Ampharos:::mv_noise_fit_impl(
     x_list        = x_list_viroli,
     g             = g,
     noise_type    = "hc",
@@ -139,7 +157,7 @@ single_candidate <- function(idx) {
   x_clean  <- x_list_viroli[keep_idx]
   n_clean  <- length(x_clean)
 
-  actual_ks <- Inf
+  actual_ks <- NA_real_
   actual_p  <- NA_real_
   boot_mean <- NA_real_
   boot_se   <- NA_real_
@@ -157,33 +175,50 @@ single_candidate <- function(idx) {
     if (!is.null(fit_clean)) {
       ks_res <- suppressWarnings(
         tryCatch(
-          mv_noise_ks_score(fit_clean, x_clean),
-          error = function(e) list(statistic = Inf, p.value = NA_real_,
+          Ampharos:::mv_noise_ks_score(fit_clean, x_clean),
+          error = function(e) list(statistic = NA_real_, p.value = NA_real_,
                                     n_used = n_clean)
         )
       )
       actual_ks <- ks_res$statistic
       actual_p  <- ks_res$p.value
 
-      # Generate bootstrap replicates under the fitted clean mixture
       for (b in seq_len(n_boot)) {
-        x_boot <- rmv_mixture(
-          n     = n_clean,
-          pi    = fit_clean$pi,
-          M     = fit_clean$M,
-          U     = fit_clean$U,
-          V     = fit_clean$V,
-          rows  = r_viroli,
-          cols  = p_viroli
+        x_boot <- tryCatch(
+          rmv_mixture(
+            n     = n_clean,
+            pi    = fit_clean$pi,
+            M     = fit_clean$M,
+            U     = fit_clean$U,
+            V     = fit_clean$V,
+            rows  = r_viroli,
+            cols  = p_viroli
+          ),
+          error = function(e) NULL
         )
+
+        if (is.null(x_boot)) {
+          boot_stats[b] <- NA_real_
+          next
+        }
+
+        fit_boot_clean <- tryCatch(
+          mv_mixture_fit(x_list = x_boot, g = g,
+                         max_iter = max_iter, tol = tol, verbose = FALSE),
+          error = function(e) NULL
+        )
+
+        if (is.null(fit_boot_clean)) {
+          boot_stats[b] <- NA_real_
+          next
+        }
 
         ks_boot <- suppressWarnings(
           tryCatch(
-            mv_noise_ks_score(fit_clean, x_boot),
-            error = function(e) list(statistic = Inf, p.value = NA_real_)
+            Ampharos:::mv_noise_ks_score(fit_boot_clean, x_boot),
+            error = function(e) list(statistic = NA_real_, p.value = NA_real_)
           )
         )
-
         boot_stats[b] <- ks_boot$statistic
       }
 
@@ -232,28 +267,34 @@ best_idx <- which.min(dt$actual_ks)
 p_compare <- ggplot(dt, aes(x = k)) +
   geom_ribbon(aes(ymin = bootstrap_ci_lo, ymax = bootstrap_ci_hi),
               fill = "steelblue", alpha = 0.2) +
-  geom_line(aes(y = bootstrap_mean, color = "Bootstrap mean"), linewidth = 1) +
-  geom_line(aes(y = actual_ks,   color = "Actual KS"), linewidth = 1.2) +
+  geom_line(aes(y = bootstrap_mean, color = "Bootstrap null (refit-inside-bootstrap)"),
+            linewidth = 1) +
+  geom_line(aes(y = actual_ks,   color = "Actual KS on data"), linewidth = 1.2) +
   geom_vline(xintercept = best_k, color = "black", linetype = "dashed",
              linewidth = 0.8) +
   scale_color_manual(
     name = "",
-    values = c("Actual KS" = "darkorange2",
-               "Bootstrap mean" = "steelblue")
+    values = c("Actual KS on data" = "darkorange2",
+               "Bootstrap null (refit-inside-bootstrap)" = "steelblue")
   ) +
   scale_x_log10() +
   labs(
-    title    = "Actual KS statistic vs. parametric bootstrap null (Viroli simulation)",
+    title    = "Actual KS vs. conditional bootstrap null per k (Viroli simulation)",
     subtitle = sprintf(
-      "Actual KS minimised at k = %.2e (KS = %.4f) | %d bootstrap replicates",
+      "Actual KS minimised at k = %.2e (KS = %.4f) | %d bootstrap replicates\n
+      Bootstrap: draw from fitted mixture → refit clean model inside each replicate → recompute KS",
       dt$k[best_idx], dt$actual_ks[best_idx], n_boot
     ),
     x        = expression(k~("noise height, log scale")),
     y        = "KS statistic (lower = better)",
-    caption  = "Ribbon = 2.5–97.5 % bootstrap quantiles"
+    caption  = "Conditional null: bootstrap tracks estimation noise, not k-selection uncertainty.\n
+                A large gap ⇒ model misspecification or heavy KS tails at that k."
   ) +
   theme_minimal() +
-  theme(legend.position = "bottom")
+  theme(
+    legend.position = "bottom",
+    plot.caption    = element_text(size = 8, hjust = 0)
+  )
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Plot 2: selected-k diagnostics — actual KS vs. bootstrap null
@@ -284,11 +325,12 @@ p_hist <- ggplot(data.frame(ks_val = c(
   scale_y_continuous(labels = NULL, breaks = NULL) +
   labs(
     title = sprintf(
-      "Actual KS vs. parametric bootstrap null at selected k = %.2e",
+      "Actual KS vs. conditional bootstrap null at selected k = %.2e",
       best_k
     ),
     subtitle = sprintf(
-      "Bootstrap mean = %.4f | 95 %% CI = [%.4f, %.4f] | Actual = %.4f | p = %.4f",
+      "Bootstrap mean = %.4f | 95 %% CI = [%.4f, %.4f] | Actual = %.4f | p = %.4f\n
+      Bootstrap replicates each refit the clean mixture before scoring.",
       best_row$bootstrap_mean,
       best_row$bootstrap_ci_lo,
       best_row$bootstrap_ci_hi,

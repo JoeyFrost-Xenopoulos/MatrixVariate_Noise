@@ -91,7 +91,7 @@ evaluate_k_candidate_with_loglik <- function(idx, x_list, g, max_iter, tol,
   }
 
   fit_clean <- tryCatch(
-    mv_mixture_fit(x_list = x_clean, g = g,
+    Ampharos:::mv_mixture_fit(x_list = x_clean, g = g,
                    max_iter = max_iter, tol = tol, verbose = FALSE),
     error = function(e) NULL
   )
@@ -108,7 +108,7 @@ evaluate_k_candidate_with_loglik <- function(idx, x_list, g, max_iter, tol,
 
   ks_result <- suppressWarnings(
     tryCatch(
-      mv_noise_ks_score(fit_clean, x_clean),
+      Ampharos:::mv_noise_ks_score(fit_clean, x_clean),
       error = function(e) list(statistic = Inf, p.value = NA_real_,
                                 n_used = length(x_clean))
     )

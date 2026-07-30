@@ -93,7 +93,8 @@ viroli_simulation <- function(r, p, n, n1, n2, n3, M1, M2, M3,
 }
 
 two_group_uniform_simulation <- function(r, p, n1, n2, M1, M2,
-                                         n_outliers, n_outliers_perm) {
+                                         n_outliers, n_outliers_perm,
+                                         n_row_spike = 0) {
   simulate_group <- function(n, mean_matrix, row_sd = 0.5, col_sd = 0.5) {
     row_cov <- diag(row_sd, nrow(mean_matrix))
     col_cov <- diag(col_sd, ncol(mean_matrix))
@@ -115,6 +116,16 @@ two_group_uniform_simulation <- function(r, p, n1, n2, M1, M2,
       x_list[[idx]] <- matrix(sample(x_list[[idx]]), r, p)
     }
   }
+
+  # Structured row-spike outliers: replace one random row with large noise
+  if (n_row_spike > 0) {
+    spike_idx <- sample(seq_along(x_list), n_row_spike)
+    for (idx in spike_idx) {
+      row_id <- sample.int(r, 1)
+      x_list[[idx]][row_id, ] <- runif(p, -8, 8)
+    }
+  }
+
   list(x_list = x_list)
 }
 
@@ -330,6 +341,21 @@ sim_v3 <- viroli_simulation(
   n_outliers = 5
 )
 
+# Scenario V4: higher overlap (smaller means + larger covariance)
+U1v4 <- 1.2 * rcorrmatrix(v_r); V1v4 <- 1.2 * rcorrmatrix(v_p)
+U2v4 <- 1.2 * rcorrmatrix(v_r); V2v4 <- 1.2 * rcorrmatrix(v_p)
+U3v4 <- 1.2 * rcorrmatrix(v_r); V3v4 <- 1.2 * rcorrmatrix(v_p)
+sim_v4 <- viroli_simulation(
+  r = v_r, p = v_p, n = v_n,
+  n1 = round(0.3 * v_n), n2 = round(0.4 * v_n),
+  n3 = v_n - round(0.3 * v_n) - round(0.4 * v_n),
+  M1 = matrix(c(0.15, 0.15, 0, rep(0, 12)), nrow = v_r, ncol = v_p, byrow = FALSE),
+  M2 = M2_v_base,
+  M3 = matrix(c(-0.15, 0.15, 0, rep(0, 12)), nrow = v_r, ncol = v_p, byrow = FALSE),
+  U1 = U1v4, V1 = V1v4, U2 = U2v4, V2 = V2v4, U3 = U3v4, V3 = V3v4,
+  n_outliers = 15
+)
+
 # ─── Two-group contamination scenarios (4×4, M1=1, M2=−1) ─────────────────────
 c_r <- 4; c_p <- 4
 M1_c <- matrix(1,    c_r, c_p)
@@ -351,6 +377,15 @@ sim_c2 <- two_group_uniform_simulation(
 sim_c3 <- two_group_uniform_simulation(
   r = c_r, p = c_p, n1 = 40, n2 = 20,
   M1 = M1_c, M2 = M2_c, n_outliers = 15, n_outliers_perm = 15
+)
+
+# Scenario C4: structured contamination (uniform + row spikes)
+sim_c4 <- two_group_uniform_simulation(
+  r = c_r, p = c_p, n1 = 40, n2 = 20,
+  M1 = M1_c, M2 = M2_c,
+  n_outliers = 10,
+  n_outliers_perm = 0,
+  n_row_spike = 20
 )
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -383,6 +418,14 @@ results$V3_few_outliers <- run_loglik_scenario(
   r           = v_r, p = v_p
 )
 
+results$V4_high_overlap <- run_loglik_scenario(
+  x_list      = sim_v4$x_list,
+  g           = 3,
+  scenario_name = "Viroli_high_overlap",
+  subtitle    = "Viroli 3×5 | weaker means (±0.15) + larger covariance (x1.2) | 15 outliers",
+  r           = v_r, p = v_p
+)
+
 results$C1_low_uniform_contam <- run_loglik_scenario(
   x_list      = sim_c1$x_list,
   g           = 2,
@@ -404,6 +447,14 @@ results$C3_high_mixed_contam <- run_loglik_scenario(
   g           = 2,
   scenario_name = "Contam_high_mixed",
   subtitle    = "Two-group 4×4 | M1=1, M2=-1 | 15 uniform + 15 permuted outliers | n=90",
+  r           = c_r, p = c_p
+)
+
+results$C4_structured_spike_contam <- run_loglik_scenario(
+  x_list      = sim_c4$x_list,
+  g           = 2,
+  scenario_name = "Contam_structured_spikes",
+  subtitle    = "Two-group 4×4 | M1=1, M2=-1 | 10 uniform + 20 row-spike outliers | n=70",
   r           = c_r, p = c_p
 )
 
@@ -432,4 +483,5 @@ colnames(summary_data)[3] <- "Max_logLik_k"
 cat("\n===== Cross-scenario summary =====\n")
 print(summary_data)
 
-cat(sprintf("\nAll 18 plot files saved under %s/\n", normalizePath("loglik/plots")))
+cat(sprintf("\nSaved %d scenario trend plots under %s/\n",
+            length(results), normalizePath("loglik/plots")))

@@ -16,14 +16,14 @@ library(data.table)
 
 set.seed(42)
 
-r_viroli  <- 3
-p_viroli  <- 5
+r_viroli  <- 4
+p_viroli  <- 4
 n_viroli  <- 300
 
-M1_viroli <- matrix(c(0.5, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+M1_viroli <- matrix(c(0.5, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
                     nrow = r_viroli, ncol = p_viroli, byrow = FALSE)
 M2_viroli <- matrix(0, r_viroli, p_viroli)
-M3_viroli <- matrix(c(-0.5, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+M3_viroli <- matrix(c(-0.5, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
                     nrow = r_viroli, ncol = p_viroli, byrow = FALSE)
 
 U1_viroli <- rcorrmatrix(r_viroli); V1_viroli <- rcorrmatrix(p_viroli)
@@ -108,7 +108,7 @@ evaluate_k_candidate_with_loglik <- function(idx, x_list, g, max_iter, tol,
 
   ks_result <- suppressWarnings(
     tryCatch(
-      mv_noise_ks_score(fit_clean, x_clean),
+      Ampharos:::mv_noise_ks_score(fit_clean, x_clean),
       error = function(e) list(statistic = Inf, p.value = NA_real_,
                                 n_used = length(x_clean))
     )
