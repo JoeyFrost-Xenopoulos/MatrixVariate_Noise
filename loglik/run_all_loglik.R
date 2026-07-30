@@ -173,15 +173,131 @@ tomarchio_simulation <- function(n, n_outliers = 10) {
   list(x_list = x_list)
 }
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Scenario runner
+# Scaled simulation helpers for matrix size scaling
+
+scaled_viroli_simulation <- function(r, p, n, n1, n2, n3, n_outliers,
+                                     signal_strength = 0.5, cov_scale = 1,
+                                     outlier_type = c("perm", "row_spike", "col_out"),
+                                     seed = NULL) {
+  outlier_type <- match.arg(outlier_type)
+  if (!is.null(seed)) set.seed(seed)
+  M1 <- matrix(0, r, p)
+  M2 <- matrix(0, r, p)
+  M3 <- matrix(0, r, p)
+  signal_col <- min(2, p)
+  for (j in seq_len(signal_col)) {
+    M1[1, j] <- signal_strength
+    M3[1, j] <- -signal_strength
+  }
+  U1 <- cov_scale * rcorrmatrix(r)
+  U2 <- cov_scale * rcorrmatrix(r)
+  U3 <- cov_scale * rcorrmatrix(r)
+  V1 <- cov_scale * rcorrmatrix(p)
+  V2 <- cov_scale * rcorrmatrix(p)
+  V3 <- cov_scale * rcorrmatrix(p)
+  result <- viroli_simulation(r, p, n, n1, n2, n3,
+                              M1, M2, M3, U1, V1, U2, V2, U3, V3,
+                              n_outliers = n_outliers)
+  if (outlier_type == "row_spike") {
+    spike_idx <- sample(seq_along(result$x_list), n_outliers)
+    for (idx in spike_idx) {
+      row_id <- sample.int(r, 1)
+      result$x_list[[idx]][row_id, ] <- runif(p, -8, 8)
+    }
+  }
+  if (outlier_type == "col_out") {
+    col_out_idx <- sample(seq_along(result$x_list), n_outliers)
+    for (idx in col_out_idx) {
+      col_id <- sample.int(p, 1)
+      result$x_list[[idx]][, col_id] <- runif(r, -10, 10)
+    }
+  }
+  list(x_list = result$x_list, outlier_idx = result$outlier_idx)
+}
+
+scaled_two_group_simulation <- function(r, p, n1, n2, n_outliers = 0,
+                                        n_outliers_perm = 0,
+                                        n_row_spike = 0, n_col_out = 0,
+                                        mean_diff = 2, seed = NULL) {
+  if (!is.null(seed)) set.seed(seed)
+  M1 <- matrix(mean_diff / 2, r, p)
+  M2 <- matrix(-mean_diff / 2, r, p)
+  result <- two_group_uniform_simulation(
+    r = r, p = p, n1 = n1, n2 = n2,
+    M1 = M1, M2 = M2,
+    n_outliers = n_outliers,
+    n_outliers_perm = n_outliers_perm,
+    n_row_spike = n_row_spike,
+    n_col_out = n_col_out
+  )
+  list(x_list = result$x_list)
+}
+
+scaled_tomarchio_simulation <- function(r, p, n, n_outliers = 10, seed = NULL) {
+  stopifnot(r >= 2, p >= 4)
+  if (!is.null(seed)) set.seed(seed)
+  cols_pattern <- c(-2.60, -1.10, -0.50, -0.20,  1.30, 0.60, 0.30, 0.10)
+  col2_pattern <- c( 1.50,  1.70,  1.90,  2.20, -3.70,-2.70,-2.00,-1.50)
+  M1 <- matrix(0, r, p)
+  M2 <- matrix(0, r, p)
+  for (j in seq_len(min(p, 4))) {
+    idx <- (j - 1) * min(r, 2) + seq_len(min(r, 2))
+    if (length(idx) == 1) {
+      M1[1, j] <- cols_pattern[idx]
+      M2[1, j] <- col2_pattern[idx]
+    } else {
+      M1[seq_len(min(r, 2)), j] <- cols_pattern[idx]
+      M2[seq_len(min(r, 2)), j] <- col2_pattern[idx]
+    }
+  }
+  if (p > 4 && r >= 2) {
+    M1[1, 5] <- 0.6; M1[2, 5] <- 1.1
+    M2[1, 5] <- -1.4; M2[2, 5] <- -1.8
+  }
+  U1 <- matrix(2, r, r)
+  U2 <- matrix(1.7, r, r)
+  diag(U1) <- c(2, rep(1, r - 1))
+  diag(U2) <- c(1.7, rep(1.3, r - 1))
+  idx <- row(U1); jdx <- col(U1)
+  U1[idx != jdx] <- 0.5
+  U2[idx != jdx] <- 0.5
+  V <- matrix(0, p, p)
+  if (p >= 4) {
+    V0 <- matrix(c(1.00, 0.50, 0.25, 0.13,
+                   0.50, 1.00, 0.50, 0.25,
+                   0.25, 0.50, 1.00, 0.50,
+                   0.13, 0.25, 0.50, 1.00), nrow = 4, ncol = 4)
+    V[seq(4), seq(4)] <- V0
+  }
+  diag(V) <- 1
+  V0 <- V
+  n1 <- round(0.5 * n); n2 <- n - n1
+  simulate_tomarchio_group <- function(n, mean_mat, row_cov, col_cov) {
+    lapply(seq_len(n), function(i) {
+      mean_mat + row_cov %*% matrix(rnorm(r * p), r, p) %*% col_cov
+    })
+  }
+  x_list <- c(
+    simulate_tomarchio_group(n1, M1, U1, V),
+    simulate_tomarchio_group(n2, M2, U2, V)
+  )
+  if (n_outliers > 0) {
+    out_idx <- sample(seq_along(x_list), n_outliers)
+    for (idx in out_idx) {
+      col_to_replace <- sample.int(p, 1)
+      x_list[[idx]][, col_to_replace] <- runif(r, -15, 15)
+    }
+  }
+  list(x_list = x_list)
+}
 # ──────────────────────────────────────────────────────────────────────────────
 run_loglik_scenario <- function(x_list, g, scenario_name,
-                                subtitle, r, p,
-                                nstart = 10, max_iter = 100, tol = 1e-6,
-                                use_kmeans = TRUE, init = "kmeans",
-                                noise_pi_init = 0.05,
-                                save_plots = TRUE, plots_dir = "loglik/plots") {
+                                 subtitle, r, p,
+                                 true_k_noise = NA_integer_,
+                                 nstart = 10, max_iter = 100, tol = 1e-6,
+                                 use_kmeans = TRUE, init = "kmeans",
+                                 noise_pi_init = 0.05,
+                                 save_plots = TRUE, plots_dir = "loglik/plots") {
   cat(sprintf("\n===== Scenario: %s =====\n", scenario_name))
 
   cat(sprintf("  Fitting estimate_k with g = %d ...\n", g))
@@ -200,8 +316,12 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
   best_k      <- k_selection$selected_k
   best_ks_idx <- which.min(k_selection$ks_scores)
 
-  cat(sprintf("  KS-selected k = %.4e (KS = %.4f)\n",
-              best_k, k_selection$ks_scores[best_ks_idx]))
+   cat(sprintf("  KS-selected k = %.4e (KS = %.4f)\n",
+               best_k, k_selection$ks_scores[best_ks_idx]))
+   if (!is.na(true_k_noise)) {
+     cat(sprintf("  True noise count = %.4e | Correctly identified = %s\n",
+                 true_k_noise, if (correct_noise_detected) "YES" else "NO"))
+   }
 
   cat("  Collecting log-likelihoods across k_grid ...\n")
   grid_results <- lapply(
@@ -234,6 +354,9 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
   }
 
   plot_df$ks_flag <- plot_df$k == k_selection$k_grid[best_ks_idx]
+  correct_noise_detected <- !is.na(true_k_noise) && best_k == true_k_noise
+
+  selected_k_color <- if (correct_noise_detected) "green" else "black"
 
   # Diagnostics
   cat(sprintf("  Grid size:           %d candidates\n", nrow(plot_df)))
@@ -251,26 +374,31 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
     cat(sprintf("  Spearman (k vs logLik): %.4f\n", cor_val))
   }
 
-  # ── Plot 1: log-likelihood vs k (linear y) ─────────────────────────────────
-  p1 <- ggplot(plot_df, aes(x = k, y = logLik)) +
-    geom_vline(xintercept = best_k, color = "black", linetype = "dashed",
-               linewidth = 0.8) +
-    geom_vline(xintercept = k_selection$k_grid[best_ks_idx],
-               color = "steelblue", linetype = "dotdash", linewidth = 0.8) +
-    geom_line(color = "darkorange2", linewidth = 1) +
-    geom_point(data = subset(plot_df, type != "Other"),
-               aes(shape = type), color = "darkorange2", size = 3) +
-    scale_x_log10() +
-    scale_y_continuous(labels = scales::comma_format()) +
-    labs(
-      title    = sprintf("Scenario: %s", scenario_name),
-      subtitle = subtitle,
-      x        = expression(k~("noise height, log scale")),
-      y        = expression( Final~log-likelihood ),
-      shape    = ""
-    ) +
-    theme_minimal() +
-    theme(legend.position = "bottom", legend.title = element_blank())
+   # ── Plot 1: log-likelihood vs k (linear y) ─────────────────────────────────
+   p1 <- ggplot(plot_df, aes(x = k, y = logLik)) +
+     geom_vline(xintercept = best_k, color = selected_k_color, linetype = "dashed",
+                linewidth = 0.8) +
+     geom_vline(xintercept = k_selection$k_grid[best_ks_idx],
+                color = "steelblue", linetype = "dotdash", linewidth = 0.8)
+   if (!is.na(true_k_noise)) {
+     p1 <- p1 + geom_vline(xintercept = true_k_noise, color = "red", linetype = "twodash", linewidth = 0.8)
+   }
+   p1 <- p1 +
+     geom_line(color = "darkorange2", linewidth = 1) +
+     geom_point(data = subset(plot_df, type != "Other"),
+                aes(shape = type), color = "darkorange2", size = 3) +
+     scale_x_log10() +
+     scale_y_continuous(labels = scales::comma_format()) +
+     labs(
+       title    = sprintf("Scenario: %s", scenario_name),
+       subtitle = subtitle,
+       x        = expression(k~("noise height, log scale")),
+       y        = expression( Final~log-likelihood ),
+       shape    = "",
+       colour   = ""
+     ) +
+     theme_minimal() +
+     theme(legend.position = "bottom", legend.title = element_blank())
 
   # ── Plot 2: log-likelihood with log y ──────────────────────────────────────
   p2 <- p1 +
@@ -290,19 +418,24 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
     labels = c("Log-likelihood", "KS statistic")
   )
 
-  p3 <- ggplot(plot_df_long, aes(x = k, y = value)) +
-    geom_vline(xintercept = best_k, color = "black", linetype = "dashed",
-               linewidth = 0.8) +
-    geom_line(color = "darkorange2", linewidth = 1) +
-    facet_wrap(~metric, scales = "free_y", ncol = 1) +
-    scale_x_log10() +
-    labs(
-      title    = sprintf("Scenario: %s — estimate_k diagnostics", scenario_name),
-      subtitle = "Black dashed = selected k; top = log-likelihood, bottom = KS",
-      x        = expression(k~("noise height, log scale")),
-      y        = "Value"
-    ) +
-    theme_minimal()
+    p3 <- ggplot(plot_df_long, aes(x = k, y = value)) +
+      geom_vline(xintercept = best_k, color = selected_k_color, linetype = "dashed",
+                 linewidth = 0.8)
+    if (!is.na(true_k_noise)) {
+      p3 <- p3 + geom_vline(xintercept = true_k_noise, color = "red", linetype = "twodash", linewidth = 0.8)
+    }
+    p3 <- p3 +
+      geom_line(color = "darkorange2", linewidth = 1) +
+      facet_wrap(~metric, scales = "free_y", ncol = 1) +
+      scale_x_log10() +
+      labs(
+        title    = sprintf("Scenario: %s — estimate_k diagnostics", scenario_name),
+        subtitle = if (is.na(true_k_noise)) "Black dashed = selected k; top = log-likelihood, bottom = KS"
+                   else sprintf("Green dashed = correct selected k; Red dashed = true k=%d; top = log-likelihood, bottom = KS", true_k_noise),
+        x        = expression(k~("noise height, log scale")),
+        y        = "Value"
+      ) +
+      theme_minimal()
 
   # ── Save plots ─────────────────────────────────────────────────────────────
   if (save_plots) {
@@ -677,6 +810,65 @@ results$C7_weak_separation <- run_loglik_scenario(
   subtitle    = "Two-group 4x4 | M1=0.25,M2=-0.25 | 10 uniform outliers | n=70",
   r           = c_r, p = c_p
 )
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SCALED SIZE-SENSITIVITY SCENARIOS
+# ══════════════════════════════════════════════════════════════════════════════
+
+# 6 grid points: base size → 5 larger sizes
+size_grid <- list(
+  c(3, 5), c(4, 6), c(5, 7), c(6, 8), c(7, 9), c(8, 10)
+)
+
+cat("\n===== Running scaled size-sensitivity grids =====\n")
+
+for (s in seq_along(size_grid)) {
+  rg <- size_grid[[s]][1]
+  pg <- size_grid[[s]][2]
+  n_total <- round(5 * rg * pg / 3)
+
+  cat(sprintf("\n  >>> Size iteration %d: r=%d, p=%d (n=%d)\n", s - 1, rg, pg, n_total))
+
+  set.seed(42 + 700 + s)
+  sim_viroli_small <- scaled_viroli_simulation(
+    r = rg, p = pg, n = n_total,
+    n1 = round(0.3 * n_total), n2 = round(0.4 * n_total),
+    n3 = n_total - round(0.3 * n_total) - round(0.4 * n_total),
+    n_outliers = 15, signal_strength = 0.5, cov_scale = 1,
+    outlier_type = "perm"
+  )
+  results[[sprintf("V1_small_signal_sz%d", s - 1)]] <- run_loglik_scenario(
+    x_list = sim_viroli_small$x_list, g = 3,
+    scenario_name = sprintf("V1_small_signal_sz%d", s - 1),
+    subtitle = sprintf("Scaling %d: Viroli %dx%d | 3 groups | 15 permuted outliers | n=%d", s - 1, rg, pg, n_total),
+    r = rg, p = pg, true_k_noise = 15
+  )
+
+  set.seed(42 + 800 + s)
+  sim_two_group_scaled <- scaled_two_group_simulation(
+    r = rg, p = pg, n1 = round(0.6 * n_total), n2 = round(0.4 * n_total),
+    n_outliers = 10, mean_diff = 2
+  )
+  results[[sprintf("C_base_2group_sz%d", s - 1)]] <- run_loglik_scenario(
+    x_list = sim_two_group_scaled$x_list, g = 2,
+    scenario_name = sprintf("C_base_2group_sz%d", s - 1),
+    subtitle = sprintf("Scaling %d: Two-group %dx%d | M1=1,M2=-1 | 10 uniform outliers | n=%d", s - 1, rg, pg, n_total),
+    r = rg, p = pg, true_k_noise = 10
+  )
+
+  if (s - 1 >= 1) {
+    set.seed(42 + 900 + s)
+    sim_tomarchio_scaled <- scaled_tomarchio_simulation(
+      r = rg, p = pg, n = n_total, n_outliers = 10
+    )
+    results[[sprintf("T_base_tomarchio_sz%d", s - 1)]] <- run_loglik_scenario(
+      x_list = sim_tomarchio_scaled$x_list, g = 2,
+      scenario_name = sprintf("T_base_tomarchio_sz%d", s - 1),
+      subtitle = sprintf("Scaling %d: Tomarchio %dx%d | 2 groups | 10 col outliers | n=%d", s - 1, rg, pg, n_total),
+      r = rg, p = pg, true_k_noise = 10
+    )
+  }
+}
 
 summary_data <- rbindlist(lapply(seq_along(results), function(i) {
   nm <- names(results)[[i]]
