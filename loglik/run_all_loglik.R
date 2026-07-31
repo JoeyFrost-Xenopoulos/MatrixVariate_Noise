@@ -322,15 +322,15 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
       geom_vline(xintercept = k_selection$k_grid[best_ks_idx],
                  color = "steelblue", linetype = "dotdash", linewidth = 0.8) +
       {
-        ok_rows <- plot_df[complete.cases(logLik), ]
+        ok_rows <- plot_df[complete.cases(plot_df$logLik), ]
         if (nrow(ok_rows) > 1) {
-          ok_rows <- ok_rows[order(k), ]
+          ok_rows <- ok_rows[order(plot_df$k), ]
           seg_df <- data.frame(
-            x      = head(k, -1),
-            xend   = tail(k, -1),
-            y      = head(logLik, -1),
-            yend   = tail(logLik, -1),
-            correct_noise = head(correct_noise, -1)
+            x      = head(plot_df$k, -1),
+            xend   = tail(plot_df$k, -1),
+            y      = head(plot_df$logLik, -1),
+            yend   = tail(plot_df$logLik, -1),
+            correct_noise = head(plot_df$correct_noise, -1)
           )
           list(geom_segment(
             data = seg_df,
@@ -380,17 +380,17 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
      geom_vline(xintercept = best_k, color = selected_k_color, linetype = "dashed",
                 linewidth = 0.8) +
      {
-       ok_rows <- plot_df_long[complete.cases(value), ]
-       if (nrow(ok_rows) > 1) {
-         ok_rows <- ok_rows[order(k), ]
-         seg_df <- data.frame(
-           x      = head(k, -1),
-           xend   = tail(k, -1),
-           y      = head(value, -1),
-           yend   = tail(value, -1),
-           correct_noise = head(correct_noise, -1),
-           metric = head(metric, -1)
-         )
+        ok_rows <- plot_df_long[complete.cases(plot_df_long$value), ]
+        if (nrow(ok_rows) > 1) {
+          ok_rows <- ok_rows[order(plot_df_long$k), ]
+          seg_df <- data.frame(
+            x      = head(plot_df_long$k, -1),
+            xend   = tail(plot_df_long$k, -1),
+            y      = head(plot_df_long$value, -1),
+            yend   = tail(plot_df_long$value, -1),
+            correct_noise = head(plot_df_long$correct_noise, -1),
+            metric = head(plot_df_long$metric, -1)
+          )
          list(geom_segment(
            data = seg_df,
            aes(x = x, xend = xend, y = y, yend = yend,
