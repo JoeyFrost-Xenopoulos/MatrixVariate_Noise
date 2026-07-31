@@ -1,10 +1,12 @@
+library(Ampharos)
 library(ggplot2)
 library(clusterGeneration)
 library(data.table)
 library(future)
 library(future.apply)
 
-plan(multisession, workers = availableCores() - 1)
+plan(multisession, workers = availableCores() - 1,
+     packages = c("Ampharos", "ggplot2", "clusterGeneration", "data.table"))
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Shared helper — evaluate one k-grid candidate and return log-likelihood
