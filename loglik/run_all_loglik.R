@@ -16,7 +16,7 @@ evaluate_k_candidate_with_loglik <- function(idx, x_list, r, p, g,
                                               noise_pi_init, verbose) {
   current_k <- k_grid[idx]
 
-  fit_noise <-  mv_noise_fit_impl(
+  fit_noise <-  Ampharos:::mv_noise_fit_impl(
     x_list        = x_list,
     g             = g,
     noise_type    = "hc",
@@ -60,7 +60,7 @@ evaluate_k_candidate_with_loglik <- function(idx, x_list, r, p, g,
 
   ks_result <- suppressWarnings(
     tryCatch(
-      mv_noise_ks_score(fit_clean, x_clean),
+      Ampharos:::mv_noise_ks_score(fit_clean, x_clean),
       error = function(e) list(statistic = Inf, p.value = NA_real_,
                                 n_used = length(x_clean))
     )
@@ -584,7 +584,7 @@ results$V1_small_signal <- future(run_loglik_scenario(
   scenario_name = "Viroli_small_signal",
   subtitle    = "Viroli 3×5 | 3 groups | first-col means 0.05,0,−0.05 | 15 outliers",
   r           = v_r, p = v_p
-  ))
+  ), seed = TRUE)
 
 results$V2_low_covariance <- future(run_loglik_scenario(
   x_list      = sim_v2$x_list,
@@ -592,7 +592,7 @@ results$V2_low_covariance <- future(run_loglik_scenario(
   scenario_name = "Viroli_low_cov",
   subtitle    = "Viroli 3×5 | 3 groups | row/col SD = 0.3 instead of 0.5 | 15 outliers",
   r           = v_r, p = v_p
-  ))
+  ), seed = TRUE)
 
 results$V3_few_outliers <- future(run_loglik_scenario(
   x_list      = sim_v3$x_list,
@@ -600,7 +600,7 @@ results$V3_few_outliers <- future(run_loglik_scenario(
   scenario_name = "Viroli_few_outliers",
   subtitle    = "Viroli 3×5 | 3 groups | 5 permuted-outliers instead of 15",
   r           = v_r, p = v_p
-  ))
+  ), seed = TRUE)
 
 results$V4_high_overlap <- future(run_loglik_scenario(
   x_list      = sim_v4$x_list,
@@ -608,7 +608,7 @@ results$V4_high_overlap <- future(run_loglik_scenario(
   scenario_name = "Viroli_high_overlap",
   subtitle    = "Viroli 3×5 | weaker means (±0.15) + larger covariance (x1.2) | 15 outliers",
   r           = v_r, p = v_p
-  ))
+  ), seed = TRUE)
 
 results$C1_low_uniform_contam <- future(run_loglik_scenario(
   x_list      = sim_c1$x_list,
@@ -616,7 +616,7 @@ results$C1_low_uniform_contam <- future(run_loglik_scenario(
   scenario_name = "Contam_low_uniform",
   subtitle    = "Two-group 4×4 | M1=1, M2=-1 | 5 uniform outliers (Unif(-3,3)) | n=65",
   r           = c_r, p = c_p
-  ))
+  ), seed = TRUE)
 
 results$C2_medium_uniform_contam <- future(run_loglik_scenario(
   x_list      = sim_c2$x_list,
@@ -624,7 +624,7 @@ results$C2_medium_uniform_contam <- future(run_loglik_scenario(
   scenario_name = "Contam_medium_uniform",
   subtitle    = "Two-group 4×4 | M1=1, M2=-1 | 15 uniform outliers (Unif(-3,3)) | n=75",
   r           = c_r, p = c_p
-  ))
+  ), seed = TRUE)
 
 results$C3_high_mixed_contam <- future(run_loglik_scenario(
   x_list      = sim_c3$x_list,
@@ -632,7 +632,7 @@ results$C3_high_mixed_contam <- future(run_loglik_scenario(
   scenario_name = "Contam_high_mixed",
   subtitle    = "Two-group 4×4 | M1=1, M2=-1 | 15 uniform + 15 permuted outliers | n=90",
   r           = c_r, p = c_p
-  ))
+  ), seed = TRUE)
 
 results$C4_structured_spike_contam <- future(run_loglik_scenario(
   x_list      = sim_c4$x_list,
@@ -640,7 +640,7 @@ results$C4_structured_spike_contam <- future(run_loglik_scenario(
   scenario_name = "Contam_structured_spikes",
   subtitle    = "Two-group 4×4 | M1=1, M2=-1 | 10 uniform + 20 row-spike outliers | n=70",
   r           = c_r, p = c_p
-  ))
+  ), seed = TRUE)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ADDITIONAL SCENARIOS
@@ -752,7 +752,7 @@ results$T1_tomarchio_base <- future(run_loglik_scenario(
   scenario_name = "Tomarchio_base",
   subtitle    = "Tomarchio 2x4 | 2 groups | column-replacement outliers (Unif(-15,15)) | n=200",
   r           = t_r, p = t_p
-  ))
+  ), seed = TRUE)
 
 results$T2_tomarchio_plus_permuted <- future(run_loglik_scenario(
   x_list      = sim_t2$x_list,
@@ -760,7 +760,7 @@ results$T2_tomarchio_plus_permuted <- future(run_loglik_scenario(
   scenario_name = "Tomarchio_plus_permuted",
   subtitle    = "Tomarchio 2x4 | 10 column + 15 permuted outliers | n=200",
   r           = t_r, p = t_p
-  ))
+  ), seed = TRUE)
 
 results$T3_tomarchio_heavy_col <- future(run_loglik_scenario(
   x_list      = sim_t3$x_list,
@@ -768,7 +768,7 @@ results$T3_tomarchio_heavy_col <- future(run_loglik_scenario(
   scenario_name = "Tomarchio_heavy_column",
   subtitle    = "Tomarchio 2x4 | 20 column-replacement outliers | n=200",
   r           = t_r, p = t_p
-  ))
+  ), seed = TRUE)
 
 results$V5_extreme_imbalance <- future(run_loglik_scenario(
   x_list      = sim_v5$x_list,
@@ -776,7 +776,7 @@ results$V5_extreme_imbalance <- future(run_loglik_scenario(
   scenario_name = "Viroli_extreme_imbalance",
   subtitle    = "Viroli 3x5 | 3 groups with π=(0.10,0.10,0.80) | 15 permuted outliers",
   r           = v_r, p = v_p
-  ))
+  ), seed = TRUE)
 
 results$V6_row_spike_outliers <- future(run_loglik_scenario(
   x_list      = sim_v6$x_list,
@@ -784,7 +784,7 @@ results$V6_row_spike_outliers <- future(run_loglik_scenario(
   scenario_name = "Viroli_row_spike",
   subtitle    = "Viroli 3x5 | 3 groups | 15 row-spike outliers (one noisy row) | 0 permuted",
   r           = v_r, p = v_p
-  ))
+  ), seed = TRUE)
 
 results$V7_column_outliers <- future(run_loglik_scenario(
   x_list      = sim_v7$x_list,
@@ -792,7 +792,7 @@ results$V7_column_outliers <- future(run_loglik_scenario(
   scenario_name = "Viroli_column_outliers",
   subtitle    = "Viroli 3x5 | 3 groups | 15 column-outliers (one noisy column) | 0 permuted",
   r           = v_r, p = v_p
-  ))
+  ), seed = TRUE)
 
 results$C5_highly_imbalanced <- future(run_loglik_scenario(
   x_list      = sim_c5$x_list,
@@ -800,7 +800,7 @@ results$C5_highly_imbalanced <- future(run_loglik_scenario(
   scenario_name = "Contam_highly_imbalanced",
   subtitle    = "Two-group 4x4 | M1=1,M2=-1 | very imbalanced (10 vs 60) | 5 uniform outliers",
   r           = c_r, p = c_p
-  ))
+  ), seed = TRUE)
 
 results$C6_strong_separation <- future(run_loglik_scenario(
   x_list      = sim_c6_strong$x_list,
@@ -808,7 +808,7 @@ results$C6_strong_separation <- future(run_loglik_scenario(
   scenario_name = "Contam_strong_separation",
   subtitle    = "Two-group 4x4 | M1=2,M2=-2 | 10 uniform outliers | n=70",
   r           = c_r, p = c_p
-  ))
+  ), seed = TRUE)
 
 results$C7_weak_separation <- future(run_loglik_scenario(
   x_list      = sim_c7_weak$x_list,
@@ -816,7 +816,7 @@ results$C7_weak_separation <- future(run_loglik_scenario(
   scenario_name = "Contam_weak_separation",
   subtitle    = "Two-group 4x4 | M1=0.25,M2=-0.25 | 10 uniform outliers | n=70",
   r           = c_r, p = c_p
-  ))
+  ), seed = TRUE)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SCALED SIZE-SENSITIVITY SCENARIOS
@@ -849,7 +849,7 @@ for (s in seq_along(size_grid)) {
     scenario_name = sprintf("V1_small_signal_sz%d", s - 1),
     subtitle = sprintf("Scaling %d: Viroli %dx%d | 3 groups | 15 permuted outliers | n=%d", s - 1, rg, pg, n_total),
     r = rg, p = pg, true_k_noise = 15
-  ))
+  ), seed = TRUE)
 
   set.seed(42 + 800 + s)
   sim_two_group_scaled <- scaled_two_group_simulation(
@@ -861,7 +861,7 @@ for (s in seq_along(size_grid)) {
     scenario_name = sprintf("C_base_2group_sz%d", s - 1),
     subtitle = sprintf("Scaling %d: Two-group %dx%d | M1=1,M2=-1 | 10 uniform outliers | n=%d", s - 1, rg, pg, n_total),
     r = rg, p = pg, true_k_noise = 10
-  ))
+  ), seed = TRUE)
 
   if (s - 1 >= 1) {
     set.seed(42 + 900 + s)
@@ -873,7 +873,7 @@ for (s in seq_along(size_grid)) {
       scenario_name = sprintf("T_base_tomarchio_sz%d", s - 1),
       subtitle = sprintf("Scaling %d: Tomarchio %dx%d | 2 groups | 10 col outliers | n=%d", s - 1, rg, pg, n_total),
       r = rg, p = pg, true_k_noise = 10
-    ))
+    ), seed = TRUE)
   }
 }
 
