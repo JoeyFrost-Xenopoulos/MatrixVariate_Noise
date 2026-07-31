@@ -290,8 +290,6 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
    plot_df$ks_flag <- plot_df$k == k_selection$k_grid[best_ks_idx]
   correct_noise_detected <- !is.na(true_k_noise) && best_k == true_k_noise
 
-   selected_k_color <- if (correct_noise_detected) "green" else "black"
-
    if (!is.na(true_k_noise)) {
      cat(sprintf("  True noise count = %.4e | Correctly identified = %s\n",
                  true_k_noise, if (correct_noise_detected) "YES" else "NO"))
@@ -320,8 +318,6 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
    plot_df$correct_noise_group <- cumsum(c(TRUE, diff(plot_df$correct_noise) != 0))
 
    p1 <- ggplot() +
-     geom_vline(xintercept = best_k, color = selected_k_color, linetype = "dashed",
-                linewidth = 0.8) +
      geom_vline(xintercept = k_selection$k_grid[best_ks_idx],
                 color = "steelblue", linetype = "dotdash", linewidth = 0.8) +
      {
@@ -342,13 +338,18 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
          ))
        } else NULL
      } +
+     geom_line(data = plot_df, aes(x = k, y = ks_statistic),
+               color = "steelblue", size = 0.8, alpha = 0.7) +
      geom_point(data = subset(plot_df, type != "Other"),
                 aes(x = k, y = logLik, shape = type), color = "darkorange2", size = 3) +
      scale_color_manual(values = c("TRUE" = "blue", "FALSE" = "darkorange2"),
                         labels = c("Correct noise recovery", "Incorrect recovery"),
                         name = "Noise recovery") +
      scale_x_log10() +
-     scale_y_continuous(labels = scales::comma_format()) +
+     scale_y_continuous(
+       labels = scales::comma_format(),
+       sec.axis = sec_axis(~., name = "KS statistic")
+     ) +
      labs(
        title    = sprintf("Scenario: %s", scenario_name),
        subtitle = subtitle,
@@ -380,8 +381,8 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
    )
 
    p3 <- ggplot() +
-     geom_vline(xintercept = best_k, color = selected_k_color, linetype = "dashed",
-                linewidth = 0.8) +
+     geom_vline(xintercept = k_selection$k_grid[best_ks_idx],
+                color = "steelblue", linetype = "dotdash", linewidth = 0.8) +
      {
         ok_rows <- plot_df_long[complete.cases(plot_df_long$value), ]
         if (nrow(ok_rows) > 1) {
@@ -409,8 +410,7 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
       scale_x_log10() +
       labs(
         title    = sprintf("Scenario: %s — estimate_k diagnostics", scenario_name),
-        subtitle = if (is.na(true_k_noise)) "Black dashed = selected k; blue = correct noise recovery"
-                   else sprintf("Green dashed = correct selected k; blue = correct noise recovery"),
+        subtitle = "Steelblue dot-dash = KS-minimum k; blue = correct noise recovery",
         x        = expression(k~("noise height, log scale")),
         y        = "Value"
       ) +
