@@ -765,19 +765,22 @@ for (s in seq_along(size_grid)) {
   cat(sprintf("\n  >>> Size %d: r=%d, p=%d (n=%d) -> %s\n",
               s - 1, rg, pg, n_total, plots_dir))
 
+  n_outliers_perm <- min(15, n_total - 3)
+  n_outliers_spike <- min(10, n_total - 3)
+
   set.seed(42 + 700 + s)
   sim_viroli_small <- scaled_viroli_simulation(
     r = rg, p = pg, n = n_total,
     n1 = round(0.3 * n_total), n2 = round(0.4 * n_total),
     n3 = n_total - round(0.3 * n_total) - round(0.4 * n_total),
-    n_outliers = 15, signal_strength = 0.5, cov_scale = 1,
+    n_outliers = n_outliers_perm, signal_strength = 0.5, cov_scale = 1,
     outlier_type = "perm"
   )
   results[[sprintf("V1_small_signal_sz%d", s - 1)]] <- future(run_loglik_scenario(
     x_list = sim_viroli_small$x_list, g = 3,
     scenario_name = sprintf("V1_small_signal_sz%d", s - 1),
-    subtitle = sprintf("Scaling %d: Viroli %dx%d | 3 groups | 15 permuted outliers | n=%d", s - 1, rg, pg, n_total),
-    r = rg, p = pg, true_k_noise = 15,
+    subtitle = sprintf("Scaling %d: Viroli %dx%d | 3 groups | %d permuted outliers | n=%d", s - 1, rg, pg, n_outliers_perm, n_total),
+    r = rg, p = pg, true_k_noise = n_outliers_perm,
     outlier_idx = sim_viroli_small$outlier_idx,
     plots_dir = plots_dir
   ), seed = TRUE)
@@ -785,13 +788,13 @@ for (s in seq_along(size_grid)) {
   set.seed(42 + 800 + s)
   sim_two_group_scaled <- scaled_two_group_simulation(
     r = rg, p = pg, n1 = round(0.6 * n_total), n2 = round(0.4 * n_total),
-    n_outliers = 10, mean_diff = 2
+    n_outliers = min(10, n_total - 2), mean_diff = 2
   )
   results[[sprintf("C_base_2group_sz%d", s - 1)]] <- future(run_loglik_scenario(
     x_list = sim_two_group_scaled$x_list, g = 2,
     scenario_name = sprintf("C_base_2group_sz%d", s - 1),
-    subtitle = sprintf("Scaling %d: Two-group %dx%d | M1=1,M2=-1 | 10 uniform outliers | n=%d", s - 1, rg, pg, n_total),
-    r = rg, p = pg, true_k_noise = 10,
+    subtitle = sprintf("Scaling %d: Two-group %dx%d | M1=1,M2=-1 | %d uniform outliers | n=%d", s - 1, rg, pg, min(10, n_total - 2), n_total),
+    r = rg, p = pg, true_k_noise = min(10, n_total - 2),
     outlier_idx = sim_two_group_scaled$outlier_idx,
     plots_dir = plots_dir
   ), seed = TRUE)
@@ -802,14 +805,14 @@ for (s in seq_along(size_grid)) {
        r = rg, p = pg, n = n_total,
        n1 = round(0.3 * n_total), n2 = round(0.4 * n_total),
        n3 = n_total - round(0.3 * n_total) - round(0.4 * n_total),
-       n_outliers = 10, signal_strength = 0.5, cov_scale = 1,
+       n_outliers = n_outliers_spike, signal_strength = 0.5, cov_scale = 1,
        outlier_type = "row_spike"
     )
     results[[sprintf("V_row_spike_sz%d", s - 1)]] <- future(run_loglik_scenario(
       x_list = sim_viroli_spike_scaled$x_list, g = 3,
       scenario_name = sprintf("V_row_spike_sz%d", s - 1),
-      subtitle = sprintf("Scaling %d: Viroli %dx%d | 3 groups | 10 row-spike outliers | n=%d", s - 1, rg, pg, n_total),
-      r = rg, p = pg, true_k_noise = 10,
+      subtitle = sprintf("Scaling %d: Viroli %dx%d | 3 groups | %d row-spike outliers | n=%d", s - 1, rg, pg, n_outliers_spike, n_total),
+      r = rg, p = pg, true_k_noise = n_outliers_spike,
       outlier_idx = sim_viroli_spike_scaled$outlier_idx,
       plots_dir = plots_dir
     ), seed = TRUE)
