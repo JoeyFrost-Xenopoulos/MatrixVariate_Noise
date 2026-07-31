@@ -1,4 +1,3 @@
-library(Ampharos)
 library(ggplot2)
 library(clusterGeneration)
 library(data.table)
@@ -16,7 +15,7 @@ evaluate_k_candidate_with_loglik <- function(idx, x_list, r, p, g,
                                               noise_pi_init, verbose) {
   current_k <- k_grid[idx]
 
-  fit_noise <- Ampharos:::mv_noise_fit_impl(
+  fit_noise <-  mv_noise_fit_impl(
     x_list        = x_list,
     g             = g,
     noise_type    = "hc",
@@ -60,7 +59,7 @@ evaluate_k_candidate_with_loglik <- function(idx, x_list, r, p, g,
 
   ks_result <- suppressWarnings(
     tryCatch(
-      Ampharos:::mv_noise_ks_score(fit_clean, x_clean),
+      mv_noise_ks_score(fit_clean, x_clean),
       error = function(e) list(statistic = Inf, p.value = NA_real_,
                                 n_used = length(x_clean))
     )
