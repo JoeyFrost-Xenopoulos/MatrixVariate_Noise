@@ -495,4 +495,4 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
   )
 }
 
-source("scenarios.R")
+source("loglik/scenarios.R")
