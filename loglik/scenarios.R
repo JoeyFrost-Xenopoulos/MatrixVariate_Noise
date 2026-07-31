@@ -564,8 +564,6 @@ size_grid <- list(
   c(8, 11), c(9, 12), c(10, 13)
 )
 
-custom_k_grid <- seq(-100, -4, length.out = 100)
-
 cat("\n===== Running scaled size-sensitivity grids =====\n")
 
 for (s in seq_along(size_grid)) {
@@ -593,12 +591,11 @@ for (s in seq_along(size_grid)) {
     results[[sprintf("V1_prop%d_sz%d", noise_prop, s - 1)]] <- future(run_loglik_scenario(
       x_list = sim_viroli_prop$x_list, g = 3,
       scenario_name = sprintf("V1_prop%d_sz%d", noise_prop, s - 1),
-      subtitle = sprintf("Scaling %d: Viroli %dx%d | 3 groups | %d permuted outliers (%d%% of n=%d) | k_grid=-100:-4",
+      subtitle = sprintf("Scaling %d: Viroli %dx%d | 3 groups | %d permuted outliers (%d%% of n=%d)",
                          s - 1, rg, pg, n_outliers, noise_prop, n_total),
       r = rg, p = pg, true_k_noise = n_outliers,
       outlier_idx = sim_viroli_prop$outlier_idx,
-      plots_dir = plots_dir,
-      custom_k_grid = custom_k_grid
+      plots_dir = plots_dir
     ), seed = TRUE)
   }
 }

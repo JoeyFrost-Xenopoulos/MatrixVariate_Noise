@@ -225,8 +225,7 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
                                  nstart = 10, max_iter = 100, tol = 1e-6,
                                  use_kmeans = TRUE, init = "kmeans",
                                  noise_pi_init = 0.05,
-                                 save_plots = TRUE, plots_dir = "loglik/plots",
-                                 custom_k_grid = NULL) {
+                                 save_plots = TRUE, plots_dir = "loglik/plots") {
    for (pkg in c("Ampharos", "ggplot2", "clusterGeneration", "data.table")) {
      if (!requireNamespace(pkg, quietly = TRUE)) stop("Package ", pkg, " required")
    }
@@ -256,7 +255,7 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
 
   cat("  Collecting log-likelihoods across k_grid ...\n")
   
-  active_k_grid <- if (!is.null(custom_k_grid)) custom_k_grid else k_selection$k_grid
+  active_k_grid <- k_selection$k_grid
   
   grid_results <- lapply(
     seq_along(active_k_grid),
@@ -348,12 +347,12 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
      scale_color_manual(values = c("TRUE" = "blue", "FALSE" = "darkorange2"),
                         labels = c("Correct noise recovery", "Incorrect recovery"),
                         name = "Noise recovery") +
-     scale_x_continuous() +
+     scale_x_log10() +
      scale_y_continuous(labels = scales::comma_format()) +
      labs(
        title    = sprintf("Scenario: %s", scenario_name),
        subtitle = subtitle,
-       x        = expression(k~("noise height")),
+       x        = expression(k~("noise height, log scale")),
        y        = expression( Final~log-likelihood ),
        shape    = "",
        colour   = "Noise recovery"
@@ -407,12 +406,12 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
       scale_color_manual(values = c("TRUE" = "blue", "FALSE" = "darkorange2"),
                          labels = c("Correct noise recovery", "Incorrect recovery"),
                          name = "Noise recovery") +
-      scale_x_continuous() +
+      scale_x_log10() +
       labs(
         title    = sprintf("Scenario: %s — estimate_k diagnostics", scenario_name),
         subtitle = if (is.na(true_k_noise)) "Black dashed = selected k; blue = correct noise recovery"
                    else sprintf("Green dashed = correct selected k; blue = correct noise recovery"),
-        x        = expression(k~("noise height")),
+        x        = expression(k~("noise height, log scale")),
         y        = "Value"
       ) +
       theme_minimal()
