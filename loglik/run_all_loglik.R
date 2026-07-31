@@ -5,7 +5,7 @@ library(data.table)
 library(future)
 library(future.apply)
 
-plan(multisession, workers = availableCores() - 1)
+plan(multisession, workers = 8)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Shared helper — evaluate one k-grid candidate and return log-likelihood
