@@ -154,41 +154,7 @@ two_group_uniform_simulation <- function(r, p, n1, n2, M1, M2,
   list(x_list = x_list, outlier_idx = outlier_idx)
 }
 
-tomarchio_simulation <- function(n, n_outliers = 10) {
-  r <- 2; p <- 4
-  M1 <- matrix(c(-2.60, -1.10, -0.50, -0.20, 1.30, 0.60, 0.30, 0.10),
-               nrow = r, ncol = p, byrow = FALSE)
-  M2 <- matrix(c(1.50, 1.70, 1.90, 2.20, -3.70, -2.70, -2.00, -1.50),
-               nrow = r, ncol = p, byrow = FALSE)
-  U1 <- matrix(c(2, 0, 0, 1), nrow = r, ncol = r)
-  U2 <- matrix(c(1.70, 0.5, 0.5, 1.30), nrow = r, ncol = r)
-  V_common <- matrix(c(1.00, 0.50, 0.25, 0.13,
-                       0.50, 1.00, 0.50, 0.25,
-                       0.25, 0.50, 1.00, 0.50,
-                       0.13, 0.25, 0.50, 1.00), nrow = p, ncol = p)
 
-  n1 <- round(0.5 * n); n2 <- n - n1
-
-  simulate_tomarchio_group <- function(n, mean_mat, row_cov, col_cov) {
-    lapply(seq_len(n), function(i) {
-      mean_mat + row_cov %*% matrix(rnorm(r * p), r, p) %*% col_cov
-    })
-  }
-
-  x_list <- c(
-    simulate_tomarchio_group(n1, M1, U1, V_common),
-    simulate_tomarchio_group(n2, M2, U2, V_common)
-  )
-
-  if (n_outliers > 0) {
-    out_idx <- sample(seq_along(x_list), n_outliers)
-    for (idx in out_idx) {
-      col_to_replace <- sample.int(p, 1)
-      x_list[[idx]][, col_to_replace] <- runif(r, -15, 15)
-    }
-  }
-  list(x_list = x_list, outlier_idx = out_idx)
-}
 
 # Scaled simulation helpers for matrix size scaling
 
@@ -250,63 +216,7 @@ scaled_two_group_simulation <- function(r, p, n1, n2, n_outliers = 0,
   list(x_list = result$x_list, outlier_idx = result$outlier_idx)
 }
 
-scaled_tomarchio_simulation <- function(r, p, n, n_outliers = 10, seed = NULL) {
-  stopifnot(r >= 2, p >= 4)
-  if (!is.null(seed)) set.seed(seed)
-  cols_pattern <- c(-2.60, -1.10, -0.50, -0.20,  1.30, 0.60, 0.30, 0.10)
-  col2_pattern <- c( 1.50,  1.70,  1.90,  2.20, -3.70,-2.70,-2.00,-1.50)
-  M1 <- matrix(0, r, p)
-  M2 <- matrix(0, r, p)
-  for (j in seq_len(min(p, 4))) {
-    idx <- (j - 1) * min(r, 2) + seq_len(min(r, 2))
-    if (length(idx) == 1) {
-      M1[1, j] <- cols_pattern[idx]
-      M2[1, j] <- col2_pattern[idx]
-    } else {
-      M1[seq_len(min(r, 2)), j] <- cols_pattern[idx]
-      M2[seq_len(min(r, 2)), j] <- col2_pattern[idx]
-    }
-  }
-  if (p > 4 && r >= 2) {
-    M1[1, 5] <- 0.6; M1[2, 5] <- 1.1
-    M2[1, 5] <- -1.4; M2[2, 5] <- -1.8
-  }
-  U1 <- matrix(2, r, r)
-  U2 <- matrix(1.7, r, r)
-  diag(U1) <- c(2, rep(1, r - 1))
-  diag(U2) <- c(1.7, rep(1.3, r - 1))
-  idx <- row(U1); jdx <- col(U1)
-  U1[idx != jdx] <- 0.5
-  U2[idx != jdx] <- 0.5
-  V <- matrix(0, p, p)
-  if (p >= 4) {
-    V0 <- matrix(c(1.00, 0.50, 0.25, 0.13,
-                   0.50, 1.00, 0.50, 0.25,
-                   0.25, 0.50, 1.00, 0.50,
-                   0.13, 0.25, 0.50, 1.00), nrow = 4, ncol = 4)
-    V[seq(4), seq(4)] <- V0
-  }
-  diag(V) <- 1
-  V0 <- V
-  n1 <- round(0.5 * n); n2 <- n - n1
-  simulate_tomarchio_group <- function(n, mean_mat, row_cov, col_cov) {
-    lapply(seq_len(n), function(i) {
-      mean_mat + row_cov %*% matrix(rnorm(r * p), r, p) %*% col_cov
-    })
-  }
-  x_list <- c(
-    simulate_tomarchio_group(n1, M1, U1, V),
-    simulate_tomarchio_group(n2, M2, U2, V)
-  )
-  if (n_outliers > 0) {
-    out_idx <- sample(seq_along(x_list), n_outliers)
-    for (idx in out_idx) {
-      col_to_replace <- sample.int(p, 1)
-      x_list[[idx]][, col_to_replace] <- runif(r, -15, 15)
-    }
-  }
-  list(x_list = x_list, outlier_idx = out_idx)
-}
+
 # ──────────────────────────────────────────────────────────────────────────────
 run_loglik_scenario <- function(x_list, g, scenario_name,
                                  subtitle, r, p,
@@ -406,15 +316,31 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
     # ── Plot 1: log-likelihood vs k (linear y) ─────────────────────────────────
     plot_df$correct_noise_group <- cumsum(c(TRUE, diff(plot_df$correct_noise) != 0))
 
-    p1 <- ggplot(plot_df, aes(x = k, y = logLik)) +
+    p1 <- ggplot() +
       geom_vline(xintercept = best_k, color = selected_k_color, linetype = "dashed",
                  linewidth = 0.8) +
       geom_vline(xintercept = k_selection$k_grid[best_ks_idx],
                  color = "steelblue", linetype = "dotdash", linewidth = 0.8) +
-      geom_line(aes(color = correct_noise, group = correct_noise_group),
-                linewidth = 1) +
+      {
+        ok_rows <- plot_df[complete.cases(logLik), ]
+        if (nrow(ok_rows) > 1) {
+          ok_rows <- ok_rows[order(k), ]
+          seg_df <- data.frame(
+            x      = head(k, -1),
+            xend   = tail(k, -1),
+            y      = head(logLik, -1),
+            yend   = tail(logLik, -1),
+            correct_noise = head(correct_noise, -1)
+          )
+          list(geom_segment(
+            data = seg_df,
+            aes(x = x, xend = xend, y = y, yend = yend, color = correct_noise),
+            linewidth = 1
+          ))
+        } else NULL
+      } +
       geom_point(data = subset(plot_df, type != "Other"),
-                 aes(shape = type), color = "darkorange2", size = 3) +
+                 aes(x = k, y = logLik, shape = type), color = "darkorange2", size = 3) +
       scale_color_manual(values = c("TRUE" = "red", "FALSE" = "darkorange2"),
                          labels = c("Correct noise recovery", "Incorrect recovery"),
                          name = "Noise recovery") +
@@ -440,34 +366,52 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
     scale_y_continuous(labels = scales::comma_format())
 
   # ── Plot 3: log-likelihood + KS combined ───────────────────────────────────
-  plot_df_long <- melt(
-    plot_df[, .(k, logLik, ks_statistic, correct_noise, correct_noise_group)],
-    id.vars = c("k", "correct_noise", "correct_noise_group"),
-    variable.name = "metric", value.name = "value"
-  )
-  plot_df_long$metric <- factor(plot_df_long$metric,
-    levels = c("logLik", "ks_statistic"),
-    labels = c("Log-likelihood", "KS statistic")
-  )
+   plot_df_long <- melt(
+     plot_df[, .(k, logLik, ks_statistic, correct_noise)],
+     id.vars = c("k", "correct_noise"),
+     variable.name = "metric", value.name = "value"
+   )
+   plot_df_long$metric <- factor(plot_df_long$metric,
+     levels = c("logLik", "ks_statistic"),
+     labels = c("Log-likelihood", "KS statistic")
+   )
 
-    p3 <- ggplot(plot_df_long, aes(x = k, y = value)) +
-      geom_vline(xintercept = best_k, color = selected_k_color, linetype = "dashed",
-                 linewidth = 0.8) +
-      geom_line(aes(color = correct_noise, group = interaction(metric, correct_noise_group)),
-                linewidth = 1) +
-      facet_wrap(~metric, scales = "free_y", ncol = 1) +
-      scale_color_manual(values = c("TRUE" = "red", "FALSE" = "darkorange2"),
-                         labels = c("Correct noise recovery", "Incorrect recovery"),
-                         name = "Noise recovery") +
-      scale_x_log10() +
-      labs(
-        title    = sprintf("Scenario: %s — estimate_k diagnostics", scenario_name),
-        subtitle = if (is.na(true_k_noise)) "Black dashed = selected k; red = correct noise recovery"
-                   else sprintf("Green dashed = correct selected k; red = correct noise recovery"),
-        x        = expression(k~("noise height, log scale")),
-        y        = "Value"
-      ) +
-      theme_minimal()
+   p3 <- ggplot() +
+     geom_vline(xintercept = best_k, color = selected_k_color, linetype = "dashed",
+                linewidth = 0.8) +
+     {
+       ok_rows <- plot_df_long[complete.cases(value), ]
+       if (nrow(ok_rows) > 1) {
+         ok_rows <- ok_rows[order(k), ]
+         seg_df <- data.frame(
+           x      = head(k, -1),
+           xend   = tail(k, -1),
+           y      = head(value, -1),
+           yend   = tail(value, -1),
+           correct_noise = head(correct_noise, -1),
+           metric = head(metric, -1)
+         )
+         list(geom_segment(
+           data = seg_df,
+           aes(x = x, xend = xend, y = y, yend = yend,
+               color = correct_noise, group = interaction(metric, correct_noise)),
+           linewidth = 1
+         ))
+       } else NULL
+     } +
+     facet_wrap(~metric, scales = "free_y", ncol = 1) +
+     scale_color_manual(values = c("TRUE" = "red", "FALSE" = "darkorange2"),
+                        labels = c("Correct noise recovery", "Incorrect recovery"),
+                        name = "Noise recovery") +
+     scale_x_log10() +
+     labs(
+       title    = sprintf("Scenario: %s — estimate_k diagnostics", scenario_name),
+       subtitle = if (is.na(true_k_noise)) "Black dashed = selected k; red = correct noise recovery"
+                  else sprintf("Green dashed = correct selected k; red = correct noise recovery"),
+       x        = expression(k~("noise height, log scale")),
+       y        = "Value"
+     ) +
+     theme_minimal()
 
   # ── Save plots ─────────────────────────────────────────────────────────────
   if (save_plots) {

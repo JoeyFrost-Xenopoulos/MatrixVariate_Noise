@@ -72,41 +72,7 @@ two_group_uniform_simulation <- function(r, p, n1, n2, M1, M2,
   list(x_list = x_list, outlier_idx = outlier_idx)
 }
 
-tomarchio_simulation <- function(n, n_outliers = 10) {
-  r <- 2; p <- 4
-  M1 <- matrix(c(-2.60, -1.10, -0.50, -0.20, 1.30, 0.60, 0.30, 0.10),
-               nrow = r, ncol = p, byrow = FALSE)
-  M2 <- matrix(c(1.50, 1.70, 1.90, 2.20, -3.70, -2.70, -2.00, -1.50),
-               nrow = r, ncol = p, byrow = FALSE)
-  U1 <- matrix(c(2, 0, 0, 1), nrow = r, ncol = r)
-  U2 <- matrix(c(1.70, 0.5, 0.5, 1.30), nrow = r, ncol = r)
-  V_common <- matrix(c(1.00, 0.50, 0.25, 0.13,
-                       0.50, 1.00, 0.50, 0.25,
-                       0.25, 0.50, 1.00, 0.50,
-                       0.13, 0.25, 0.50, 1.00), nrow = p, ncol = p)
 
-  n1 <- round(0.5 * n); n2 <- n - n1
-
-  simulate_tomarchio_group <- function(n, mean_mat, row_cov, col_cov) {
-    lapply(seq_len(n), function(i) {
-      mean_mat + row_cov %*% matrix(rnorm(r * p), r, p) %*% col_cov
-    })
-  }
-
-  x_list <- c(
-    simulate_tomarchio_group(n1, M1, U1, V_common),
-    simulate_tomarchio_group(n2, M2, U2, V_common)
-  )
-
-  if (n_outliers > 0) {
-    out_idx <- sample(seq_along(x_list), n_outliers)
-    for (idx in out_idx) {
-      col_to_replace <- sample.int(p, 1)
-      x_list[[idx]][, col_to_replace] <- runif(r, -15, 15)
-    }
-  }
-  list(x_list = x_list, outlier_idx = out_idx)
-}
 
 scaled_viroli_simulation <- function(r, p, n, n1, n2, n3, n_outliers,
                                      signal_strength = 0.5, cov_scale = 1,
@@ -166,63 +132,7 @@ scaled_two_group_simulation <- function(r, p, n1, n2, n_outliers = 0,
   list(x_list = result$x_list, outlier_idx = result$outlier_idx)
 }
 
-scaled_tomarchio_simulation <- function(r, p, n, n_outliers = 10, seed = NULL) {
-  stopifnot(r >= 2, p >= 4)
-  if (!is.null(seed)) set.seed(seed)
-  cols_pattern <- c(-2.60, -1.10, -0.50, -0.20,  1.30, 0.60, 0.30, 0.10)
-  col2_pattern <- c( 1.50,  1.70,  1.90,  2.20, -3.70,-2.70,-2.00,-1.50)
-  M1 <- matrix(0, r, p)
-  M2 <- matrix(0, r, p)
-  for (j in seq_len(min(p, 4))) {
-    idx <- (j - 1) * min(r, 2) + seq_len(min(r, 2))
-    if (length(idx) == 1) {
-      M1[1, j] <- cols_pattern[idx]
-      M2[1, j] <- col2_pattern[idx]
-    } else {
-      M1[seq_len(min(r, 2)), j] <- cols_pattern[idx]
-      M2[seq_len(min(r, 2)), j] <- col2_pattern[idx]
-    }
-  }
-  if (p > 4 && r >= 2) {
-    M1[1, 5] <- 0.6; M1[2, 5] <- 1.1
-    M2[1, 5] <- -1.4; M2[2, 5] <- -1.8
-  }
-  U1 <- matrix(2, r, r)
-  U2 <- matrix(1.7, r, r)
-  diag(U1) <- c(2, rep(1, r - 1))
-  diag(U2) <- c(1.7, rep(1.3, r - 1))
-  idx <- row(U1); jdx <- col(U1)
-  U1[idx != jdx] <- 0.5
-  U2[idx != jdx] <- 0.5
-  V <- matrix(0, p, p)
-  if (p >= 4) {
-    V0 <- matrix(c(1.00, 0.50, 0.25, 0.13,
-                   0.50, 1.00, 0.50, 0.25,
-                   0.25, 0.50, 1.00, 0.50,
-                   0.13, 0.25, 0.50, 1.00), nrow = 4, ncol = 4)
-    V[seq(4), seq(4)] <- V0
-  }
-  diag(V) <- 1
-  V0 <- V
-  n1 <- round(0.5 * n); n2 <- n - n1
-  simulate_tomarchio_group <- function(n, mean_mat, row_cov, col_cov) {
-    lapply(seq_len(n), function(i) {
-      mean_mat + row_cov %*% matrix(rnorm(r * p), r, p) %*% col_cov
-    })
-  }
-  x_list <- c(
-    simulate_tomarchio_group(n1, M1, U1, V),
-    simulate_tomarchio_group(n2, M2, U2, V)
-  )
-  if (n_outliers > 0) {
-    out_idx <- sample(seq_along(x_list), n_outliers)
-    for (idx in out_idx) {
-      col_to_replace <- sample.int(p, 1)
-      x_list[[idx]][, col_to_replace] <- runif(r, -15, 15)
-    }
-  }
-  list(x_list = x_list, outlier_idx = out_idx)
-}
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Base scenario definitions
@@ -328,36 +238,6 @@ sim_c4 <- two_group_uniform_simulation(
 # Additional base scenarios
 # ══════════════════════════════════════════════════════════════════════════════
 
-# ─── Tomarchio-style scenarios (r=2, p=4, column-replacement outliers) ───────
-t_r <- 2; t_p <- 4; t_n <- 200
-M1_t <- matrix(c(-2.60, -1.10, -0.50, -0.20, 1.30, 0.60, 0.30, 0.10),
-               nrow = t_r, ncol = t_p, byrow = FALSE)
-M2_t <- matrix(c(1.50, 1.70, 1.90, 2.20, -3.70, -2.70, -2.00, -1.50),
-               nrow = t_r, ncol = t_p, byrow = FALSE)
-U1_t <- matrix(c(2, 0, 0, 1), nrow = t_r, ncol = t_r)
-U2_t <- matrix(c(1.70, 0.5, 0.5, 1.30), nrow = t_r, ncol = t_r)
-V_t  <- matrix(c(1.00, 0.50, 0.25, 0.13,
-                 0.50, 1.00, 0.50, 0.25,
-                 0.25, 0.50, 1.00, 0.50,
-                 0.13, 0.25, 0.50, 1.00), nrow = t_p, ncol = t_p)
-
-# Scenario T1: Tomarchio base (equal weight, 10 column outliers)
-set.seed(42 + 100)
-sim_t1 <- tomarchio_simulation(n = t_n, n_outliers = 10)
-
-# Scenario T2: Tomarchio with additional 15 permuted-entry outliers
-set.seed(42 + 101)
-sim_t2 <- tomarchio_simulation(n = t_n, n_outliers = 10)
-perm_idx <- sample(seq_along(sim_t2$x_list), 15)
-for (idx in perm_idx) {
-  sim_t2$x_list[[idx]] <- matrix(sample(sim_t2$x_list[[idx]]), t_r, t_p)
-}
-sim_t2$outlier_idx <- union(sim_t2$outlier_idx, perm_idx)
-
-# Scenario T3: Tomarchio heavier column contamination (20 column outliers)
-set.seed(42 + 102)
-sim_t3 <- tomarchio_simulation(n = t_n, n_outliers = 20)
-
 # ─── Viroli-style: highly unequal 3-group proportions ────────────────────────
 set.seed(42 + 200)
 v_n_unequal <- 300
@@ -405,6 +285,189 @@ for (idx in col_out_idx) {
   sim_v7$x_list[[idx]][, col_id] <- runif(v_r, -10, 10)
 }
 sim_v7$outlier_idx <- col_out_idx
+
+# ─── Viroli extensions: signal strength, covariance scale, outlier counts ─────
+# Scenario V8: strong signal (means 0.8 instead of 0.5)
+set.seed(42 + 203)
+sim_v8 <- viroli_simulation(
+  r = v_r, p = v_p, n = v_n,
+  n1 = round(0.3 * v_n), n2 = round(0.4 * v_n),
+  n3 = v_n - round(0.3*v_n) - round(0.4*v_n),
+  M1 = matrix(c(0.8, 0.8, 0, rep(0, 12)), nrow = v_r, ncol = v_p, byrow = FALSE),
+  M2 = M2_v_base,
+  M3 = matrix(c(-0.8, 0.8, 0, rep(0, 12)), nrow = v_r, ncol = v_p, byrow = FALSE),
+  U1 = U1v, V1 = V1v, U2 = U2v, V2 = V2v, U3 = U3v, V3 = V3v,
+  n_outliers = 15
+)
+
+# Scenario V9: weak signal (means 0.2)
+set.seed(42 + 204)
+sim_v9 <- viroli_simulation(
+  r = v_r, p = v_p, n = v_n,
+  n1 = round(0.3 * v_n), n2 = round(0.4 * v_n),
+  n3 = v_n - round(0.3*v_n) - round(0.4*v_n),
+  M1 = matrix(c(0.2, 0.2, 0, rep(0, 12)), nrow = v_r, ncol = v_p, byrow = FALSE),
+  M2 = M2_v_base,
+  M3 = matrix(c(-0.2, 0.2, 0, rep(0, 12)), nrow = v_r, ncol = v_p, byrow = FALSE),
+  U1 = U1v, V1 = V1v, U2 = U2v, V2 = V2v, U3 = U3v, V3 = V3v,
+  n_outliers = 15
+)
+
+# Scenario V10: very high covariance (x1.5 scale)
+U1v10 <- 1.5 * rcorrmatrix(v_r); V1v10 <- 1.5 * rcorrmatrix(v_p)
+U2v10 <- 1.5 * rcorrmatrix(v_r); V2v10 <- 1.5 * rcorrmatrix(v_p)
+U3v10 <- 1.5 * rcorrmatrix(v_r); V3v10 <- 1.5 * rcorrmatrix(v_p)
+set.seed(42 + 205)
+sim_v10 <- viroli_simulation(
+  r = v_r, p = v_p, n = v_n,
+  n1 = round(0.3 * v_n), n2 = round(0.4 * v_n),
+  n3 = v_n - round(0.3*v_n) - round(0.4*v_n),
+  M1 = M1_v_base, M2 = M2_v_base, M3 = M3_v_base,
+  U1 = U1v10, V1 = V1v10, U2 = U2v10, V2 = V2v10, U3 = U3v10, V3 = V3v10,
+  n_outliers = 15
+)
+
+# Scenario V11: very low covariance (x0.3 scale)
+U1v11 <- 0.3 * rcorrmatrix(v_r); V1v11 <- 0.3 * rcorrmatrix(v_p)
+U2v11 <- 0.3 * rcorrmatrix(v_r); V2v11 <- 0.3 * rcorrmatrix(v_p)
+U3v11 <- 0.3 * rcorrmatrix(v_r); V3v11 <- 0.3 * rcorrmatrix(v_p)
+set.seed(42 + 206)
+sim_v11 <- viroli_simulation(
+  r = v_r, p = v_p, n = v_n,
+  n1 = round(0.3 * v_n), n2 = round(0.4 * v_n),
+  n3 = v_n - round(0.3*v_n) - round(0.4*v_n),
+  M1 = M1_v_base, M2 = M2_v_base, M3 = M3_v_base,
+  U1 = U1v11, V1 = V1v11, U2 = U2v11, V2 = V2v11, U3 = U3v11, V3 = V3v11,
+  n_outliers = 15
+)
+
+# Scenario V12: many outliers (25)
+set.seed(42 + 207)
+sim_v12 <- viroli_simulation(
+  r = v_r, p = v_p, n = v_n,
+  n1 = round(0.3 * v_n), n2 = round(0.4 * v_n),
+  n3 = v_n - round(0.3*v_n) - round(0.4*v_n),
+  M1 = M1_v_base, M2 = M2_v_base, M3 = M3_v_base,
+  U1 = U1v, V1 = V1v, U2 = U2v, V2 = V2v, U3 = U3v, V3 = V3v,
+  n_outliers = 25
+)
+
+# Scenario V13: few outliers (3)
+set.seed(42 + 208)
+sim_v13 <- viroli_simulation(
+  r = v_r, p = v_p, n = v_n,
+  n1 = round(0.3 * v_n), n2 = round(0.4 * v_n),
+  n3 = v_n - round(0.3*v_n) - round(0.4*v_n),
+  M1 = M1_v_base, M2 = M2_v_base, M3 = M3_v_base,
+  U1 = U1v, V1 = V1v, U2 = U2v, V2 = V2v, U3 = U3v, V3 = V3v,
+  n_outliers = 3
+)
+
+# Scenario V14: mixed outlier types (5 perm + 5 row spike + 5 col)
+set.seed(42 + 209)
+sim_v14 <- viroli_simulation(
+  r = v_r, p = v_p, n = v_n,
+  n1 = round(0.3 * v_n), n2 = round(0.4 * v_n),
+  n3 = v_n - round(0.3*v_n) - round(0.4*v_n),
+  M1 = M1_v_base, M2 = M2_v_base, M3 = M3_v_base,
+  U1 = U1v, V1 = V1v, U2 = U2v, V2 = V2v, U3 = U3v, V3 = V3v,
+  n_outliers = 0
+)
+perm_idx_v14 <- sample(seq_along(sim_v14$x_list), 5)
+for (idx in perm_idx_v14) {
+  sim_v14$x_list[[idx]] <- matrix(sample(sim_v14$x_list[[idx]]), v_r, v_p)
+}
+spike_idx_v14 <- sample(setdiff(seq_along(sim_v14$x_list), perm_idx_v14), 5)
+for (idx in spike_idx_v14) {
+  row_id <- sample.int(v_r, 1)
+  sim_v14$x_list[[idx]][row_id, ] <- runif(v_p, -8, 8)
+}
+col_idx_v14 <- sample(setdiff(seq_along(sim_v14$x_list), c(perm_idx_v14, spike_idx_v14)), 5)
+for (idx in col_idx_v14) {
+  col_id <- sample.int(v_p, 1)
+  sim_v14$x_list[[idx]][, col_id] <- runif(v_r, -10, 10)
+}
+sim_v14$outlier_idx <- sort(union(union(perm_idx_v14, spike_idx_v14), col_idx_v14))
+
+# Scenario V15: extreme group imbalance (50/50/200)
+set.seed(42 + 210)
+sim_v15 <- viroli_simulation(
+  r = v_r, p = v_p, n = v_n,
+  n1 = 50, n2 = 50, n3 = 200,
+  M1 = M1_v_base, M2 = M2_v_base, M3 = M3_v_base,
+  U1 = U1v, V1 = V1v, U2 = U2v, V2 = V2v, U3 = U3v, V3 = V3v,
+  n_outliers = 15
+)
+
+# Scenario V16: larger sample size (n=500)
+set.seed(42 + 211)
+sim_v16 <- viroli_simulation(
+  r = v_r, p = v_p, n = 500,
+  n1 = round(0.3 * 500), n2 = round(0.4 * 500),
+  n3 = 500 - round(0.3 * 500) - round(0.4 * 500),
+  M1 = M1_v_base, M2 = M2_v_base, M3 = M3_v_base,
+  U1 = U1v, V1 = V1v, U2 = U2v, V2 = V2v, U3 = U3v, V3 = V3v,
+  n_outliers = 15
+)
+
+# Scenario V17: smaller sample size (n=150)
+set.seed(42 + 212)
+sim_v17 <- viroli_simulation(
+  r = v_r, p = v_p, n = 150,
+  n1 = round(0.3 * 150), n2 = round(0.4 * 150),
+  n3 = 150 - round(0.3 * 150) - round(0.4 * 150),
+  M1 = M1_v_base, M2 = M2_v_base, M3 = M3_v_base,
+  U1 = U1v, V1 = V1v, U2 = U2v, V2 = V2v, U3 = U3v, V3 = V3v,
+  n_outliers = 15
+)
+
+# Scenario V18: heteroscedastic groups (different cov scales)
+set.seed(42 + 213)
+sim_v18 <- viroli_simulation(
+  r = v_r, p = v_p, n = v_n,
+  n1 = round(0.3 * v_n), n2 = round(0.4 * v_n),
+  n3 = v_n - round(0.3*v_n) - round(0.4*v_n),
+  M1 = M1_v_base, M2 = M2_v_base, M3 = M3_v_base,
+  U1 = 0.5 * U1v, V1 = 0.5 * V1v,
+  U2 = 1.5 * U2v, V2 = 1.5 * V2v,
+  U3 = 1.0 * U3v, V3 = 1.0 * V3v,
+  n_outliers = 15
+)
+
+# Scenario V19: anti-correlated row covariances
+set.seed(42 + 214)
+U1v19 <- rcorrmatrix(v_r); V1v19 <- rcorrmatrix(v_p)
+U2v19 <- rcorrmatrix(v_r); V2v19 <- rcorrmatrix(v_p)
+U3v19 <- rcorrmatrix(v_r); V3v19 <- rcorrmatrix(v_p)
+U1v19[1, 2] <- -U1v19[1, 2]; U1v19[2, 1] <- U1v19[1, 2]
+V1v19[1, 2] <- -V1v19[1, 2]; V1v19[2, 1] <- V1v19[1, 2]
+sim_v19 <- viroli_simulation(
+  r = v_r, p = v_p, n = v_n,
+  n1 = round(0.3 * v_n), n2 = round(0.4 * v_n),
+  n3 = v_n - round(0.3*v_n) - round(0.4*v_n),
+  M1 = M1_v_base, M2 = M2_v_base, M3 = M3_v_base,
+  U1 = U1v19, V1 = V1v19, U2 = U2v19, V2 = V2v19, U3 = U3v19, V3 = V3v19,
+  n_outliers = 15
+)
+
+# Scenario V20: larger matrix dimensions (4x6)
+set.seed(42 + 215)
+v_r20 <- 4; v_p20 <- 6
+M1_v20 <- matrix(0, v_r20, v_p20)
+M2_v20 <- matrix(0, v_r20, v_p20)
+M3_v20 <- matrix(0, v_r20, v_p20)
+M1_v20[1, 1] <- 0.5; M3_v20[1, 1] <- -0.5
+U1v20 <- rcorrmatrix(v_r20); V1v20 <- rcorrmatrix(v_p20)
+U2v20 <- rcorrmatrix(v_r20); V2v20 <- rcorrmatrix(v_p20)
+U3v20 <- rcorrmatrix(v_r20); V3v20 <- rcorrmatrix(v_p20)
+sim_v20 <- viroli_simulation(
+  r = v_r20, p = v_p20, n = v_n,
+  n1 = round(0.3 * v_n), n2 = round(0.4 * v_n),
+  n3 = v_n - round(0.3*v_n) - round(0.4*v_n),
+  M1 = M1_v20, M2 = M2_v20, M3 = M3_v20,
+  U1 = U1v20, V1 = V1v20, U2 = U2v20, V2 = V2v20, U3 = U3v20, V3 = V3v20,
+  n_outliers = 15
+)
 
 # ─── Two-group: highly imbalanced proportions ───────────────────────────────
 # Scenario C5: very imbalanced 10:60 (n=70)
@@ -509,33 +572,6 @@ results$C4_structured_spike_contam <- future(run_loglik_scenario(
   outlier_idx = sim_c4$outlier_idx
   ), seed = TRUE)
 
-results$T1_tomarchio_base <- future(run_loglik_scenario(
-  x_list      = sim_t1$x_list,
-  g           = 2,
-  scenario_name = "Tomarchio_base",
-  subtitle    = "Tomarchio 2x4 | 2 groups | column-replacement outliers (Unif(-15,15)) | n=200",
-  r           = t_r, p = t_p,
-  outlier_idx = sim_t1$outlier_idx
-  ), seed = TRUE)
-
-results$T2_tomarchio_plus_permuted <- future(run_loglik_scenario(
-  x_list      = sim_t2$x_list,
-  g           = 2,
-  scenario_name = "Tomarchio_plus_permuted",
-  subtitle    = "Tomarchio 2x4 | 10 column + 15 permuted outliers | n=200",
-  r           = t_r, p = t_p,
-  outlier_idx = sim_t2$outlier_idx
-  ), seed = TRUE)
-
-results$T3_tomarchio_heavy_col <- future(run_loglik_scenario(
-  x_list      = sim_t3$x_list,
-  g           = 2,
-  scenario_name = "Tomarchio_heavy_column",
-  subtitle    = "Tomarchio 2x4 | 20 column-replacement outliers | n=200",
-  r           = t_r, p = t_p,
-  outlier_idx = sim_t3$outlier_idx
-  ), seed = TRUE)
-
 results$V5_extreme_imbalance <- future(run_loglik_scenario(
   x_list      = sim_v5$x_list,
   g           = 3,
@@ -561,6 +597,123 @@ results$V7_column_outliers <- future(run_loglik_scenario(
   subtitle    = "Viroli 3x5 | 3 groups | 15 column-outliers (one noisy column) | 0 permuted",
   r           = v_r, p = v_p,
   outlier_idx = sim_v7$outlier_idx
+  ), seed = TRUE)
+
+results$V8_strong_signal <- future(run_loglik_scenario(
+  x_list      = sim_v8$x_list,
+  g           = 3,
+  scenario_name = "Viroli_strong_signal",
+  subtitle    = "Viroli 3x5 | 3 groups | strong means (0.8,0,−0.8) | 15 outliers",
+  r           = v_r, p = v_p,
+  outlier_idx = sim_v8$outlier_idx
+  ), seed = TRUE)
+
+results$V9_weak_signal <- future(run_loglik_scenario(
+  x_list      = sim_v9$x_list,
+  g           = 3,
+  scenario_name = "Viroli_weak_signal",
+  subtitle    = "Viroli 3x5 | 3 groups | weak means (0.2,0,−0.2) | 15 outliers",
+  r           = v_r, p = v_p,
+  outlier_idx = sim_v9$outlier_idx
+  ), seed = TRUE)
+
+results$V10_very_high_cov <- future(run_loglik_scenario(
+  x_list      = sim_v10$x_list,
+  g           = 3,
+  scenario_name = "Viroli_very_high_cov",
+  subtitle    = "Viroli 3x5 | 3 groups | covariance scaled x1.5 | 15 outliers",
+  r           = v_r, p = v_p,
+  outlier_idx = sim_v10$outlier_idx
+  ), seed = TRUE)
+
+results$V11_very_low_cov <- future(run_loglik_scenario(
+  x_list      = sim_v11$x_list,
+  g           = 3,
+  scenario_name = "Viroli_very_low_cov",
+  subtitle    = "Viroli 3x5 | 3 groups | covariance scaled x0.3 | 15 outliers",
+  r           = v_r, p = v_p,
+  outlier_idx = sim_v11$outlier_idx
+  ), seed = TRUE)
+
+results$V12_many_outliers <- future(run_loglik_scenario(
+  x_list      = sim_v12$x_list,
+  g           = 3,
+  scenario_name = "Viroli_many_outliers",
+  subtitle    = "Viroli 3x5 | 3 groups | 25 permuted outliers",
+  r           = v_r, p = v_p,
+  outlier_idx = sim_v12$outlier_idx
+  ), seed = TRUE)
+
+results$V13_few_outliers <- future(run_loglik_scenario(
+  x_list      = sim_v13$x_list,
+  g           = 3,
+  scenario_name = "Viroli_few_outliers_v2",
+  subtitle    = "Viroli 3x5 | 3 groups | only 3 permuted outliers",
+  r           = v_r, p = v_p,
+  outlier_idx = sim_v13$outlier_idx
+  ), seed = TRUE)
+
+results$V14_mixed_outliers <- future(run_loglik_scenario(
+  x_list      = sim_v14$x_list,
+  g           = 3,
+  scenario_name = "Viroli_mixed_outliers",
+  subtitle    = "Viroli 3x5 | 3 groups | 5 perm + 5 row-spike + 5 col outliers",
+  r           = v_r, p = v_p,
+  outlier_idx = sim_v14$outlier_idx
+  ), seed = TRUE)
+
+results$V15_extreme_imbalance <- future(run_loglik_scenario(
+  x_list      = sim_v15$x_list,
+  g           = 3,
+  scenario_name = "Viroli_extreme_imbalance_v2",
+  subtitle    = "Viroli 3x5 | 3 groups π=(0.17,0.17,0.67) | 15 outliers",
+  r           = v_r, p = v_p,
+  outlier_idx = sim_v15$outlier_idx
+  ), seed = TRUE)
+
+results$V16_large_n <- future(run_loglik_scenario(
+  x_list      = sim_v16$x_list,
+  g           = 3,
+  scenario_name = "Viroli_large_n",
+  subtitle    = "Viroli 3x5 | 3 groups | n=500 | 15 outliers",
+  r           = v_r, p = v_p,
+  outlier_idx = sim_v16$outlier_idx
+  ), seed = TRUE)
+
+results$V17_small_n <- future(run_loglik_scenario(
+  x_list      = sim_v17$x_list,
+  g           = 3,
+  scenario_name = "Viroli_small_n",
+  subtitle    = "Viroli 3x5 | 3 groups | n=150 | 15 outliers",
+  r           = v_r, p = v_p,
+  outlier_idx = sim_v17$outlier_idx
+  ), seed = TRUE)
+
+results$V18_heteroscedastic <- future(run_loglik_scenario(
+  x_list      = sim_v18$x_list,
+  g           = 3,
+  scenario_name = "Viroli_heteroscedastic",
+  subtitle    = "Viroli 3x5 | 3 groups | heteroscedastic cov scales (0.5,1.5,1.0) | 15 outliers",
+  r           = v_r, p = v_p,
+  outlier_idx = sim_v18$outlier_idx
+  ), seed = TRUE)
+
+results$V19_anticorrelated <- future(run_loglik_scenario(
+  x_list      = sim_v19$x_list,
+  g           = 3,
+  scenario_name = "Viroli_anticorrelated",
+  subtitle    = "Viroli 3x5 | 3 groups | anti-correlated row/col covariances | 15 outliers",
+  r           = v_r, p = v_p,
+  outlier_idx = sim_v19$outlier_idx
+  ), seed = TRUE)
+
+results$V20_larger_dimensions <- future(run_loglik_scenario(
+  x_list      = sim_v20$x_list,
+  g           = 3,
+  scenario_name = "Viroli_larger_dimensions",
+  subtitle    = "Viroli 4x6 | 3 groups | larger r/p | 15 outliers",
+  r           = v_r20, p = v_p20,
+  outlier_idx = sim_v20$outlier_idx
   ), seed = TRUE)
 
 results$C5_highly_imbalanced <- future(run_loglik_scenario(
@@ -595,7 +748,9 @@ results$C7_weak_separation <- future(run_loglik_scenario(
 # ══════════════════════════════════════════════════════════════════════════════
 
 size_grid <- list(
-  c(3, 5), c(4, 6), c(5, 7), c(6, 8), c(7, 9), c(8, 10)
+  c(2, 3), c(2, 4), c(3, 3), c(3, 4), c(3, 5),
+  c(4, 6), c(5, 7), c(5, 8), c(6, 9), c(7, 10),
+  c(8, 11), c(9, 12), c(10, 13)
 )
 
 cat("\n===== Running scaled size-sensitivity grids =====\n")
@@ -605,7 +760,10 @@ for (s in seq_along(size_grid)) {
   pg <- size_grid[[s]][2]
   n_total <- round(5 * rg * pg / 3)
 
-  cat(sprintf("\n  >>> Size iteration %d: r=%d, p=%d (n=%d)\n", s - 1, rg, pg, n_total))
+  plots_dir <- file.path("loglik", "plots", sprintf("size_%dx%d", rg, pg))
+
+  cat(sprintf("\n  >>> Size %d: r=%d, p=%d (n=%d) -> %s\n",
+              s - 1, rg, pg, n_total, plots_dir))
 
   set.seed(42 + 700 + s)
   sim_viroli_small <- scaled_viroli_simulation(
@@ -620,7 +778,8 @@ for (s in seq_along(size_grid)) {
     scenario_name = sprintf("V1_small_signal_sz%d", s - 1),
     subtitle = sprintf("Scaling %d: Viroli %dx%d | 3 groups | 15 permuted outliers | n=%d", s - 1, rg, pg, n_total),
     r = rg, p = pg, true_k_noise = 15,
-    outlier_idx = sim_viroli_small$outlier_idx
+    outlier_idx = sim_viroli_small$outlier_idx,
+    plots_dir = plots_dir
   ), seed = TRUE)
 
   set.seed(42 + 800 + s)
@@ -633,20 +792,26 @@ for (s in seq_along(size_grid)) {
     scenario_name = sprintf("C_base_2group_sz%d", s - 1),
     subtitle = sprintf("Scaling %d: Two-group %dx%d | M1=1,M2=-1 | 10 uniform outliers | n=%d", s - 1, rg, pg, n_total),
     r = rg, p = pg, true_k_noise = 10,
-    outlier_idx = sim_two_group_scaled$outlier_idx
+    outlier_idx = sim_two_group_scaled$outlier_idx,
+    plots_dir = plots_dir
   ), seed = TRUE)
 
   if (s - 1 >= 1) {
     set.seed(42 + 900 + s)
-    sim_tomarchio_scaled <- scaled_tomarchio_simulation(
-       r = rg, p = pg, n = n_total, n_outliers = 10
+    sim_viroli_spike_scaled <- scaled_viroli_simulation(
+       r = rg, p = pg, n = n_total,
+       n1 = round(0.3 * n_total), n2 = round(0.4 * n_total),
+       n3 = n_total - round(0.3 * n_total) - round(0.4 * n_total),
+       n_outliers = 10, signal_strength = 0.5, cov_scale = 1,
+       outlier_type = "row_spike"
     )
-    results[[sprintf("T_base_tomarchio_sz%d", s - 1)]] <- future(run_loglik_scenario(
-      x_list = sim_tomarchio_scaled$x_list, g = 2,
-      scenario_name = sprintf("T_base_tomarchio_sz%d", s - 1),
-      subtitle = sprintf("Scaling %d: Tomarchio %dx%d | 2 groups | 10 col outliers | n=%d", s - 1, rg, pg, n_total),
+    results[[sprintf("V_row_spike_sz%d", s - 1)]] <- future(run_loglik_scenario(
+      x_list = sim_viroli_spike_scaled$x_list, g = 3,
+      scenario_name = sprintf("V_row_spike_sz%d", s - 1),
+      subtitle = sprintf("Scaling %d: Viroli %dx%d | 3 groups | 10 row-spike outliers | n=%d", s - 1, rg, pg, n_total),
       r = rg, p = pg, true_k_noise = 10,
-      outlier_idx = sim_tomarchio_scaled$outlier_idx
+      outlier_idx = sim_viroli_spike_scaled$outlier_idx,
+      plots_dir = plots_dir
     ), seed = TRUE)
   }
 }
@@ -662,7 +827,7 @@ summary_data <- rbindlist(lapply(seq_along(results), function(i) {
   data.table(
     idx           = i,
     Scenario      = nm,
-    g             = if (grepl("Tomarchio", nm)) 2 else if (grepl("^V", nm)) 3 else 2,
+    g             = if (grepl("^V", nm)) 3 else 2,
     Selected_k    = r$best_k,
     Max_logLik_k  = ifelse(any(r$plot_df$logLik[complete.cases(r$plot_df$logLik)] > -Inf),
                           r$plot_df$k[complete.cases(r$plot_df$logLik)][
@@ -682,3 +847,9 @@ print(summary_data)
 
 cat(sprintf("\nSaved %d scenario trend plots under %s/\n",
             length(results), normalizePath("loglik/plots")))
+
+cat("Plots organized by size in subfolders:\n")
+for (s in seq_along(size_grid)) {
+  rg <- size_grid[[s]][1]; pg <- size_grid[[s]][2]
+  cat(sprintf("  size_%dx%d/\n", rg, pg))
+}
