@@ -11,10 +11,10 @@ plan(multisession, workers = availableCores() - 1)
 # Shared helper — evaluate one k-grid candidate and return log-likelihood
 # ──────────────────────────────────────────────────────────────────────────────
 evaluate_k_candidate_with_loglik <- function(idx, x_list, r, p, g,
-                                              max_iter, tol,
-                                              k_grid, nstart, init,
-                                              noise_pi_init, verbose,
-                                              outlier_idx) {
+                                               max_iter, tol,
+                                               k_grid, nstart, init,
+                                               noise_pi_init, verbose,
+                                               outlier_idx) {
   current_k <- k_grid[idx]
 
   fit_noise <-  Ampharos:::mv_noise_fit_impl(
@@ -225,13 +225,14 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
                                  nstart = 10, max_iter = 100, tol = 1e-6,
                                  use_kmeans = TRUE, init = "kmeans",
                                  noise_pi_init = 0.05,
-                                 save_plots = TRUE, plots_dir = "loglik/plots") {
+                                 save_plots = TRUE, plots_dir = "loglik/plots",
+                                 custom_k_grid = NULL) {
    for (pkg in c("Ampharos", "ggplot2", "clusterGeneration", "data.table")) {
      if (!requireNamespace(pkg, quietly = TRUE)) stop("Package ", pkg, " required")
    }
-       if (!is.null(outlier_idx) && !is.na(true_k_noise) && length(outlier_idx) != true_k_noise) {
-        warning("outlier_idx length (", length(outlier_idx), ") != true_k_noise (", true_k_noise, ")")
-      }
+        if (!is.null(outlier_idx) && !is.na(true_k_noise) && length(outlier_idx) != true_k_noise) {
+         warning("outlier_idx length (", length(outlier_idx), ") != true_k_noise (", true_k_noise, ")")
+       }
   cat(sprintf("\n===== Scenario: %s =====\n", scenario_name))
 
   cat(sprintf("  Fitting estimate_k with g = %d ...\n", g))
@@ -254,8 +255,11 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
               best_k, k_selection$ks_scores[best_ks_idx]))
 
   cat("  Collecting log-likelihoods across k_grid ...\n")
+  
+  active_k_grid <- if (!is.null(custom_k_grid)) custom_k_grid else k_selection$k_grid
+  
   grid_results <- lapply(
-    seq_along(k_selection$k_grid),
+    seq_along(active_k_grid),
     evaluate_k_candidate_with_loglik,
     x_list        = x_list,
     r             = r,
@@ -263,7 +267,7 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
     g             = g,
     max_iter      = max_iter,
     tol           = tol,
-    k_grid        = k_selection$k_grid,
+    k_grid        = active_k_grid,
     nstart        = nstart,
     init          = init,
     noise_pi_init = noise_pi_init,
@@ -285,77 +289,77 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
   }
 
    plot_df$ks_flag <- plot_df$k == k_selection$k_grid[best_ks_idx]
-   correct_noise_detected <- !is.na(true_k_noise) && best_k == true_k_noise
+  correct_noise_detected <- !is.na(true_k_noise) && best_k == true_k_noise
 
-    selected_k_color <- if (correct_noise_detected) "green" else "black"
+   selected_k_color <- if (correct_noise_detected) "green" else "black"
 
-    if (!is.na(true_k_noise)) {
-      cat(sprintf("  True noise count = %.4e | Correctly identified = %s\n",
-                  true_k_noise, if (correct_noise_detected) "YES" else "NO"))
-    }
-
-    n_correct <- sum(plot_df$correct_noise, na.rm = TRUE)
-    cat(sprintf("  k-grid values with perfect noise recovery: %d / %d\n",
-                n_correct, nrow(plot_df)))
-
-   # Diagnostics
-   if (any(plot_df$type == "Max log-likelihood")) {
-     cat(sprintf("  Max log-likelihood k = %.4e\n",
-                 plot_df$k[plot_df$type == "Max log-likelihood"][1]))
-   } else {
-     cat("  Max log-likelihood k = (no valid values)\n")
+   if (!is.na(true_k_noise)) {
+     cat(sprintf("  True noise count = %.4e | Correctly identified = %s\n",
+                 true_k_noise, if (correct_noise_detected) "YES" else "NO"))
    }
 
-   cor_val <- NA_real_
+   n_correct <- sum(plot_df$correct_noise, na.rm = TRUE)
+   cat(sprintf("  k-grid values with perfect noise recovery: %d / %d\n",
+               n_correct, nrow(plot_df)))
+
+  # Diagnostics
+  if (any(plot_df$type == "Max log-likelihood")) {
+    cat(sprintf("  Max log-likelihood k = %.4e\n",
+                plot_df$k[plot_df$type == "Max log-likelihood"][1]))
+  } else {
+    cat("  Max log-likelihood k = (no valid values)\n")
+  }
+
+  cor_val <- NA_real_
   if (any(ok_loglik)) {
     cor_val <- cor(plot_df$k[ok_loglik], plot_df$logLik[ok_loglik],
                    method = "spearman")
     cat(sprintf("  Spearman (k vs logLik): %.4f\n", cor_val))
   }
 
-    # ── Plot 1: log-likelihood vs k (linear y) ─────────────────────────────────
-    plot_df$correct_noise_group <- cumsum(c(TRUE, diff(plot_df$correct_noise) != 0))
+   # ── Plot 1: log-likelihood vs k (linear y) ─────────────────────────────────
+   plot_df$correct_noise_group <- cumsum(c(TRUE, diff(plot_df$correct_noise) != 0))
 
-    p1 <- ggplot() +
-      geom_vline(xintercept = best_k, color = selected_k_color, linetype = "dashed",
-                 linewidth = 0.8) +
-      geom_vline(xintercept = k_selection$k_grid[best_ks_idx],
-                 color = "steelblue", linetype = "dotdash", linewidth = 0.8) +
-      {
-        ok_rows <- plot_df[complete.cases(plot_df$logLik), ]
-        if (nrow(ok_rows) > 1) {
-          ok_rows <- ok_rows[order(plot_df$k), ]
-          seg_df <- data.frame(
-            x      = head(plot_df$k, -1),
-            xend   = tail(plot_df$k, -1),
-            y      = head(plot_df$logLik, -1),
-            yend   = tail(plot_df$logLik, -1),
-            correct_noise = head(plot_df$correct_noise, -1)
-          )
-          list(geom_segment(
-            data = seg_df,
-            aes(x = x, xend = xend, y = y, yend = yend, color = correct_noise),
-            linewidth = 1
-          ))
-        } else NULL
-      } +
-      geom_point(data = subset(plot_df, type != "Other"),
-                 aes(x = k, y = logLik, shape = type), color = "darkorange2", size = 3) +
-      scale_color_manual(values = c("TRUE" = "red", "FALSE" = "darkorange2"),
-                         labels = c("Correct noise recovery", "Incorrect recovery"),
-                         name = "Noise recovery") +
-      scale_x_log10() +
-      scale_y_continuous(labels = scales::comma_format()) +
-      labs(
-        title    = sprintf("Scenario: %s", scenario_name),
-        subtitle = subtitle,
-        x        = expression(k~("noise height, log scale")),
-        y        = expression( Final~log-likelihood ),
-        shape    = "",
-        colour   = "Noise recovery"
-      ) +
-      theme_minimal() +
-      theme(legend.position = "bottom", legend.title = element_blank())
+   p1 <- ggplot() +
+     geom_vline(xintercept = best_k, color = selected_k_color, linetype = "dashed",
+                linewidth = 0.8) +
+     geom_vline(xintercept = k_selection$k_grid[best_ks_idx],
+                color = "steelblue", linetype = "dotdash", linewidth = 0.8) +
+     {
+       ok_rows <- plot_df[complete.cases(plot_df$logLik), ]
+       if (nrow(ok_rows) > 1) {
+         ok_rows <- ok_rows[order(plot_df$k), ]
+         seg_df <- data.frame(
+           x      = head(plot_df$k, -1),
+           xend   = tail(plot_df$k, -1),
+           y      = head(plot_df$logLik, -1),
+           yend   = tail(plot_df$logLik, -1),
+           correct_noise = head(plot_df$correct_noise, -1)
+         )
+         list(geom_segment(
+           data = seg_df,
+           aes(x = x, xend = xend, y = y, yend = yend, color = correct_noise),
+           linewidth = 1
+         ))
+       } else NULL
+     } +
+     geom_point(data = subset(plot_df, type != "Other"),
+                aes(x = k, y = logLik, shape = type), color = "darkorange2", size = 3) +
+     scale_color_manual(values = c("TRUE" = "blue", "FALSE" = "darkorange2"),
+                        labels = c("Correct noise recovery", "Incorrect recovery"),
+                        name = "Noise recovery") +
+     scale_x_continuous() +
+     scale_y_continuous(labels = scales::comma_format()) +
+     labs(
+       title    = sprintf("Scenario: %s", scenario_name),
+       subtitle = subtitle,
+       x        = expression(k~("noise height")),
+       y        = expression( Final~log-likelihood ),
+       shape    = "",
+       colour   = "Noise recovery"
+     ) +
+     theme_minimal() +
+     theme(legend.position = "bottom", legend.title = element_blank())
 
   # ── Plot 2: log-likelihood with log y ──────────────────────────────────────
   p2 <- p1 +
@@ -397,21 +401,21 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
                color = correct_noise, group = interaction(metric, correct_noise)),
            linewidth = 1
          ))
-       } else NULL
-     } +
-     facet_wrap(~metric, scales = "free_y", ncol = 1) +
-     scale_color_manual(values = c("TRUE" = "red", "FALSE" = "darkorange2"),
-                        labels = c("Correct noise recovery", "Incorrect recovery"),
-                        name = "Noise recovery") +
-     scale_x_log10() +
-     labs(
-       title    = sprintf("Scenario: %s — estimate_k diagnostics", scenario_name),
-       subtitle = if (is.na(true_k_noise)) "Black dashed = selected k; red = correct noise recovery"
-                  else sprintf("Green dashed = correct selected k; red = correct noise recovery"),
-       x        = expression(k~("noise height, log scale")),
-       y        = "Value"
-     ) +
-     theme_minimal()
+        } else NULL
+      } +
+      facet_wrap(~metric, scales = "free_y", ncol = 1) +
+      scale_color_manual(values = c("TRUE" = "blue", "FALSE" = "darkorange2"),
+                         labels = c("Correct noise recovery", "Incorrect recovery"),
+                         name = "Noise recovery") +
+      scale_x_continuous() +
+      labs(
+        title    = sprintf("Scenario: %s — estimate_k diagnostics", scenario_name),
+        subtitle = if (is.na(true_k_noise)) "Black dashed = selected k; blue = correct noise recovery"
+                   else sprintf("Green dashed = correct selected k; blue = correct noise recovery"),
+        x        = expression(k~("noise height")),
+        y        = "Value"
+      ) +
+      theme_minimal()
 
   # ── Save plots ─────────────────────────────────────────────────────────────
   if (save_plots) {
@@ -433,7 +437,7 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
     p_loglik_logy = p2,
     p_combined    = p3,
     best_k        = best_k,
-    k_grid        = k_selection$k_grid,
+    k_grid        = active_k_grid,
     ks_scores     = k_selection$ks_scores,
     correlation   = cor_val
   )

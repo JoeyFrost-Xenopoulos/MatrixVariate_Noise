@@ -27,53 +27,6 @@ viroli_simulation <- function(r, p, n, n1, n2, n3, M1, M2, M3,
   list(x_list = x_list, outlier_idx = outlier_idx)
 }
 
-two_group_uniform_simulation <- function(r, p, n1, n2, M1, M2,
-                                         n_outliers, n_outliers_perm,
-                                         n_row_spike = 0, n_col_out = 0,
-                                         col_out_range = c(-15, 15)) {
-  simulate_group <- function(n, mean_matrix, row_sd = 0.5, col_sd = 0.5) {
-    row_cov <- diag(row_sd, nrow(mean_matrix))
-    col_cov <- diag(col_sd, ncol(mean_matrix))
-    lapply(seq_len(n), function(i)
-      mean_matrix + row_cov %*% matrix(rnorm(r * p), r, p) %*% col_cov)
-  }
-  x_list <- c(simulate_group(n1, M1), simulate_group(n2, M2))
-
-  outlier_idx <- integer(0)
-  if (n_outliers > 0) {
-    contam <- lapply(seq_len(n_outliers),
-                     function(i) matrix(runif(r * p, -3, 3), r, p))
-    x_list <- c(x_list, contam)
-    outlier_idx <- c(outlier_idx, (length(x_list) - n_outliers + 1):length(x_list))
-  }
-  if (n_outliers_perm > 0) {
-    perm_idx <- sample(seq_along(x_list), n_outliers_perm)
-    for (idx in perm_idx) {
-      x_list[[idx]] <- matrix(sample(x_list[[idx]]), r, p)
-    }
-    outlier_idx <- union(outlier_idx, perm_idx)
-  }
-  if (n_row_spike > 0) {
-    spike_idx <- sample(seq_along(x_list), n_row_spike)
-    for (idx in spike_idx) {
-      row_id <- sample.int(r, 1)
-      x_list[[idx]][row_id, ] <- runif(p, -8, 8)
-    }
-    outlier_idx <- union(outlier_idx, spike_idx)
-  }
-  if (n_col_out > 0) {
-    col_idx <- sample(seq_along(x_list), n_col_out)
-    for (idx in col_idx) {
-      col_id <- sample.int(p, 1)
-      x_list[[idx]][, col_id] <- runif(r, col_out_range[1], col_out_range[2])
-    }
-    outlier_idx <- union(outlier_idx, col_idx)
-  }
-  list(x_list = x_list, outlier_idx = outlier_idx)
-}
-
-
-
 scaled_viroli_simulation <- function(r, p, n, n1, n2, n3, n_outliers,
                                      signal_strength = 0.5, cov_scale = 1,
                                      outlier_type = c("perm", "row_spike", "col_out"),
@@ -111,24 +64,6 @@ scaled_viroli_simulation <- function(r, p, n, n1, n2, n3, n_outliers,
       result$x_list[[idx]][, col_id] <- runif(r, -10, 10)
     }
   }
-  list(x_list = result$x_list, outlier_idx = result$outlier_idx)
-}
-
-scaled_two_group_simulation <- function(r, p, n1, n2, n_outliers = 0,
-                                        n_outliers_perm = 0,
-                                        n_row_spike = 0, n_col_out = 0,
-                                        mean_diff = 2, seed = NULL) {
-  if (!is.null(seed)) set.seed(seed)
-  M1 <- matrix(mean_diff / 2, r, p)
-  M2 <- matrix(-mean_diff / 2, r, p)
-  result <- two_group_uniform_simulation(
-    r = r, p = p, n1 = n1, n2 = n2,
-    M1 = M1, M2 = M2,
-    n_outliers = n_outliers,
-    n_outliers_perm = n_outliers_perm,
-    n_row_spike = n_row_spike,
-    n_col_out = n_col_out
-  )
   list(x_list = result$x_list, outlier_idx = result$outlier_idx)
 }
 
@@ -201,42 +136,6 @@ sim_v4 <- viroli_simulation(
   U1 = U1v4, V1 = V1v4, U2 = U2v4, V2 = V2v4, U3 = U3v4, V3 = V3v4,
   n_outliers = 15
 )
-
-# ─── Two-group contamination scenarios (4×4, M1=1, M2=−1) ─────────────────────
-c_r <- 4; c_p <- 4
-M1_c <- matrix(1,    c_r, c_p)
-M2_c <- matrix(-1,   c_r, c_p)
-
-# Scenario C1: low uniform contamination (5 out of 65)
-sim_c1 <- two_group_uniform_simulation(
-  r = c_r, p = c_p, n1 = 40, n2 = 20,
-  M1 = M1_c, M2 = M2_c, n_outliers = 5, n_outliers_perm = 0
-)
-
-# Scenario C2: medium positive contamination matching vignette (15 ut of 75)
-sim_c2 <- two_group_uniform_simulation(
-  r = c_r, p = c_p, n1 = 40, n2 = 20,
-  M1 = M1_c, M2 = M2_c, n_outliers = 15, n_outliers_perm = 0
-)
-
-# Scenario C3: high contamination with both contamination types (15 uniform + 15 permuted)
-sim_c3 <- two_group_uniform_simulation(
-  r = c_r, p = c_p, n1 = 40, n2 = 20,
-  M1 = M1_c, M2 = M2_c, n_outliers = 15, n_outliers_perm = 15
-)
-
-# Scenario C4: structured contamination (uniform + row spikes)
-sim_c4 <- two_group_uniform_simulation(
-  r = c_r, p = c_p, n1 = 40, n2 = 20,
-  M1 = M1_c, M2 = M2_c,
-  n_outliers = 10,
-  n_outliers_perm = 0,
-  n_row_spike = 20
-)
-
-# ══════════════════════════════════════════════════════════════════════════════
-# Additional base scenarios
-# ══════════════════════════════════════════════════════════════════════════════
 
 # ─── Viroli-style: highly unequal 3-group proportions ────────────────────────
 set.seed(42 + 200)
@@ -469,31 +368,6 @@ sim_v20 <- viroli_simulation(
   n_outliers = 15
 )
 
-# ─── Two-group: highly imbalanced proportions ───────────────────────────────
-# Scenario C5: very imbalanced 10:60 (n=70)
-set.seed(42 + 300)
-sim_c5 <- two_group_uniform_simulation(
-  r = c_r, p = c_p, n1 = 10, n2 = 60,
-  M1 = M1_c, M2 = M2_c, n_outliers = 5, n_outliers_perm = 0
-)
-
-# ─── Two-group: strong vs. weak separation ───────────────────────────────────
-# Scenario C6_strong: well-separated means (M1=2, M2=-2)
-set.seed(42 + 301)
-sim_c6_strong <- two_group_uniform_simulation(
-  r = c_r, p = c_p, n1 = 40, n2 = 20,
-  M1 = matrix(2, c_r, c_p), M2 = matrix(-2, c_r, c_p),
-  n_outliers = 10, n_outliers_perm = 0
-)
-
-# Scenario C7_weak: weakly separated means (M1=0.25, M2=-0.25)
-set.seed(42 + 302)
-sim_c7_weak <- two_group_uniform_simulation(
-  r = c_r, p = c_p, n1 = 40, n2 = 20,
-  M1 = matrix(0.25, c_r, c_p), M2 = matrix(-0.25, c_r, c_p),
-  n_outliers = 10, n_outliers_perm = 0
-)
-
 # ══════════════════════════════════════════════════════════════════════════════
 # Run all scenarios
 # ══════════════════════════════════════════════════════════════════════════════
@@ -534,42 +408,6 @@ results$V4_high_overlap <- future(run_loglik_scenario(
   subtitle    = "Viroli 3×5 | weaker means (±0.15) + larger covariance (x1.2) | 15 outliers",
   r           = v_r, p = v_p,
   outlier_idx = sim_v4$outlier_idx
-  ), seed = TRUE)
-
-results$C1_low_uniform_contam <- future(run_loglik_scenario(
-  x_list      = sim_c1$x_list,
-  g           = 2,
-  scenario_name = "Contam_low_uniform",
-  subtitle    = "Two-group 4×4 | M1=1, M2=-1 | 5 uniform outliers (Unif(-3,3)) | n=65",
-  r           = c_r, p = c_p,
-  outlier_idx = sim_c1$outlier_idx
-  ), seed = TRUE)
-
-results$C2_medium_uniform_contam <- future(run_loglik_scenario(
-  x_list      = sim_c2$x_list,
-  g           = 2,
-  scenario_name = "Contam_medium_uniform",
-  subtitle    = "Two-group 4×4 | M1=1, M2=-1 | 15 uniform outliers (Unif(-3,3)) | n=75",
-  r           = c_r, p = c_p,
-  outlier_idx = sim_c2$outlier_idx
-  ), seed = TRUE)
-
-results$C3_high_mixed_contam <- future(run_loglik_scenario(
-  x_list      = sim_c3$x_list,
-  g           = 2,
-  scenario_name = "Contam_high_mixed",
-  subtitle    = "Two-group 4×4 | M1=1, M2=-1 | 15 uniform + 15 permuted outliers | n=90",
-  r           = c_r, p = c_p,
-  outlier_idx = sim_c3$outlier_idx
-  ), seed = TRUE)
-
-results$C4_structured_spike_contam <- future(run_loglik_scenario(
-  x_list      = sim_c4$x_list,
-  g           = 2,
-  scenario_name = "Contam_structured_spikes",
-  subtitle    = "Two-group 4×4 | M1=1, M2=-1 | 10 uniform + 20 row-spike outliers | n=70",
-  r           = c_r, p = c_p,
-  outlier_idx = sim_c4$outlier_idx
   ), seed = TRUE)
 
 results$V5_extreme_imbalance <- future(run_loglik_scenario(
@@ -716,33 +554,6 @@ results$V20_larger_dimensions <- future(run_loglik_scenario(
   outlier_idx = sim_v20$outlier_idx
   ), seed = TRUE)
 
-results$C5_highly_imbalanced <- future(run_loglik_scenario(
-  x_list      = sim_c5$x_list,
-  g           = 2,
-  scenario_name = "Contam_highly_imbalanced",
-  subtitle    = "Two-group 4x4 | M1=1,M2=-1 | very imbalanced (10 vs 60) | 5 uniform outliers",
-  r           = c_r, p = c_p,
-  outlier_idx = sim_c5$outlier_idx
-  ), seed = TRUE)
-
-results$C6_strong_separation <- future(run_loglik_scenario(
-  x_list      = sim_c6_strong$x_list,
-  g           = 2,
-  scenario_name = "Contam_strong_separation",
-  subtitle    = "Two-group 4x4 | M1=2,M2=-2 | 10 uniform outliers | n=70",
-  r           = c_r, p = c_p,
-  outlier_idx = sim_c6_strong$outlier_idx
-  ), seed = TRUE)
-
-results$C7_weak_separation <- future(run_loglik_scenario(
-  x_list      = sim_c7_weak$x_list,
-  g           = 2,
-  scenario_name = "Contam_weak_separation",
-  subtitle    = "Two-group 4x4 | M1=0.25,M2=-0.25 | 10 uniform outliers | n=70",
-  r           = c_r, p = c_p,
-  outlier_idx = sim_c7_weak$outlier_idx
-  ), seed = TRUE)
-
 # ══════════════════════════════════════════════════════════════════════════════
 # Scaled size-sensitivity scenarios
 # ══════════════════════════════════════════════════════════════════════════════
@@ -752,6 +563,8 @@ size_grid <- list(
   c(4, 6), c(5, 7), c(5, 8), c(6, 9), c(7, 10),
   c(8, 11), c(9, 12), c(10, 13)
 )
+
+custom_k_grid <- seq(-100, -4, length.out = 100)
 
 cat("\n===== Running scaled size-sensitivity grids =====\n")
 
@@ -765,8 +578,11 @@ for (s in seq_along(size_grid)) {
   cat(sprintf("\n  >>> Size %d: r=%d, p=%d (n=%d) -> %s\n",
               s - 1, rg, pg, n_total, plots_dir))
 
-  n_outliers_perm <- min(15, n_total - 3)
-  n_outliers_spike <- min(10, n_total - 3)
+  prop_perm <- seq(0.03, 0.15, length.out = length(size_grid))[s]
+  prop_spike <- seq(0.02, 0.10, length.out = length(size_grid))[s]
+
+  n_outliers_perm <- min(max(1, round(n_total * prop_perm)), n_total - 3)
+  n_outliers_spike <- min(max(1, round(n_total * prop_spike)), n_total - 3)
 
   set.seed(42 + 700 + s)
   sim_viroli_small <- scaled_viroli_simulation(
@@ -782,21 +598,8 @@ for (s in seq_along(size_grid)) {
     subtitle = sprintf("Scaling %d: Viroli %dx%d | 3 groups | %d permuted outliers | n=%d", s - 1, rg, pg, n_outliers_perm, n_total),
     r = rg, p = pg, true_k_noise = n_outliers_perm,
     outlier_idx = sim_viroli_small$outlier_idx,
-    plots_dir = plots_dir
-  ), seed = TRUE)
-
-  set.seed(42 + 800 + s)
-  sim_two_group_scaled <- scaled_two_group_simulation(
-    r = rg, p = pg, n1 = round(0.6 * n_total), n2 = round(0.4 * n_total),
-    n_outliers = min(10, n_total - 2), mean_diff = 2
-  )
-  results[[sprintf("C_base_2group_sz%d", s - 1)]] <- future(run_loglik_scenario(
-    x_list = sim_two_group_scaled$x_list, g = 2,
-    scenario_name = sprintf("C_base_2group_sz%d", s - 1),
-    subtitle = sprintf("Scaling %d: Two-group %dx%d | M1=1,M2=-1 | %d uniform outliers | n=%d", s - 1, rg, pg, min(10, n_total - 2), n_total),
-    r = rg, p = pg, true_k_noise = min(10, n_total - 2),
-    outlier_idx = sim_two_group_scaled$outlier_idx,
-    plots_dir = plots_dir
+    plots_dir = plots_dir,
+    custom_k_grid = custom_k_grid
   ), seed = TRUE)
 
   if (s - 1 >= 1) {
@@ -814,7 +617,8 @@ for (s in seq_along(size_grid)) {
       subtitle = sprintf("Scaling %d: Viroli %dx%d | 3 groups | %d row-spike outliers | n=%d", s - 1, rg, pg, n_outliers_spike, n_total),
       r = rg, p = pg, true_k_noise = n_outliers_spike,
       outlier_idx = sim_viroli_spike_scaled$outlier_idx,
-      plots_dir = plots_dir
+      plots_dir = plots_dir,
+      custom_k_grid = custom_k_grid
     ), seed = TRUE)
   }
 }
@@ -830,7 +634,7 @@ summary_data <- rbindlist(lapply(seq_along(results), function(i) {
   data.table(
     idx           = i,
     Scenario      = nm,
-    g             = if (grepl("^V", nm)) 3 else 2,
+    g             = 3,
     Selected_k    = r$best_k,
     Max_logLik_k  = ifelse(any(r$plot_df$logLik[complete.cases(r$plot_df$logLik)] > -Inf),
                           r$plot_df$k[complete.cases(r$plot_df$logLik)][
