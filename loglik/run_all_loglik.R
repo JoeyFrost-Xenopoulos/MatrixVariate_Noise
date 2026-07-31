@@ -5,8 +5,7 @@ library(data.table)
 library(future)
 library(future.apply)
 
-plan(multisession, workers = availableCores() - 1,
-     packages = c("Ampharos", "ggplot2", "clusterGeneration", "data.table"))
+plan(multisession, workers = availableCores() - 1)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Shared helper — evaluate one k-grid candidate and return log-likelihood
@@ -303,6 +302,9 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
                                  use_kmeans = TRUE, init = "kmeans",
                                  noise_pi_init = 0.05,
                                  save_plots = TRUE, plots_dir = "loglik/plots") {
+  for (pkg in c("Ampharos", "ggplot2", "clusterGeneration", "data.table")) {
+    if (!requireNamespace(pkg, quietly = TRUE)) stop("Package ", pkg, " required")
+  }
   cat(sprintf("\n===== Scenario: %s =====\n", scenario_name))
 
   cat(sprintf("  Fitting estimate_k with g = %d ...\n", g))
