@@ -1,8 +1,10 @@
 #' Log-likelihood trend across estimate_k candidates (Viroli simulation)
 #'
-#' Demonstrates that the observed-data log-likelihood trajectory across the
-#' HC-noise grid is non-monotone, confirming that selecting k purely on the
-#' basis of maximum observed-data log-likelihood alone is unreliable.
+#' Log-likelihood trend across estimate_k candidates (Viroli simulation)
+#'
+#' Demonstrates how the observed-data log-likelihood of the HC fit changes
+#' across the k-grid used by estimate_k. This is meant as a diagnostic for
+#' the selection path, not as a separate post-cleaning refit analysis.
 #'
 #' Uses the same 3-group Viroli simulation as in Noise_Tests.qmd.
 #'
@@ -83,23 +85,7 @@ evaluate_k_candidate_with_loglik <- function(idx, x_list, g, max_iter, tol,
   if (length(x_clean) <= g) {
     return(list(
       k             = current_k,
-      logLik        = NA_real_,
-      ks_statistic  = Inf,
-      ks_p.value    = NA_real_,
-      n_used        = length(x_clean)
-    ))
-  }
-
-  fit_clean <- tryCatch(
-    Ampharos:::mv_mixture_fit(x_list = x_clean, g = g,
-                   max_iter = max_iter, tol = tol, verbose = FALSE),
-    error = function(e) NULL
-  )
-
-  if (is.null(fit_clean)) {
-    return(list(
-      k             = current_k,
-      logLik        = NA_real_,
+      logLik        = tail(fit_noise$logLik, 1),
       ks_statistic  = Inf,
       ks_p.value    = NA_real_,
       n_used        = length(x_clean)
@@ -108,7 +94,7 @@ evaluate_k_candidate_with_loglik <- function(idx, x_list, g, max_iter, tol,
 
   ks_result <- suppressWarnings(
     tryCatch(
-      Ampharos:::mv_noise_ks_score(fit_clean, x_clean),
+      Ampharos:::mv_noise_ks_score(fit_noise, x_clean),
       error = function(e) list(statistic = Inf, p.value = NA_real_,
                                 n_used = length(x_clean))
     )
@@ -116,7 +102,7 @@ evaluate_k_candidate_with_loglik <- function(idx, x_list, g, max_iter, tol,
 
   list(
     k             = current_k,
-    logLik        = tail(fit_clean$logLik, 1),
+    logLik        = tail(fit_noise$logLik, 1),
     ks_statistic  = ks_result$statistic,
     ks_p.value    = ks_result$p.value,
     n_used        = ks_result$n_used
@@ -212,8 +198,8 @@ p_loglik <- ggplot(plot_df, aes(x = k, y = logLik)) +
 # ──────────────────────────────────────────────────────────────────────────────
 p_loglik_logy <- p_loglik +
   labs(
-    title = "Final log-likelihood vs noise_k (log y-axis)",
-    y = expression( Final~log-likelihood~"(log scale)" )
+    title = "Final log-likelihood vs noise_k (alternate linear-scale view)",
+    y = expression( Final~log-likelihood~"(linear scale)" )
   ) +
   scale_y_continuous(labels = scales::comma_format())
 

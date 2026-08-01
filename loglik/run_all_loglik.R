@@ -40,24 +40,7 @@ evaluate_k_candidate_with_loglik <- function(idx, x_list, r, p, g,
   if (length(x_clean) <= g) {
     return(list(
       k            = current_k,
-      logLik       = NA_real_,
-      ks_statistic = Inf,
-      ks_p.value   = NA_real_,
-      n_used       = length(x_clean),
-      correct_noise = correct_noise
-    ))
-  }
-
-  fit_clean <- tryCatch(
-    mv_mixture_fit(x_list = x_clean, g = g,
-                   max_iter = max_iter, tol = tol, verbose = FALSE),
-    error = function(e) NULL
-  )
-
-  if (is.null(fit_clean)) {
-    return(list(
-      k            = current_k,
-      logLik       = NA_real_,
+      logLik       = tail(fit_noise$logLik, 1),
       ks_statistic = Inf,
       ks_p.value   = NA_real_,
       n_used       = length(x_clean),
@@ -67,7 +50,7 @@ evaluate_k_candidate_with_loglik <- function(idx, x_list, r, p, g,
 
   ks_result <- suppressWarnings(
     tryCatch(
-      Ampharos:::mv_noise_ks_score(fit_clean, x_clean),
+      Ampharos:::mv_noise_ks_score(fit_noise, x_clean),
       error = function(e) list(statistic = Inf, p.value = NA_real_,
                                 n_used = length(x_clean))
     )
@@ -75,7 +58,7 @@ evaluate_k_candidate_with_loglik <- function(idx, x_list, r, p, g,
 
   list(
     k            = current_k,
-    logLik       = tail(fit_clean$logLik, 1),
+    logLik       = tail(fit_noise$logLik, 1),
     ks_statistic = ks_result$statistic,
     ks_p.value   = ks_result$p.value,
     n_used       = ks_result$n_used,

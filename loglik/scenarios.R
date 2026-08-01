@@ -300,26 +300,26 @@ sim_v15 <- viroli_simulation(
   n_outliers = 15
 )
 
-# Scenario V16: larger sample size (n=300)
+# Scenario V16: larger sample size (n=600)
 set.seed(42 + 211)
 sim_v16 <- viroli_simulation(
-  r = v_r, p = v_p, n = 300,
-  n1 = round(0.3 * 300), n2 = round(0.4 * 300),
-  n3 = 300 - round(0.3 * 300) - round(0.4 * 300),
+  r = v_r, p = v_p, n = 600,
+  n1 = round(0.3 * 600), n2 = round(0.4 * 600),
+  n3 = 600 - round(0.3 * 600) - round(0.4 * 600),
   M1 = M1_v_base, M2 = M2_v_base, M3 = M3_v_base,
   U1 = U1v, V1 = V1v, U2 = U2v, V2 = V2v, U3 = U3v, V3 = V3v,
-  n_outliers = 15
+  n_outliers = 30
 )
 
-# Scenario V17: smaller sample size (n=300)
+# Scenario V17: smaller sample size (n=150)
 set.seed(42 + 212)
 sim_v17 <- viroli_simulation(
-  r = v_r, p = v_p, n = 300,
-  n1 = round(0.3 * 300), n2 = round(0.4 * 300),
-  n3 = 300 - round(0.3 * 300) - round(0.4 * 300),
+  r = v_r, p = v_p, n = 150,
+  n1 = round(0.3 * 150), n2 = round(0.4 * 150),
+  n3 = 150 - round(0.3 * 150) - round(0.4 * 150),
   M1 = M1_v_base, M2 = M2_v_base, M3 = M3_v_base,
   U1 = U1v, V1 = V1v, U2 = U2v, V2 = V2v, U3 = U3v, V3 = V3v,
-  n_outliers = 15
+  n_outliers = 8
 )
 
 # Scenario V18: heteroscedastic groups (different cov scales)

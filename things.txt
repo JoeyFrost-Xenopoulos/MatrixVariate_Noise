@@ -1,3 +1,5 @@
+How stable is HC-based noise-k selection across contamination mechanism, matrix dimension, and class imbalance when it is judged by out-of-sample clustering or outlier-recovery performance instead of post-refit log-likelihood?
+
 1. Plot final log likelihood of k solutions from estimate_k to see if there is trend
 1.5 might have to penalize the log likelihood somehow because it is a improper distribution
 2. Plot actual KS scores against k solutions, then parametrically boostrap distribution and compare
