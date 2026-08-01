@@ -342,9 +342,9 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
                color = "steelblue", size = 0.8, alpha = 0.7) +
      geom_point(data = subset(plot_df, type != "Other"),
                 aes(x = k, y = logLik, shape = type), color = "darkorange2", size = 3) +
-     scale_color_manual(values = c("TRUE" = "blue", "FALSE" = "darkorange2"),
-                        labels = c("Correct noise recovery", "Incorrect recovery"),
-                        name = "Noise recovery") +
+      scale_color_manual(values = c("TRUE" = "black", "FALSE" = "red"),
+                         labels = c("Correct noise recovery", "Incorrect recovery"),
+                         name = "Noise recovery") +
      scale_x_log10() +
      scale_y_continuous(
        labels = scales::comma_format(),

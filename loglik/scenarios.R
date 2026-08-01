@@ -298,23 +298,23 @@ sim_v15 <- viroli_simulation(
   n_outliers = 15
 )
 
-# Scenario V16: larger sample size (n=500)
+# Scenario V16: larger sample size (n=300)
 set.seed(42 + 211)
 sim_v16 <- viroli_simulation(
-  r = v_r, p = v_p, n = 500,
-  n1 = round(0.3 * 500), n2 = round(0.4 * 500),
-  n3 = 500 - round(0.3 * 500) - round(0.4 * 500),
+  r = v_r, p = v_p, n = 300,
+  n1 = round(0.3 * 300), n2 = round(0.4 * 300),
+  n3 = 300 - round(0.3 * 300) - round(0.4 * 300),
   M1 = M1_v_base, M2 = M2_v_base, M3 = M3_v_base,
   U1 = U1v, V1 = V1v, U2 = U2v, V2 = V2v, U3 = U3v, V3 = V3v,
   n_outliers = 15
 )
 
-# Scenario V17: smaller sample size (n=150)
+# Scenario V17: smaller sample size (n=300)
 set.seed(42 + 212)
 sim_v17 <- viroli_simulation(
-  r = v_r, p = v_p, n = 150,
-  n1 = round(0.3 * 150), n2 = round(0.4 * 150),
-  n3 = 150 - round(0.3 * 150) - round(0.4 * 150),
+  r = v_r, p = v_p, n = 300,
+  n1 = round(0.3 * 300), n2 = round(0.4 * 300),
+  n3 = 300 - round(0.3 * 300) - round(0.4 * 300),
   M1 = M1_v_base, M2 = M2_v_base, M3 = M3_v_base,
   U1 = U1v, V1 = V1v, U2 = U2v, V2 = V2v, U3 = U3v, V3 = V3v,
   n_outliers = 15
@@ -513,7 +513,7 @@ results$V16_large_n <- future(run_loglik_scenario(
   x_list      = sim_v16$x_list,
   g           = 3,
   scenario_name = "Viroli_large_n",
-  subtitle    = "Viroli 3x5 | 3 groups | n=500 | 15 outliers",
+  subtitle    = "Viroli 3x5 | 3 groups | n=300 | 15 outliers",
   r           = v_r, p = v_p,
   outlier_idx = sim_v16$outlier_idx
   ), seed = TRUE)
@@ -522,7 +522,7 @@ results$V17_small_n <- future(run_loglik_scenario(
   x_list      = sim_v17$x_list,
   g           = 3,
   scenario_name = "Viroli_small_n",
-  subtitle    = "Viroli 3x5 | 3 groups | n=150 | 15 outliers",
+  subtitle    = "Viroli 3x5 | 3 groups | n=300 | 15 outliers",
   r           = v_r, p = v_p,
   outlier_idx = sim_v17$outlier_idx
   ), seed = TRUE)
@@ -569,7 +569,7 @@ cat("\n===== Running scaled size-sensitivity grids =====\n")
 for (s in seq_along(size_grid)) {
   rg <- size_grid[[s]][1]
   pg <- size_grid[[s]][2]
-  n_total <- round(5 * rg * pg / 3)
+  n_total <- 300
 
   plots_dir <- file.path("loglik", "plots", sprintf("size_%dx%d", rg, pg))
 
