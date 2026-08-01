@@ -75,6 +75,8 @@ scaled_viroli_simulation <- function(r, p, n, n1, n2, n3, n_outliers,
 
 # ─── Viroli-style scenarios (3×5, 3 groups, permutation outliers) ─────────────
 v_r <- 3; v_p <- 5; v_n <- 300
+base_plots_dir <- "loglik/plots/base_3x5"
+v20_plots_dir <- "loglik/plots/base_4x6"
 
 M1_v_base <- matrix(c( 0.5, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
                     nrow = v_r, ncol = v_p, byrow = FALSE)
