@@ -357,66 +357,11 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
        y        = expression( Final~log-likelihood ),
        shape    = "",
        colour   = "Noise recovery"
-     ) +
-     theme_minimal() +
-     theme(legend.position = "bottom", legend.title = element_blank())
-
-  # ── Plot 2: log-likelihood with log y ──────────────────────────────────────
-  p2 <- p1 +
-    labs(
-      title = sprintf("Scenario: %s (log y)", scenario_name),
-      y     = expression( Final~log-likelihood~"(log scale)" )
-    ) +
-    scale_y_continuous(labels = scales::comma_format())
-
-  # ── Plot 3: log-likelihood + KS combined ───────────────────────────────────
-   plot_df_long <- melt(
-     plot_df[, .(k, logLik, ks_statistic, correct_noise)],
-     id.vars = c("k", "correct_noise"),
-     variable.name = "metric", value.name = "value"
-   )
-   plot_df_long$metric <- factor(plot_df_long$metric,
-     levels = c("logLik", "ks_statistic"),
-     labels = c("Log-likelihood", "KS statistic")
-   )
-
-   p3 <- ggplot() +
-     geom_vline(xintercept = k_selection$k_grid[best_ks_idx],
-                color = "steelblue", linetype = "dotdash", linewidth = 0.8) +
-     {
-        ok_rows <- plot_df_long[complete.cases(plot_df_long$value), ]
-        if (nrow(ok_rows) > 1) {
-          ok_rows <- ok_rows[order(plot_df_long$k), ]
-          seg_df <- data.frame(
-            x      = head(plot_df_long$k, -1),
-            xend   = tail(plot_df_long$k, -1),
-            y      = head(plot_df_long$value, -1),
-            yend   = tail(plot_df_long$value, -1),
-            correct_noise = head(plot_df_long$correct_noise, -1),
-            metric = head(plot_df_long$metric, -1)
-          )
-         list(geom_segment(
-           data = seg_df,
-           aes(x = x, xend = xend, y = y, yend = yend,
-               color = correct_noise, group = interaction(metric, correct_noise)),
-           linewidth = 1
-         ))
-        } else NULL
-      } +
-      facet_wrap(~metric, scales = "free_y", ncol = 1) +
-      scale_color_manual(values = c("TRUE" = "blue", "FALSE" = "darkorange2"),
-                         labels = c("Correct noise recovery", "Incorrect recovery"),
-                         name = "Noise recovery") +
-      scale_x_log10() +
-      labs(
-        title    = sprintf("Scenario: %s — estimate_k diagnostics", scenario_name),
-        subtitle = "Steelblue dot-dash = KS-minimum k; blue = correct noise recovery",
-        x        = expression(k~("noise height, log scale")),
-        y        = "Value"
       ) +
-      theme_minimal()
+      theme_minimal() +
+      theme(legend.position = "bottom", legend.title = element_blank())
 
-  # ── Save plots ─────────────────────────────────────────────────────────────
+   # ── Save plots ─────────────────────────────────────────────────────────────
   if (save_plots) {
     if (!dir.exists(plots_dir)) dir.create(plots_dir, recursive = TRUE)
 
@@ -430,16 +375,14 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
     cat(sprintf("  Saved plots to %s/\n", plots_dir))
   }
 
-  list(
-    plot_df  = plot_df,
-    p_loglik = p1,
-    p_loglik_logy = p2,
-    p_combined    = p3,
-    best_k        = best_k,
-    k_grid        = active_k_grid,
-    ks_scores     = k_selection$ks_scores,
-    correlation   = cor_val
-  )
+   list(
+     plot_df  = plot_df,
+     p_loglik = p1,
+     best_k        = best_k,
+     k_grid        = active_k_grid,
+     ks_scores     = k_selection$ks_scores,
+     correlation   = cor_val
+   )
 }
 
 source("loglik/scenarios.R")
