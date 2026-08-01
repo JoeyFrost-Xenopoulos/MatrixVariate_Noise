@@ -290,6 +290,63 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
    plot_df$ks_flag <- plot_df$k == k_selection$k_grid[best_ks_idx]
   correct_noise_detected <- !is.na(true_k_noise) && best_k == true_k_noise
 
+   fit_final <- Ampharos:::mv_noise_fit_impl(
+     x_list        = x_list,
+     g             = g,
+     noise_type    = "hc",
+     max_iter      = max_iter,
+     tol           = tol,
+     nstart        = nstart,
+     noise_k       = best_k,
+     noise_pi_init = noise_pi_init,
+     init          = init,
+     verbose       = FALSE
+   )
+
+   n_total <- length(x_list)
+   detected_noise_idx <- which(fit_final$cluster == 0)
+   tp <- length(intersect(detected_noise_idx, outlier_idx))
+   fp <- length(setdiff(detected_noise_idx, outlier_idx))
+   fn <- length(setdiff(outlier_idx, detected_noise_idx))
+   tn <- n_total - tp - fp - fn
+
+   accuracy_rate <- if (n_total > 0) (tp + tn) / n_total else NA_real_
+   fpr <- if ((fp + tn) > 0) fp / (fp + tn) else NA_real_
+   fnr <- if ((fn + tp) > 0) fn / (fn + tp) else NA_real_
+
+   logLik_best <- plot_df$logLik[plot_df$k == best_k][1]
+   logLik_max <- if (any(ok_loglik)) max(plot_df$logLik[ok_loglik]) else NA_real_
+   logLik_true <- if (!is.na(true_k_noise) && true_k_noise %in% plot_df$k)
+                    plot_df$logLik[plot_df$k == true_k_noise][1] else NA_real_
+
+   loglik_gap_vs_max <- if (!is.na(logLik_best) && !is.na(logLik_max))
+                          logLik_max - logLik_best else NA_real_
+   loglik_gap_vs_true <- if (!is.na(logLik_best) && !is.na(logLik_true))
+                           logLik_true - logLik_best else NA_real_
+
+   grp_counts <- as.integer(table(fit_final$cluster[fit_final$cluster > 0]))
+   names(grp_counts) <- paste0("group_", seq_along(grp_counts))
+
+   metrics <- data.table(
+     scenario = scenario_name,
+     n_total = n_total,
+     true_k_noise = ifelse(!is.na(true_k_noise), true_k_noise, NA_integer_),
+     best_k = best_k,
+     best_ks_k = k_selection$k_grid[best_ks_idx],
+     detected_noise_count = length(detected_noise_idx),
+     tp = tp, fp = fp, fn = fn, tn = tn,
+     accuracy_rate = accuracy_rate,
+     fpr = fpr,
+     fnr = fnr,
+     logLik_best_k = logLik_best,
+     logLik_max = logLik_max,
+     logLik_true_k = logLik_true,
+     loglik_gap_vs_max = loglik_gap_vs_max,
+     loglik_gap_vs_true = loglik_gap_vs_true,
+     correct_noise_detected = correct_noise_detected
+   )
+   for (gn in names(grp_counts)) metrics[[gn]] <- grp_counts[gn]
+
    if (!is.na(true_k_noise)) {
      cat(sprintf("  True noise count = %.4e | Correctly identified = %s\n",
                  true_k_noise, if (correct_noise_detected) "YES" else "NO"))
@@ -381,7 +438,8 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
      best_k        = best_k,
      k_grid        = active_k_grid,
      ks_scores     = k_selection$ks_scores,
-     correlation   = cor_val
+     correlation   = cor_val,
+     metrics        = metrics
    )
 }
 

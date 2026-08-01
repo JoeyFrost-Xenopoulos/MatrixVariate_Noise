@@ -605,6 +605,32 @@ for (nm in names(results)) {
   results[[nm]] <- value(results[[nm]])
 }
 
+all_metrics <- rbindlist(lapply(seq_along(results), function(i) {
+  nm <- names(results)[[i]]
+  r  <- results[[nm]]
+  if (!is.null(r$metrics)) r$metrics[, scenario_idx := i]
+}), fill = TRUE)
+
+base_metrics <- all_metrics[!grepl("^V1_prop\\d+_sz\\d+$", scenario)]
+scaled_metrics <- all_metrics[grepl("^V1_prop\\d+_sz\\d+$", scenario)]
+
+if (!dir.exists("loglik/plots")) dir.create("loglik/plots", recursive = TRUE)
+if (nrow(base_metrics) > 0) {
+  fwrite(base_metrics, file.path("loglik", "plots", "summary_metrics.csv"), row.names = FALSE)
+  cat(sprintf("Saved base metrics to %s\n", file.path("loglik", "plots", "summary_metrics.csv")))
+}
+
+for (s in seq_along(size_grid)) {
+  rg <- size_grid[[s]][1]; pg <- size_grid[[s]][2]
+  sz_metrics <- scaled_metrics[grepl(sprintf("_sz%d$", s - 1), scenario)]
+  if (nrow(sz_metrics) > 0) {
+    plots_dir <- file.path("loglik", "plots", sprintf("size_%dx%d", rg, pg))
+    if (!dir.exists(plots_dir)) dir.create(plots_dir, recursive = TRUE)
+    fwrite(sz_metrics, file.path(plots_dir, "metrics.csv"), row.names = FALSE)
+    cat(sprintf("Saved metrics for size %dx%d to %s\n", rg, pg, file.path(plots_dir, "metrics.csv")))
+  }
+}
+
 summary_data <- rbindlist(lapply(seq_along(results), function(i) {
   nm <- names(results)[[i]]
   r  <- results[[nm]]
