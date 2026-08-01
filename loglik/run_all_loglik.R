@@ -374,39 +374,32 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
    # ── Plot 1: log-likelihood vs k (linear y) ─────────────────────────────────
    plot_df$correct_noise_group <- cumsum(c(TRUE, diff(plot_df$correct_noise) != 0))
 
-   p1 <- ggplot() +
-     geom_vline(xintercept = k_selection$k_grid[best_ks_idx],
-                color = "steelblue", linetype = "dotdash", linewidth = 0.8) +
-     {
-       ok_rows <- plot_df[complete.cases(plot_df$logLik), ]
-       if (nrow(ok_rows) > 1) {
-         ok_rows <- ok_rows[order(plot_df$k), ]
-         seg_df <- data.frame(
-           x      = head(plot_df$k, -1),
-           xend   = tail(plot_df$k, -1),
-           y      = head(plot_df$logLik, -1),
-           yend   = tail(plot_df$logLik, -1),
-           correct_noise = head(plot_df$correct_noise, -1)
-         )
-         list(geom_segment(
-           data = seg_df,
-           aes(x = x, xend = xend, y = y, yend = yend, color = correct_noise),
-           linewidth = 1
-         ))
-       } else NULL
-     } +
-     geom_line(data = plot_df, aes(x = k, y = ks_statistic),
-               color = "steelblue", size = 0.8, alpha = 0.7) +
-     geom_point(data = subset(plot_df, type != "Other"),
+    p1 <- ggplot() +
+      {
+        ok_rows <- plot_df[complete.cases(plot_df$logLik), ]
+        if (nrow(ok_rows) > 1) {
+          ok_rows <- ok_rows[order(plot_df$k), ]
+          seg_df <- data.frame(
+            x      = head(plot_df$k, -1),
+            xend   = tail(plot_df$k, -1),
+            y      = head(plot_df$logLik, -1),
+            yend   = tail(plot_df$logLik, -1),
+            correct_noise = head(plot_df$correct_noise, -1)
+          )
+          list(geom_segment(
+            data = seg_df,
+            aes(x = x, xend = xend, y = y, yend = yend, color = correct_noise),
+            linewidth = 1
+          ))
+        } else NULL
+      } +
+      geom_point(data = subset(plot_df, type != "Other"),
                 aes(x = k, y = logLik, shape = type), color = "darkorange2", size = 3) +
       scale_color_manual(values = c("TRUE" = "black", "FALSE" = "red"),
                          labels = c("Correct noise recovery", "Incorrect recovery"),
                          name = "Noise recovery") +
-     scale_x_log10() +
-     scale_y_continuous(
-       labels = scales::comma_format(),
-       sec.axis = sec_axis(~., name = "KS statistic")
-     ) +
+      scale_x_log10() +
+      scale_y_continuous(labels = scales::comma_format()) +
      labs(
        title    = sprintf("Scenario: %s", scenario_name),
        subtitle = subtitle,
