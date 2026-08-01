@@ -1,7 +1,5 @@
 #' Log-likelihood trend across estimate_k candidates (Viroli simulation)
 #'
-#' Log-likelihood trend across estimate_k candidates (Viroli simulation)
-#'
 #' Demonstrates how the observed-data log-likelihood of the HC fit changes
 #' across the k-grid used by estimate_k. This is meant as a diagnostic for
 #' the selection path, not as a separate post-cleaning refit analysis.
