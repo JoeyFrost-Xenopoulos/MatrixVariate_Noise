@@ -7,7 +7,7 @@ library(future.apply)
 
 plan(multisession, workers = 8)
 
-source("run_all_base.R")
+source("loglik/run_all_base.R")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Matrix size grid
