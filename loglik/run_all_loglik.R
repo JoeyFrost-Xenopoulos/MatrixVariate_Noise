@@ -274,7 +274,8 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
   }
 
    plot_df$ks_flag <- plot_df$k == k_selection$k_grid[best_ks_idx]
-  correct_noise_detected <- !is.na(true_k_noise) && best_k == true_k_noise
+   plot_df$scenario_name <- scenario_name
+   correct_noise_detected <- !is.na(true_k_noise) && best_k == true_k_noise
 
    fit_final <- Ampharos:::mv_noise_fit_impl(
      x_list        = x_list,
@@ -427,16 +428,23 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
         theme_minimal() +
         theme(legend.position = "bottom", legend.title = element_blank())
 
-   list(
-      plot_df  = plot_df,
-      p_loglik = p1,
-      best_k        = best_k,
-      k_grid        = active_k_grid,
-      ks_scores     = k_selection$ks_scores,
-      correlation   = cor_val,
-      metrics        = metrics
-    )
- }
+   if (save_plots) {
+     if (!dir.exists(plots_dir)) dir.create(plots_dir, recursive = TRUE)
+     ggsave(filename = file.path(plots_dir, paste0(scenario_name, ".png")),
+            plot = p1, width = 10, height = 6, dpi = 150)
+   }
+
+    list(
+       plot_df  = plot_df,
+       p_loglik = p1,
+       best_k        = best_k,
+       k_grid        = active_k_grid,
+       ks_scores     = k_selection$ks_scores,
+       correlation   = cor_val,
+       metrics        = metrics,
+       plots_dir = plots_dir
+     )
+  }
 
  run_scenario_replicates <- function(x_list, g, B = 10, base_seed = 42, ...) {
    if (B < 2) {
@@ -460,19 +468,20 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
      df
    }))
 
-   agg <- all_plot_df[, .(
-     logLik_mean = mean(logLik, na.rm = TRUE),
-     logLik_se = ifelse(sum(!is.na(logLik)) > 1,
-                        sd(logLik, na.rm = TRUE) / sqrt(sum(!is.na(logLik))),
-                        NA_real_),
-     ks_statistic_mean = mean(ks_statistic, na.rm = TRUE),
-     ks_statistic_se = ifelse(sum(!is.na(ks_statistic) & is.finite(ks_statistic)) > 1,
-                              sd(ks_statistic, na.rm = TRUE) / sqrt(sum(!is.na(ks_statistic) & is.finite(ks_statistic))),
-                              NA_real_),
-     n_used_mean = mean(n_used, na.rm = TRUE),
-     correct_noise = any(correct_noise, na.rm = TRUE),
-     .N
-   ), by = k]
+    agg <- all_plot_df[, .(
+      logLik_mean = mean(logLik, na.rm = TRUE),
+      logLik_se = ifelse(sum(!is.na(logLik)) > 1,
+                         sd(logLik, na.rm = TRUE) / sqrt(sum(!is.na(logLik))),
+                         NA_real_),
+      ks_statistic_mean = mean(ks_statistic, na.rm = TRUE),
+      ks_statistic_se = ifelse(sum(!is.na(ks_statistic) & is.finite(ks_statistic)) > 1,
+                               sd(ks_statistic, na.rm = TRUE) / sqrt(sum(!is.na(ks_statistic) & is.finite(ks_statistic))),
+                               NA_real_),
+      n_used_mean = mean(n_used, na.rm = TRUE),
+      correct_noise = any(correct_noise, na.rm = TRUE),
+      scenario_name = scenario_name[1],
+      .N
+    ), by = k]
 
    ok_loglik <- !is.na(agg$logLik_mean) & is.finite(agg$logLik_mean)
    best_k_overall <- if (any(ok_loglik)) agg$k[which.max(agg$logLik_mean[ok_loglik])] else NA_real_
@@ -500,9 +509,15 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
        x = expression(k~("noise height, log scale")),
        y = expression( Final~log-likelihood )
      ) +
-     theme_minimal()
+      theme_minimal()
 
-   metrics_list <- lapply(replicate_results, function(r) r$metrics)
+    if (save_plots) {
+      if (!dir.exists(plots_dir)) dir.create(plots_dir, recursive = TRUE)
+      ggsave(filename = file.path(plots_dir, paste0(scenario_name, ".png")),
+             plot = p, width = 10, height = 6, dpi = 150)
+    }
+
+    metrics_list <- lapply(replicate_results, function(r) r$metrics)
    metrics_combined <- rbindlist(metrics_list)
 
    non_numeric <- sapply(metrics_combined, function(x) !is.numeric(x) || all(is.na(x)))
@@ -523,16 +538,17 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
      metrics_summary <- metrics_combined[1, ]
    }
 
-   list(
-     plot_df = agg,
-     p_loglik = p,
-     best_k = mean(sapply(replicate_results, function(r) r$best_k), na.rm = TRUE),
-     k_grid = replicate_results[[1]]$k_grid,
-     ks_scores = replicate_results[[1]]$ks_scores,
-     correlation = mean(sapply(replicate_results, function(r) r$correlation), na.rm = TRUE),
-     metrics = metrics_summary,
-     B = B
-   )
- }
+    list(
+      plot_df = agg,
+      p_loglik = p,
+      best_k = mean(sapply(replicate_results, function(r) r$best_k), na.rm = TRUE),
+      k_grid = replicate_results[[1]]$k_grid,
+      ks_scores = replicate_results[[1]]$ks_scores,
+      correlation = mean(sapply(replicate_results, function(r) r$correlation), na.rm = TRUE),
+      metrics = metrics_summary,
+      B = B,
+      plots_dir = plots_dir
+    )
+  }
 
  source("loglik/scenarios.R")

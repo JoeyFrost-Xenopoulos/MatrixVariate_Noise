@@ -382,7 +382,8 @@ results$V1_small_signal <- future(run_scenario_replicates(
   scenario_name = "Viroli_small_signal",
   subtitle    = "Viroli 3×5 | 3 groups | first-col means 0.05,0,−0.05 | 15 outliers",
   r           = v_r, p = v_p,
-  outlier_idx = sim_v1$outlier_idx
+  outlier_idx = sim_v1$outlier_idx,
+  plots_dir   = base_plots_dir
   ), seed = TRUE)
 
 results$V2_low_covariance <- future(run_scenario_replicates(
@@ -391,7 +392,8 @@ results$V2_low_covariance <- future(run_scenario_replicates(
   scenario_name = "Viroli_low_cov",
   subtitle    = "Viroli 3×5 | 3 groups | row/col SD = 0.3 instead of 0.5 | 15 outliers",
   r           = v_r, p = v_p,
-  outlier_idx = sim_v2$outlier_idx
+  outlier_idx = sim_v2$outlier_idx,
+  plots_dir   = base_plots_dir
   ), seed = TRUE)
 
 results$V3_few_outliers <- future(run_scenario_replicates(
@@ -400,7 +402,8 @@ results$V3_few_outliers <- future(run_scenario_replicates(
   scenario_name = "Viroli_few_outliers",
   subtitle    = "Viroli 3×5 | 3 groups | 5 permuted-outliers instead of 15",
   r           = v_r, p = v_p,
-  outlier_idx = sim_v3$outlier_idx
+  outlier_idx = sim_v3$outlier_idx,
+  plots_dir   = base_plots_dir
   ), seed = TRUE)
 
 results$V4_high_overlap <- future(run_scenario_replicates(
@@ -409,7 +412,8 @@ results$V4_high_overlap <- future(run_scenario_replicates(
   scenario_name = "Viroli_high_overlap",
   subtitle    = "Viroli 3×5 | weaker means (±0.15) + larger covariance (x1.2) | 15 outliers",
   r           = v_r, p = v_p,
-  outlier_idx = sim_v4$outlier_idx
+  outlier_idx = sim_v4$outlier_idx,
+  plots_dir   = base_plots_dir
   ), seed = TRUE)
 
 results$V5_extreme_imbalance <- future(run_scenario_replicates(
@@ -418,7 +422,8 @@ results$V5_extreme_imbalance <- future(run_scenario_replicates(
   scenario_name = "Viroli_extreme_imbalance",
   subtitle    = "Viroli 3x5 | 3 groups with π=(0.10,0.10,0.80) | 15 permuted outliers",
   r           = v_r, p = v_p,
-  outlier_idx = sim_v5$outlier_idx
+  outlier_idx = sim_v5$outlier_idx,
+  plots_dir   = base_plots_dir
   ), seed = TRUE)
 
 results$V6_row_spike_outliers <- future(run_scenario_replicates(
@@ -427,7 +432,8 @@ results$V6_row_spike_outliers <- future(run_scenario_replicates(
   scenario_name = "Viroli_row_spike",
   subtitle    = "Viroli 3x5 | 3 groups | 15 row-spike outliers (one noisy row) | 0 permuted",
   r           = v_r, p = v_p,
-  outlier_idx = sim_v6$outlier_idx
+  outlier_idx = sim_v6$outlier_idx,
+  plots_dir   = base_plots_dir
   ), seed = TRUE)
 
 results$V7_column_outliers <- future(run_scenario_replicates(
@@ -436,7 +442,8 @@ results$V7_column_outliers <- future(run_scenario_replicates(
   scenario_name = "Viroli_column_outliers",
   subtitle    = "Viroli 3x5 | 3 groups | 15 column-outliers (one noisy column) | 0 permuted",
   r           = v_r, p = v_p,
-  outlier_idx = sim_v7$outlier_idx
+  outlier_idx = sim_v7$outlier_idx,
+  plots_dir   = base_plots_dir
   ), seed = TRUE)
 
 results$V8_strong_signal <- future(run_scenario_replicates(
@@ -445,7 +452,8 @@ results$V8_strong_signal <- future(run_scenario_replicates(
   scenario_name = "Viroli_strong_signal",
   subtitle    = "Viroli 3x5 | 3 groups | strong means (0.8,0,−0.8) | 15 outliers",
   r           = v_r, p = v_p,
-  outlier_idx = sim_v8$outlier_idx
+  outlier_idx = sim_v8$outlier_idx,
+  plots_dir   = base_plots_dir
   ), seed = TRUE)
 
 results$V9_weak_signal <- future(run_scenario_replicates(
@@ -454,34 +462,38 @@ results$V9_weak_signal <- future(run_scenario_replicates(
   scenario_name = "Viroli_weak_signal",
   subtitle    = "Viroli 3x5 | 3 groups | weak means (0.2,0,−0.2) | 15 outliers",
   r           = v_r, p = v_p,
-  outlier_idx = sim_v9$outlier_idx
+  outlier_idx = sim_v9$outlier_idx,
+  plots_dir   = base_plots_dir
   ), seed = TRUE)
 
 results$V10_very_high_cov <- future(run_scenario_replicates(
   x_list      = sim_v10$x_list,
   g           = 3,
   scenario_name = "Viroli_very_high_cov",
-  subtitle    = "Viroli 3x5 | 3 groups | covariance scaled x1.5 | 15 outliers",
+  subtitle    = "Viroli 3×5 | 3 groups | covariance scaled x1.5 | 15 outliers",
   r           = v_r, p = v_p,
-  outlier_idx = sim_v10$outlier_idx
+  outlier_idx = sim_v10$outlier_idx,
+  plots_dir   = base_plots_dir
   ), seed = TRUE)
 
 results$V11_very_low_cov <- future(run_scenario_replicates(
   x_list      = sim_v11$x_list,
   g           = 3,
   scenario_name = "Viroli_very_low_cov",
-  subtitle    = "Viroli 3x5 | 3 groups | covariance scaled x0.3 | 15 outliers",
+  subtitle    = "Viroli 3×5 | 3 groups | covariance scaled x0.3 | 15 outliers",
   r           = v_r, p = v_p,
-  outlier_idx = sim_v11$outlier_idx
+  outlier_idx = sim_v11$outlier_idx,
+  plots_dir   = base_plots_dir
   ), seed = TRUE)
 
 results$V12_many_outliers <- future(run_scenario_replicates(
   x_list      = sim_v12$x_list,
   g           = 3,
   scenario_name = "Viroli_many_outliers",
-  subtitle    = "Viroli 3x5 | 3 groups | 25 permuted outliers",
+  subtitle    = "Viroli 3×5 | 3 groups | 25 permuted outliers",
   r           = v_r, p = v_p,
-  outlier_idx = sim_v12$outlier_idx
+  outlier_idx = sim_v12$outlier_idx,
+  plots_dir   = base_plots_dir
   ), seed = TRUE)
 
 results$V13_few_outliers <- future(run_scenario_replicates(
@@ -490,7 +502,8 @@ results$V13_few_outliers <- future(run_scenario_replicates(
   scenario_name = "Viroli_few_outliers_v2",
   subtitle    = "Viroli 3x5 | 3 groups | only 3 permuted outliers",
   r           = v_r, p = v_p,
-  outlier_idx = sim_v13$outlier_idx
+  outlier_idx = sim_v13$outlier_idx,
+  plots_dir   = base_plots_dir
   ), seed = TRUE)
 
 results$V14_mixed_outliers <- future(run_scenario_replicates(
@@ -499,7 +512,8 @@ results$V14_mixed_outliers <- future(run_scenario_replicates(
   scenario_name = "Viroli_mixed_outliers",
   subtitle    = "Viroli 3x5 | 3 groups | 5 perm + 5 row-spike + 5 col outliers",
   r           = v_r, p = v_p,
-  outlier_idx = sim_v14$outlier_idx
+  outlier_idx = sim_v14$outlier_idx,
+  plots_dir   = base_plots_dir
   ), seed = TRUE)
 
 results$V15_extreme_imbalance <- future(run_scenario_replicates(
@@ -508,7 +522,8 @@ results$V15_extreme_imbalance <- future(run_scenario_replicates(
   scenario_name = "Viroli_extreme_imbalance_v2",
   subtitle    = "Viroli 3x5 | 3 groups π=(0.17,0.17,0.67) | 15 outliers",
   r           = v_r, p = v_p,
-  outlier_idx = sim_v15$outlier_idx
+  outlier_idx = sim_v15$outlier_idx,
+  plots_dir   = base_plots_dir
   ), seed = TRUE)
 
 results$V16_large_n <- future(run_scenario_replicates(
@@ -517,7 +532,8 @@ results$V16_large_n <- future(run_scenario_replicates(
   scenario_name = "Viroli_large_n",
   subtitle    = "Viroli 3x5 | 3 groups | n=300 | 15 outliers",
   r           = v_r, p = v_p,
-  outlier_idx = sim_v16$outlier_idx
+  outlier_idx = sim_v16$outlier_idx,
+  plots_dir   = base_plots_dir
   ), seed = TRUE)
 
 results$V17_small_n <- future(run_scenario_replicates(
@@ -526,7 +542,8 @@ results$V17_small_n <- future(run_scenario_replicates(
   scenario_name = "Viroli_small_n",
   subtitle    = "Viroli 3x5 | 3 groups | n=300 | 15 outliers",
   r           = v_r, p = v_p,
-  outlier_idx = sim_v17$outlier_idx
+  outlier_idx = sim_v17$outlier_idx,
+  plots_dir   = base_plots_dir
   ), seed = TRUE)
 
 results$V18_heteroscedastic <- future(run_scenario_replicates(
@@ -535,7 +552,8 @@ results$V18_heteroscedastic <- future(run_scenario_replicates(
   scenario_name = "Viroli_heteroscedastic",
   subtitle    = "Viroli 3x5 | 3 groups | heteroscedastic cov scales (0.5,1.5,1.0) | 15 outliers",
   r           = v_r, p = v_p,
-  outlier_idx = sim_v18$outlier_idx
+  outlier_idx = sim_v18$outlier_idx,
+  plots_dir   = base_plots_dir
   ), seed = TRUE)
 
 results$V19_anticorrelated <- future(run_scenario_replicates(
@@ -544,7 +562,8 @@ results$V19_anticorrelated <- future(run_scenario_replicates(
   scenario_name = "Viroli_anticorrelated",
   subtitle    = "Viroli 3x5 | 3 groups | anti-correlated row/col covariances | 15 outliers",
   r           = v_r, p = v_p,
-  outlier_idx = sim_v19$outlier_idx
+  outlier_idx = sim_v19$outlier_idx,
+  plots_dir   = base_plots_dir
   ), seed = TRUE)
 
 results$V20_larger_dimensions <- future(run_scenario_replicates(
@@ -553,7 +572,8 @@ results$V20_larger_dimensions <- future(run_scenario_replicates(
   scenario_name = "Viroli_larger_dimensions",
   subtitle    = "Viroli 4x6 | 3 groups | larger r/p | 15 outliers",
   r           = v_r20, p = v_p20,
-  outlier_idx = sim_v20$outlier_idx
+  outlier_idx = sim_v20$outlier_idx,
+  plots_dir   = v20_plots_dir
   ), seed = TRUE)
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -664,4 +684,40 @@ cat("Plots organized by size in subfolders:\n")
 for (s in seq_along(size_grid)) {
   rg <- size_grid[[s]][1]; pg <- size_grid[[s]][2]
   cat(sprintf("  size_%dx%d/\n", rg, pg))
+}
+
+cat("\n===== Generating combined plots per folder =====\n")
+
+results_by_dir <- split(results, sapply(results, `[[`, "plots_dir"))
+
+for (dir in names(results_by_dir)) {
+  dir_results <- results_by_dir[[dir]]
+  if (!dir.exists(dir)) dir.create(dir, recursive = TRUE)
+
+  combined_df <- rbindlist(lapply(dir_results, function(r) r$plot_df))
+
+  has_se <- "logLik_se" %in% names(combined_df) && any(!is.na(combined_df$logLik_se))
+
+  p_combined <- ggplot(combined_df, aes(x = k, y = ifelse(has_se, logLik_mean, logLik))) +
+    {
+      if (has_se) {
+        geom_ribbon(aes(ymin = logLik_mean - logLik_se, ymax = logLik_mean + logLik_se),
+                    fill = "darkorange2", alpha = 0.2)
+      } else NULL
+    } +
+    geom_line(color = "darkorange2", linewidth = 0.8) +
+    facet_wrap(~scenario_name, scales = "free_y") +
+    scale_x_log10() +
+    scale_y_continuous(labels = scales::comma_format()) +
+    labs(
+      title = sprintf("Combined log-likelihood trends: %s", basename(dir)),
+      x = expression(k~("noise height, log scale")),
+      y = ifelse(has_se, expression(Mean~Final~log-likelihood), expression(Final~log-likelihood))
+    ) +
+    theme_minimal() +
+    theme(strip.text.x = element_text(size = 7))
+
+  combined_path <- file.path(dir, "combined.png")
+  ggsave(filename = combined_path, plot = p_combined, width = 16, height = 12, dpi = 150)
+  cat(sprintf("Saved combined plot to %s\n", combined_path))
 }
