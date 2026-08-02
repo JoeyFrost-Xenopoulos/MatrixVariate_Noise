@@ -74,7 +74,7 @@ scaled_viroli_simulation <- function(r, p, n, n1, n2, n3, n_outliers,
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ─── Viroli-style scenarios (3×5, 3 groups, permutation outliers) ─────────────
-v_r <- 3; v_p <- 5; v_n <- 300
+v_r <- 3; v_p <- 5; v_n <- 150
 base_plots_dir <- "loglik/plots/base_3x5"
 v20_plots_dir <- "loglik/plots/base_4x6"
 
@@ -141,7 +141,7 @@ sim_v4 <- viroli_simulation(
 
 # ─── Viroli-style: highly unequal 3-group proportions ────────────────────────
 set.seed(42 + 200)
-v_n_unequal <- 300
+v_n_unequal <- 150
 n1_uneq <- round(0.10 * v_n_unequal)   # 30
 n2_uneq <- round(0.10 * v_n_unequal)   # 30
 n3_uneq <- v_n_unequal - n1_uneq - n2_uneq   # 240
@@ -376,7 +376,7 @@ sim_v20 <- viroli_simulation(
 
 results <- list()
 
-results$V1_small_signal <- future(run_loglik_scenario(
+results$V1_small_signal <- future(run_scenario_replicates(
   x_list      = sim_v1$x_list,
   g           = 3,
   scenario_name = "Viroli_small_signal",
@@ -385,7 +385,7 @@ results$V1_small_signal <- future(run_loglik_scenario(
   outlier_idx = sim_v1$outlier_idx
   ), seed = TRUE)
 
-results$V2_low_covariance <- future(run_loglik_scenario(
+results$V2_low_covariance <- future(run_scenario_replicates(
   x_list      = sim_v2$x_list,
   g           = 3,
   scenario_name = "Viroli_low_cov",
@@ -394,7 +394,7 @@ results$V2_low_covariance <- future(run_loglik_scenario(
   outlier_idx = sim_v2$outlier_idx
   ), seed = TRUE)
 
-results$V3_few_outliers <- future(run_loglik_scenario(
+results$V3_few_outliers <- future(run_scenario_replicates(
   x_list      = sim_v3$x_list,
   g           = 3,
   scenario_name = "Viroli_few_outliers",
@@ -403,7 +403,7 @@ results$V3_few_outliers <- future(run_loglik_scenario(
   outlier_idx = sim_v3$outlier_idx
   ), seed = TRUE)
 
-results$V4_high_overlap <- future(run_loglik_scenario(
+results$V4_high_overlap <- future(run_scenario_replicates(
   x_list      = sim_v4$x_list,
   g           = 3,
   scenario_name = "Viroli_high_overlap",
@@ -412,7 +412,7 @@ results$V4_high_overlap <- future(run_loglik_scenario(
   outlier_idx = sim_v4$outlier_idx
   ), seed = TRUE)
 
-results$V5_extreme_imbalance <- future(run_loglik_scenario(
+results$V5_extreme_imbalance <- future(run_scenario_replicates(
   x_list      = sim_v5$x_list,
   g           = 3,
   scenario_name = "Viroli_extreme_imbalance",
@@ -421,7 +421,7 @@ results$V5_extreme_imbalance <- future(run_loglik_scenario(
   outlier_idx = sim_v5$outlier_idx
   ), seed = TRUE)
 
-results$V6_row_spike_outliers <- future(run_loglik_scenario(
+results$V6_row_spike_outliers <- future(run_scenario_replicates(
   x_list      = sim_v6$x_list,
   g           = 3,
   scenario_name = "Viroli_row_spike",
@@ -430,7 +430,7 @@ results$V6_row_spike_outliers <- future(run_loglik_scenario(
   outlier_idx = sim_v6$outlier_idx
   ), seed = TRUE)
 
-results$V7_column_outliers <- future(run_loglik_scenario(
+results$V7_column_outliers <- future(run_scenario_replicates(
   x_list      = sim_v7$x_list,
   g           = 3,
   scenario_name = "Viroli_column_outliers",
@@ -439,7 +439,7 @@ results$V7_column_outliers <- future(run_loglik_scenario(
   outlier_idx = sim_v7$outlier_idx
   ), seed = TRUE)
 
-results$V8_strong_signal <- future(run_loglik_scenario(
+results$V8_strong_signal <- future(run_scenario_replicates(
   x_list      = sim_v8$x_list,
   g           = 3,
   scenario_name = "Viroli_strong_signal",
@@ -448,7 +448,7 @@ results$V8_strong_signal <- future(run_loglik_scenario(
   outlier_idx = sim_v8$outlier_idx
   ), seed = TRUE)
 
-results$V9_weak_signal <- future(run_loglik_scenario(
+results$V9_weak_signal <- future(run_scenario_replicates(
   x_list      = sim_v9$x_list,
   g           = 3,
   scenario_name = "Viroli_weak_signal",
@@ -457,7 +457,7 @@ results$V9_weak_signal <- future(run_loglik_scenario(
   outlier_idx = sim_v9$outlier_idx
   ), seed = TRUE)
 
-results$V10_very_high_cov <- future(run_loglik_scenario(
+results$V10_very_high_cov <- future(run_scenario_replicates(
   x_list      = sim_v10$x_list,
   g           = 3,
   scenario_name = "Viroli_very_high_cov",
@@ -466,7 +466,7 @@ results$V10_very_high_cov <- future(run_loglik_scenario(
   outlier_idx = sim_v10$outlier_idx
   ), seed = TRUE)
 
-results$V11_very_low_cov <- future(run_loglik_scenario(
+results$V11_very_low_cov <- future(run_scenario_replicates(
   x_list      = sim_v11$x_list,
   g           = 3,
   scenario_name = "Viroli_very_low_cov",
@@ -475,7 +475,7 @@ results$V11_very_low_cov <- future(run_loglik_scenario(
   outlier_idx = sim_v11$outlier_idx
   ), seed = TRUE)
 
-results$V12_many_outliers <- future(run_loglik_scenario(
+results$V12_many_outliers <- future(run_scenario_replicates(
   x_list      = sim_v12$x_list,
   g           = 3,
   scenario_name = "Viroli_many_outliers",
@@ -484,7 +484,7 @@ results$V12_many_outliers <- future(run_loglik_scenario(
   outlier_idx = sim_v12$outlier_idx
   ), seed = TRUE)
 
-results$V13_few_outliers <- future(run_loglik_scenario(
+results$V13_few_outliers <- future(run_scenario_replicates(
   x_list      = sim_v13$x_list,
   g           = 3,
   scenario_name = "Viroli_few_outliers_v2",
@@ -493,7 +493,7 @@ results$V13_few_outliers <- future(run_loglik_scenario(
   outlier_idx = sim_v13$outlier_idx
   ), seed = TRUE)
 
-results$V14_mixed_outliers <- future(run_loglik_scenario(
+results$V14_mixed_outliers <- future(run_scenario_replicates(
   x_list      = sim_v14$x_list,
   g           = 3,
   scenario_name = "Viroli_mixed_outliers",
@@ -502,7 +502,7 @@ results$V14_mixed_outliers <- future(run_loglik_scenario(
   outlier_idx = sim_v14$outlier_idx
   ), seed = TRUE)
 
-results$V15_extreme_imbalance <- future(run_loglik_scenario(
+results$V15_extreme_imbalance <- future(run_scenario_replicates(
   x_list      = sim_v15$x_list,
   g           = 3,
   scenario_name = "Viroli_extreme_imbalance_v2",
@@ -511,7 +511,7 @@ results$V15_extreme_imbalance <- future(run_loglik_scenario(
   outlier_idx = sim_v15$outlier_idx
   ), seed = TRUE)
 
-results$V16_large_n <- future(run_loglik_scenario(
+results$V16_large_n <- future(run_scenario_replicates(
   x_list      = sim_v16$x_list,
   g           = 3,
   scenario_name = "Viroli_large_n",
@@ -520,7 +520,7 @@ results$V16_large_n <- future(run_loglik_scenario(
   outlier_idx = sim_v16$outlier_idx
   ), seed = TRUE)
 
-results$V17_small_n <- future(run_loglik_scenario(
+results$V17_small_n <- future(run_scenario_replicates(
   x_list      = sim_v17$x_list,
   g           = 3,
   scenario_name = "Viroli_small_n",
@@ -529,7 +529,7 @@ results$V17_small_n <- future(run_loglik_scenario(
   outlier_idx = sim_v17$outlier_idx
   ), seed = TRUE)
 
-results$V18_heteroscedastic <- future(run_loglik_scenario(
+results$V18_heteroscedastic <- future(run_scenario_replicates(
   x_list      = sim_v18$x_list,
   g           = 3,
   scenario_name = "Viroli_heteroscedastic",
@@ -538,7 +538,7 @@ results$V18_heteroscedastic <- future(run_loglik_scenario(
   outlier_idx = sim_v18$outlier_idx
   ), seed = TRUE)
 
-results$V19_anticorrelated <- future(run_loglik_scenario(
+results$V19_anticorrelated <- future(run_scenario_replicates(
   x_list      = sim_v19$x_list,
   g           = 3,
   scenario_name = "Viroli_anticorrelated",
@@ -547,7 +547,7 @@ results$V19_anticorrelated <- future(run_loglik_scenario(
   outlier_idx = sim_v19$outlier_idx
   ), seed = TRUE)
 
-results$V20_larger_dimensions <- future(run_loglik_scenario(
+results$V20_larger_dimensions <- future(run_scenario_replicates(
   x_list      = sim_v20$x_list,
   g           = 3,
   scenario_name = "Viroli_larger_dimensions",
@@ -571,7 +571,7 @@ cat("\n===== Running scaled size-sensitivity grids =====\n")
 for (s in seq_along(size_grid)) {
   rg <- size_grid[[s]][1]
   pg <- size_grid[[s]][2]
-  n_total <- 300
+  n_total <- 150
 
   plots_dir <- file.path("loglik", "plots", sprintf("size_%dx%d", rg, pg))
 
@@ -590,7 +590,7 @@ for (s in seq_along(size_grid)) {
       n_outliers = n_outliers, signal_strength = 0.5, cov_scale = 1,
       outlier_type = "perm"
     )
-    results[[sprintf("V1_prop%d_sz%d", noise_prop, s - 1)]] <- future(run_loglik_scenario(
+    results[[sprintf("V1_prop%d_sz%d", noise_prop, s - 1)]] <- future(run_scenario_replicates(
       x_list = sim_viroli_prop$x_list, g = 3,
       scenario_name = sprintf("V1_prop%d_sz%d", noise_prop, s - 1),
       subtitle = sprintf("Scaling %d: Viroli %dx%d | 3 groups | %d permuted outliers (%d%% of n=%d)",
@@ -641,13 +641,13 @@ summary_data <- rbindlist(lapply(seq_along(results), function(i) {
     Scenario      = nm,
     g             = 3,
     Selected_k    = r$best_k,
-    Max_logLik_k  = ifelse(any(r$plot_df$logLik[complete.cases(r$plot_df$logLik)] > -Inf),
-                          r$plot_df$k[complete.cases(r$plot_df$logLik)][
-                            which.max(r$plot_df$logLik[complete.cases(r$plot_df$logLik)])
+    Max_logLik_k  = ifelse(any(r$plot_df$logLik_mean[!is.na(r$plot_df$logLik_mean)] > -Inf),
+                          r$plot_df$k[!is.na(r$plot_df$logLik_mean)][
+                            which.max(r$plot_df$logLik_mean[!is.na(r$plot_df$logLik_mean)])
                           ], NA_real_),
     Spearman_k_vs_logLik = r$correlation,
     N_candidates  = nrow(r$plot_df),
-    N_valid_logLik= sum(complete.cases(r$plot_df$logLik))
+    N_valid_logLik= sum(!is.na(r$plot_df$logLik_mean))
   )
 }), fill = TRUE)
 

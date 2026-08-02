@@ -208,14 +208,17 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
                                  nstart = 10, max_iter = 100, tol = 1e-6,
                                  use_kmeans = TRUE, init = "kmeans",
                                  noise_pi_init = 0.05,
-                                 save_plots = TRUE, plots_dir = "loglik/plots") {
+                                 save_plots = TRUE, plots_dir = "loglik/plots",
+                                 seed = 42) {
+   if (!is.null(seed)) set.seed(seed)
+
    for (pkg in c("Ampharos", "ggplot2", "clusterGeneration", "data.table")) {
      if (!requireNamespace(pkg, quietly = TRUE)) stop("Package ", pkg, " required")
    }
-        if (!is.null(outlier_idx) && !is.na(true_k_noise) && length(outlier_idx) != true_k_noise) {
-         warning("outlier_idx length (", length(outlier_idx), ") != true_k_noise (", true_k_noise, ")")
-       }
-  cat(sprintf("\n===== Scenario: %s =====\n", scenario_name))
+          if (!is.null(outlier_idx) && !is.na(true_k_noise) && length(outlier_idx) != true_k_noise) {
+           warning("outlier_idx length (", length(outlier_idx), ") != true_k_noise (", true_k_noise, ")")
+         }
+   cat(sprintf("\n===== Scenario: %s =====\n", scenario_name))
 
   cat(sprintf("  Fitting estimate_k with g = %d ...\n", g))
   fit_noise <- mv_noise_fit(
@@ -433,6 +436,103 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
       correlation   = cor_val,
       metrics        = metrics
     )
-}
+ }
 
-source("loglik/scenarios.R")
+ run_scenario_replicates <- function(x_list, g, B = 10, base_seed = 42, ...) {
+   if (B < 2) {
+     res <- run_loglik_scenario(x_list = x_list, g = g, seed = base_seed, ...)
+     res$B <- 1L
+     return(res)
+   }
+
+   replicate_results <- future_lapply(seq_len(B), function(b) {
+     run_loglik_scenario(
+       x_list = x_list,
+       g = g,
+       seed = base_seed + b * 1000,
+       ...
+     )
+   }, future.seed = TRUE)
+
+   all_plot_df <- rbindlist(lapply(seq_along(replicate_results), function(b) {
+     df <- replicate_results[[b]]$plot_df
+     df$replicate <- b
+     df
+   }))
+
+   agg <- all_plot_df[, .(
+     logLik_mean = mean(logLik, na.rm = TRUE),
+     logLik_se = ifelse(sum(!is.na(logLik)) > 1,
+                        sd(logLik, na.rm = TRUE) / sqrt(sum(!is.na(logLik))),
+                        NA_real_),
+     ks_statistic_mean = mean(ks_statistic, na.rm = TRUE),
+     ks_statistic_se = ifelse(sum(!is.na(ks_statistic) & is.finite(ks_statistic)) > 1,
+                              sd(ks_statistic, na.rm = TRUE) / sqrt(sum(!is.na(ks_statistic) & is.finite(ks_statistic))),
+                              NA_real_),
+     n_used_mean = mean(n_used, na.rm = TRUE),
+     correct_noise = any(correct_noise, na.rm = TRUE),
+     .N
+   ), by = k]
+
+   ok_loglik <- !is.na(agg$logLik_mean) & is.finite(agg$logLik_mean)
+   best_k_overall <- if (any(ok_loglik)) agg$k[which.max(agg$logLik_mean[ok_loglik])] else NA_real_
+
+   p <- ggplot() +
+     geom_line(data = all_plot_df, aes(x = k, y = logLik, group = replicate),
+               color = "gray60", alpha = 0.4, linewidth = 0.5) +
+     {
+       if (any(ok_loglik)) {
+         list(
+           geom_ribbon(data = agg[ok_loglik, ],
+                       aes(x = k, ymin = logLik_mean - logLik_se, ymax = logLik_mean + logLik_se),
+                       fill = "darkorange2", alpha = 0.3),
+           geom_line(data = agg[ok_loglik, ], aes(x = k, y = logLik_mean),
+                     color = "darkorange2", linewidth = 1.2)
+         )
+       } else NULL
+     } +
+     geom_vline(xintercept = best_k_overall, color = "black", linetype = "dashed", linewidth = 0.8) +
+     scale_x_log10() +
+     scale_y_continuous(labels = scales::comma_format()) +
+     labs(
+       title = sprintf("Scenario: %s (%d replicates)", scenario_name, B),
+       subtitle = subtitle,
+       x = expression(k~("noise height, log scale")),
+       y = expression( Final~log-likelihood )
+     ) +
+     theme_minimal()
+
+   metrics_list <- lapply(replicate_results, function(r) r$metrics)
+   metrics_combined <- rbindlist(metrics_list)
+
+   non_numeric <- sapply(metrics_combined, function(x) !is.numeric(x) || all(is.na(x)))
+   numeric_cols <- names(metrics_combined)[!non_numeric]
+
+   if (length(numeric_cols) > 0) {
+     metrics_summary <- metrics_combined[, c(
+       as.list(colMeans(.SD[, ..numeric_cols], na.rm = TRUE)),
+       as.list(sapply(.SD[, ..numeric_cols], function(x) sd(x, na.rm = TRUE) / sqrt(sum(!is.na(x)))))
+     ), .SDcols = numeric_cols]
+     setnames(metrics_summary,
+              c(numeric_cols, paste0(numeric_cols, "_se")),
+              c(numeric_cols, paste0(numeric_cols, "_se")))
+     for (col in names(metrics_combined)[non_numeric]) {
+       metrics_summary[[col]] <- metrics_combined[[col]][1]
+     }
+   } else {
+     metrics_summary <- metrics_combined[1, ]
+   }
+
+   list(
+     plot_df = agg,
+     p_loglik = p,
+     best_k = mean(sapply(replicate_results, function(r) r$best_k), na.rm = TRUE),
+     k_grid = replicate_results[[1]]$k_grid,
+     ks_scores = replicate_results[[1]]$ks_scores,
+     correlation = mean(sapply(replicate_results, function(r) r$correlation), na.rm = TRUE),
+     metrics = metrics_summary,
+     B = B
+   )
+ }
+
+ source("loglik/scenarios.R")
