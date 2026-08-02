@@ -354,21 +354,34 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
     cat(sprintf("  Spearman (k vs logLik): %.4f\n", cor_val))
   }
 
-   # ── Plot 1: log-likelihood vs k (linear y) ─────────────────────────────────
-   plot_df$correct_noise_group <- cumsum(c(TRUE, diff(plot_df$correct_noise) != 0))
+    # ── Plot 1: log-likelihood vs k (linear y) with KS on secondary axis ─────────
+    plot_df$correct_noise_group <- cumsum(c(TRUE, diff(plot_df$correct_noise) != 0))
+
+    ok_ks <- plot_df[is.finite(plot_df$ks_statistic), ]
+    ks_scale <- 1
+    ks_offset <- 0
+    if (nrow(ok_ks) > 0 && any(ok_loglik)) {
+      logLik_range <- range(plot_df$logLik[ok_loglik], na.rm = TRUE)
+      ks_range <- range(plot_df$ks_statistic[ok_ks], na.rm = TRUE)
+      ks_scale <- diff(logLik_range) / diff(ks_range)
+      ks_offset <- logLik_range[1] - ks_range[1] * ks_scale
+    }
 
     p1 <- ggplot() +
       {
         ok_rows <- plot_df[complete.cases(plot_df$logLik), ]
         if (nrow(ok_rows) > 1) {
           ok_rows <- ok_rows[order(plot_df$k), ]
-          seg_df <- data.frame(
-            x      = head(plot_df$k, -1),
-            xend   = tail(plot_df$k, -1),
-            y      = head(plot_df$logLik, -1),
-            yend   = tail(plot_df$logLik, -1),
-            correct_noise = head(plot_df$correct_noise, -1)
-          )
+           seg_df <- data.frame(
+             x      = head(plot_df$k, -1),
+             xend   = tail(plot_df$k, -1),
+             y      = head(plot_df$logLik, -1),
+             yend   = tail(plot_df$logLik, -1),
+             correct_noise = factor(
+               head(plot_df$correct_noise, -1),
+               levels = c(FALSE, TRUE)
+             )
+           )
           list(geom_segment(
             data = seg_df,
             aes(x = x, xend = xend, y = y, yend = yend, color = correct_noise),
@@ -378,45 +391,48 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
       } +
       geom_point(data = subset(plot_df, type != "Other"),
                 aes(x = k, y = logLik, shape = type), color = "darkorange2", size = 3) +
-      scale_color_manual(values = c("TRUE" = "black", "FALSE" = "red"),
-                         labels = c("Correct noise recovery", "Incorrect recovery"),
+      {
+        if (nrow(ok_ks) > 0 && any(ok_loglik)) {
+          list(
+            geom_line(data = ok_ks, aes(x = k, y = ks_statistic * ks_scale + ks_offset),
+                      color = "steelblue", linewidth = 1),
+            geom_point(data = ok_ks, aes(x = k, y = ks_statistic * ks_scale + ks_offset),
+                      color = "steelblue", size = 2)
+          )
+        } else NULL
+      } +
+      scale_color_manual(values = c("FALSE" = "red", "TRUE" = "green"),
+                         labels = c(
+                           "FALSE" = "Incorrect recovery",
+                           "TRUE"  = "Correct noise recovery"
+                         ),
                          name = "Noise recovery") +
       scale_x_log10() +
-      scale_y_continuous(labels = scales::comma_format()) +
-     labs(
-       title    = sprintf("Scenario: %s", scenario_name),
-       subtitle = subtitle,
-       x        = expression(k~("noise height, log scale")),
-       y        = expression( Final~log-likelihood ),
-       shape    = "",
-       colour   = "Noise recovery"
+      scale_y_continuous(
+        name = expression( Final~log-likelihood ),
+        labels = scales::comma_format(),
+        sec.axis = if (nrow(ok_ks) > 0 && any(ok_loglik))
+          sec_axis(~(. - ks_offset) / ks_scale, name = "KS statistic")
       ) +
-      theme_minimal() +
-      theme(legend.position = "bottom", legend.title = element_blank())
-
-   # ── Save plots ─────────────────────────────────────────────────────────────
-  if (save_plots) {
-    if (!dir.exists(plots_dir)) dir.create(plots_dir, recursive = TRUE)
-
-    tag <- paste0(scenario_name, collapse = "_")
-    tag <- gsub("[^a-zA-Z0-9_]+", "_", tag)
-
-    ggsave(
-      filename = file.path(plots_dir, sprintf("%s_loglik_trend.png", tag)),
-      plot     = p1, width = 9, height = 5.5, dpi = 150
-    )
-    cat(sprintf("  Saved plots to %s/\n", plots_dir))
-  }
+      labs(
+        title    = sprintf("Scenario: %s", scenario_name),
+        subtitle = subtitle,
+        x        = expression(k~("noise height, log scale")),
+        shape    = "",
+        colour   = "Noise recovery"
+       ) +
+        theme_minimal() +
+        theme(legend.position = "bottom", legend.title = element_blank())
 
    list(
-     plot_df  = plot_df,
-     p_loglik = p1,
-     best_k        = best_k,
-     k_grid        = active_k_grid,
-     ks_scores     = k_selection$ks_scores,
-     correlation   = cor_val,
-     metrics        = metrics
-   )
+      plot_df  = plot_df,
+      p_loglik = p1,
+      best_k        = best_k,
+      k_grid        = active_k_grid,
+      ks_scores     = k_selection$ks_scores,
+      correlation   = cor_val,
+      metrics        = metrics
+    )
 }
 
 source("loglik/scenarios.R")
