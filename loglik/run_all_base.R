@@ -8,6 +8,72 @@ library(future.apply)
 plan(multisession, workers = 8)
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Simulation helpers
+# ──────────────────────────────────────────────────────────────────────────────
+viroli_simulation <- function(r, p, n, n1, n2, n3, M1, M2, M3,
+                                U1, V1, U2, V2, U3, V3, n_outliers,
+                                row_cov_scale = 1, col_cov_scale = 1) {
+  U1 <- row_cov_scale * U1; V1 <- col_cov_scale * V1
+  U2 <- row_cov_scale * U2; V2 <- col_cov_scale * V2
+  U3 <- row_cov_scale * U3; V3 <- col_cov_scale * V3
+  simulate_matrix_group <- function(n, mean_mat, row_cov, col_cov) {
+    lapply(seq_len(n), function(i) {
+      mean_mat + row_cov %*% matrix(rnorm(r * p), r, p) %*% col_cov
+    })
+  }
+  x_list <- c(
+    simulate_matrix_group(n1, M1, U1, V1),
+    simulate_matrix_group(n2, M2, U2, V2),
+    simulate_matrix_group(n3, M3, U3, V3)
+  )
+  outlier_idx <- sample(length(x_list), n_outliers)
+  for (idx in outlier_idx) {
+    x_list[[idx]] <- matrix(sample(x_list[[idx]]), r, p)
+  }
+  list(x_list = x_list, outlier_idx = outlier_idx)
+}
+
+scaled_viroli_simulation <- function(r, p, n, n1, n2, n3, n_outliers,
+                                      signal_strength = 0.5, cov_scale = 1,
+                                      outlier_type = c("perm", "row_spike", "col_out"),
+                                      seed = NULL) {
+  outlier_type <- match.arg(outlier_type)
+  if (!is.null(seed)) set.seed(seed)
+  M1 <- matrix(0, r, p)
+  M2 <- matrix(0, r, p)
+  M3 <- matrix(0, r, p)
+  signal_col <- min(2, p)
+  for (j in seq_len(signal_col)) {
+    M1[1, j] <- signal_strength
+    M3[1, j] <- -signal_strength
+  }
+  U1 <- cov_scale * rcorrmatrix(r)
+  U2 <- cov_scale * rcorrmatrix(r)
+  U3 <- cov_scale * rcorrmatrix(r)
+  V1 <- cov_scale * rcorrmatrix(p)
+  V2 <- cov_scale * rcorrmatrix(p)
+  V3 <- cov_scale * rcorrmatrix(p)
+  result <- viroli_simulation(r, p, n, n1, n2, n3,
+                              M1, M2, M3, U1, V1, U2, V2, U3, V3,
+                              n_outliers = n_outliers)
+  if (outlier_type == "row_spike") {
+    spike_idx <- sample(seq_along(result$x_list), n_outliers)
+    for (idx in spike_idx) {
+      row_id <- sample.int(r, 1)
+      result$x_list[[idx]][row_id, ] <- runif(p, -8, 8)
+    }
+  }
+  if (outlier_type == "col_out") {
+    col_out_idx <- sample(seq_along(result$x_list), n_outliers)
+    for (idx in col_out_idx) {
+      col_id <- sample.int(p, 1)
+      result$x_list[[idx]][, col_id] <- runif(r, -10, 10)
+    }
+  }
+  list(x_list = result$x_list, outlier_idx = result$outlier_idx)
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Shared helper — evaluate one k-grid candidate and return log-likelihood
 # ──────────────────────────────────────────────────────────────────────────────
 evaluate_k_candidate_with_loglik <- function(idx, x_list, r, p, g,
