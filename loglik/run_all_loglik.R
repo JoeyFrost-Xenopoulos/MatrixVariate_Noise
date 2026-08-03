@@ -366,7 +366,7 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
     ks_offset <- 0
     if (nrow(ok_ks) > 0 && any(ok_loglik)) {
       logLik_range <- range(plot_df$logLik[ok_loglik], na.rm = TRUE)
-      ks_range <- range(plot_df$ks_statistic[ok_ks], na.rm = TRUE)
+      ks_range <- range(ok_ks$ks_statistic, na.rm = TRUE)
       ks_scale <- diff(logLik_range) / diff(ks_range)
       ks_offset <- logLik_range[1] - ks_range[1] * ks_scale
     }
@@ -415,7 +415,7 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
       scale_y_continuous(
         name = expression( Final~log-likelihood ),
         labels = scales::comma_format(),
-        sec.axis = if (nrow(ok_ks) > 0 && any(ok_loglik))
+        sec.axis = if (nrow(ok_ks) > 0 && any(ok_loglik, na.rm = TRUE))
           sec_axis(~(. - ks_offset) / ks_scale, name = "KS statistic")
       ) +
       labs(
