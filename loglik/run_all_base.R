@@ -77,12 +77,13 @@ scaled_viroli_simulation <- function(r, p, n, n1, n2, n3, n_outliers,
 # Shared helper — evaluate one k-grid candidate and return log-likelihood
 # ──────────────────────────────────────────────────────────────────────────────
 evaluate_k_candidate_with_loglik <- function(idx, x_list, r, p, g,
-                                               max_iter, tol,
-                                               k_grid, nstart, init,
-                                               noise_pi_init, verbose) {
+                                                max_iter, tol,
+                                                k_grid, nstart, init,
+                                                noise_pi_init, verbose,
+                                                outlier_idx) {
   current_k <- k_grid[idx]
 
-  fit_noise <- Ampharos:::mv_noise_fit_impl(
+  fit_noise <-  Ampharos:::mv_noise_fit_impl(
     x_list        = x_list,
     g             = g,
     noise_type    = "hc",
@@ -98,13 +99,18 @@ evaluate_k_candidate_with_loglik <- function(idx, x_list, r, p, g,
   keep_idx <- fit_noise$cluster != 0
   x_clean  <- x_list[keep_idx]
 
+  detected_noise <- which(fit_noise$cluster == 0)
+  correct_noise <- length(detected_noise) == length(outlier_idx) &&
+                   length(intersect(detected_noise, outlier_idx)) == length(outlier_idx)
+
   if (length(x_clean) <= g) {
     return(list(
-      k      = current_k,
-      logLik = tail(fit_noise$logLik, 1),
+      k            = current_k,
+      logLik       = tail(fit_noise$logLik, 1),
       ks_statistic = Inf,
       ks_p.value   = NA_real_,
-      n_used       = length(x_clean)
+      n_used       = length(x_clean),
+      correct_noise = correct_noise
     ))
   }
 
@@ -121,7 +127,8 @@ evaluate_k_candidate_with_loglik <- function(idx, x_list, r, p, g,
     logLik       = tail(fit_noise$logLik, 1),
     ks_statistic = ks_result$statistic,
     ks_p.value   = ks_result$p.value,
-    n_used       = ks_result$n_used
+    n_used       = ks_result$n_used,
+    correct_noise = correct_noise
   )
 }
 
@@ -181,7 +188,8 @@ run_base_scenario <- function(x_list, g, scenario_name,
     nstart        = nstart,
     init          = init,
     noise_pi_init = noise_pi_init,
-    verbose       = FALSE
+    verbose       = FALSE,
+    outlier_idx   = outlier_idx
   )
 
   plot_df <- rbindlist(grid_results)
@@ -275,12 +283,16 @@ run_base_scenario <- function(x_list, g, scenario_name,
           x      = head(plot_df$k, -1),
           xend   = tail(plot_df$k, -1),
           y      = head(plot_df$logLik, -1),
-          yend   = tail(plot_df$logLik, -1)
+          yend   = tail(plot_df$logLik, -1),
+          correct_noise = factor(
+            head(plot_df$correct_noise, -1),
+            levels = c(FALSE, TRUE)
+          )
         )
         list(geom_segment(
           data = seg_df,
-          aes(x = x, xend = xend, y = y, yend = yend),
-          color = "grey60", linewidth = 1
+          aes(x = x, xend = xend, y = y, yend = yend, color = correct_noise),
+          linewidth = 1
         ))
       } else NULL
     } +
