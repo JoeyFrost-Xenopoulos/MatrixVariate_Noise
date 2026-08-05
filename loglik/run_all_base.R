@@ -266,16 +266,6 @@ run_base_scenario <- function(x_list, g, scenario_name,
     cat(sprintf("  Spearman (k vs logLik): %.4f\n", cor_val))
   }
 
-  ok_ks <- plot_df[is.finite(plot_df$ks_statistic), ]
-  ks_scale <- 1
-  ks_offset <- 0
-  if (nrow(ok_ks) > 0 && any(ok_loglik)) {
-    logLik_range <- range(plot_df$logLik[ok_loglik], na.rm = TRUE)
-    ks_range <- range(ok_ks$ks_statistic, na.rm = TRUE)
-    ks_scale <- diff(logLik_range) / diff(ks_range)
-    ks_offset <- logLik_range[1] - ks_range[1] * ks_scale
-  }
-
   p1 <- ggplot() +
     {
       ok_rows <- plot_df[complete.cases(plot_df$logLik), ]
@@ -296,16 +286,6 @@ run_base_scenario <- function(x_list, g, scenario_name,
     } +
     geom_point(data = subset(plot_df, type != "Other"),
                aes(x = k, y = logLik, shape = type), color = "darkorange2", size = 3) +
-    {
-      if (nrow(ok_ks) > 0 && any(ok_loglik)) {
-        list(
-          geom_line(data = ok_ks, aes(x = k, y = ks_statistic * ks_scale + ks_offset),
-                    color = "steelblue", linewidth = 1),
-          geom_point(data = ok_ks, aes(x = k, y = ks_statistic * ks_scale + ks_offset),
-                     color = "steelblue", size = 2)
-        )
-      } else NULL
-    } +
     scale_color_manual(values = c("FALSE" = "red", "TRUE" = "green"),
                        labels = c("FALSE" = "Incorrect recovery",
                                   "TRUE"  = "Correct noise recovery"),
@@ -313,9 +293,7 @@ run_base_scenario <- function(x_list, g, scenario_name,
     scale_x_log10() +
     scale_y_continuous(
       name = expression( Final~log-likelihood ),
-      labels = scales::comma_format(),
-      sec.axis = if (nrow(ok_ks) > 0 && any(ok_loglik))
-        sec_axis(~(. - ks_offset) / ks_scale, name = "KS statistic")
+      labels = scales::comma_format()
     ) +
     labs(
       title    = sprintf("Scenario: %s", scenario_name),
