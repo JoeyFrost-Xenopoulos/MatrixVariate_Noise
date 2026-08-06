@@ -12,7 +12,7 @@ source("loglik/run_all_base.R")
 # ──────────────────────────────────────────────────────────────────────────────
 # Custom k-grid
 # ──────────────────────────────────────────────────────────────────────────────
-custom_k_grid <- 10^seq(-100, -4, length.out = 60)
+custom_k_grid <- 10^seq(-100, -4, length.out = 96)
 
 cat(sprintf("Using custom k_grid: [%.0e, %.0e] with %d candidates\n",
             min(custom_k_grid), max(custom_k_grid), length(custom_k_grid)))
@@ -330,8 +330,8 @@ run_base_replicates_custom <- function(x_list, g, B = 10, base_seed = 42, k_grid
 # Matrix size grid
 # ──────────────────────────────────────────────────────────────────────────────
 size_grid <- list(
-  c(2, 3), c(2, 4), c(3, 3), c(3, 4), c(3, 5),
-  c(4, 6), c(5, 7), c(5, 8), c(6, 9), c(7, 10),
+  c(4, 4), c(4, 5), c(4, 6), c(5, 5), c(5, 6),
+  c(5, 7), c(5, 8), c(6, 9), c(7, 10),
   c(8, 11), c(9, 12), c(10, 13)
 )
 
