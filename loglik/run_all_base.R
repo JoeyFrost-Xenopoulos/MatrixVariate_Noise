@@ -261,7 +261,9 @@ run_base_scenario <- function(x_list, g, scenario_name,
   )
 
   if (!is.na(true_k_noise)) {
-    correct_noise_detected <- best_k == true_k_noise
+    selected_idx <- match(best_k, plot_df$k)
+    correct_noise_detected <- !is.na(selected_idx) &&
+      isTRUE(plot_df$correct_noise[selected_idx])
     cat(sprintf("  True noise count = %.4e | Correctly identified = %s\n",
                 true_k_noise, if (correct_noise_detected) "YES" else "NO"))
     metrics$correct_noise_detected <- correct_noise_detected
@@ -278,14 +280,14 @@ run_base_scenario <- function(x_list, g, scenario_name,
     {
       ok_rows <- plot_df[complete.cases(plot_df$logLik), ]
       if (nrow(ok_rows) > 1) {
-        ok_rows <- ok_rows[order(plot_df$k), ]
+        ok_rows <- ok_rows[order(ok_rows$k), ]
         seg_df <- data.frame(
-          x      = head(plot_df$k, -1),
-          xend   = tail(plot_df$k, -1),
-          y      = head(plot_df$logLik, -1),
-          yend   = tail(plot_df$logLik, -1),
+          x      = head(ok_rows$k, -1),
+          xend   = tail(ok_rows$k, -1),
+          y      = head(ok_rows$logLik, -1),
+          yend   = tail(ok_rows$logLik, -1),
           correct_noise = factor(
-            head(plot_df$correct_noise, -1),
+            head(ok_rows$correct_noise, -1),
             levels = c(FALSE, TRUE)
           )
         )

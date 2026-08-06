@@ -275,7 +275,9 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
 
    plot_df$ks_flag <- plot_df$k == k_selection$k_grid[best_ks_idx]
    plot_df$scenario_name <- scenario_name
-   correct_noise_detected <- !is.na(true_k_noise) && best_k == true_k_noise
+   selected_idx <- match(best_k, plot_df$k)
+   correct_noise_detected <- !is.na(selected_idx) &&
+     isTRUE(plot_df$correct_noise[selected_idx])
 
    fit_final <- Ampharos:::mv_noise_fit_impl(
      x_list        = x_list,
@@ -375,17 +377,17 @@ run_loglik_scenario <- function(x_list, g, scenario_name,
       {
         ok_rows <- plot_df[complete.cases(plot_df$logLik), ]
         if (nrow(ok_rows) > 1) {
-          ok_rows <- ok_rows[order(plot_df$k), ]
-           seg_df <- data.frame(
-             x      = head(plot_df$k, -1),
-             xend   = tail(plot_df$k, -1),
-             y      = head(plot_df$logLik, -1),
-             yend   = tail(plot_df$logLik, -1),
-             correct_noise = factor(
-               head(plot_df$correct_noise, -1),
-               levels = c(FALSE, TRUE)
-             )
-           )
+          ok_rows <- ok_rows[order(ok_rows$k), ]
+          seg_df <- data.frame(
+            x      = head(ok_rows$k, -1),
+            xend   = tail(ok_rows$k, -1),
+            y      = head(ok_rows$logLik, -1),
+            yend   = tail(ok_rows$logLik, -1),
+            correct_noise = factor(
+              head(ok_rows$correct_noise, -1),
+              levels = c(FALSE, TRUE)
+            )
+          )
           list(geom_segment(
             data = seg_df,
             aes(x = x, xend = xend, y = y, yend = yend, color = correct_noise),
