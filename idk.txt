@@ -1,0 +1,7 @@
+This is actually very close in spirit to what Hennig's OTRIMLE does. OTRIMLE does not maximize likelihood over k; instead, it chooses k by minimizing a discrepancy criterion that measures how well the fitted Gaussian clusters resemble true Gaussian distributions. But mathematically, it is also exploring a one-dimensional family of EM solutions indexed by k.
+
+I think there is an interesting research question here: instead of Hennig's discrepancy criterion, can one characterize the path
+
+k↦ f(k)
+
+using sensitivity analysis or implicit differentiation of the EM fixed-point equations? That could reveal bifurcations (clusters appearing or disappearing), identify stable ranges of k, or even suggest a principled data-driven way to select k. That perspective is, to my knowledge, much less explored than the original OTRIMLE criterion.
