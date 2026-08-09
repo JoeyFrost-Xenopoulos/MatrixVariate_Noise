@@ -32,8 +32,8 @@ where $\Theta_n$ is a constrained parameter space. $\theta_n(k)$ is the used to 
 $$
 z_g(x_i, \theta) := 
 \begin{cases} 
-\frac{\pi_0k}{f_k(x_i, \theta)} & \text{if g = 0} \\
-\frac{\pi_g\phi(x_i, \mu_g, \Sigma_g)}{f_k(x_i,\theta)} & \text{if g = 1,2,..., G}
+\displaystyle \frac{\pi_0k}{f_k(x_i, \theta)} & \text{if g = 0} \\[6 pt]
+\displaystyle \frac{\pi_g\phi(x_i, \mu_g, \Sigma_g)}{f_k(x_i,\theta)} & \text{if g = 1,2,..., G}
 \end{cases}
 $$
 
@@ -59,11 +59,11 @@ It ensures that no more than a fixed fraction of the data can be declared as noi
 
 Then we define our finite-sample constrained space $\Theta_n$
 $$
-\Theta_n := \left\{ \theta\in\tilde\Theta: \pi_g\geq0 \ \forall \ g\geq 1, \pi_0 + \sum_{g=1}^G\pi_g =1; \ \frac{1}{n} \sum_{i=1}^nz_0(x_i,\theta) \leq\pi_{max}; \ \frac{\lambda_{\text{max}(\theta)}}{\lambda_{\text{max}(\theta)}} \leq \gamma  \right\}
+\Theta_n := \left\{ \theta\in\tilde\Theta: \pi_g\geq0 \ \forall \ g\geq 1, \pi_0 + \sum_{g=1}^G\pi_g =1; \ \frac{1}{n} \sum_{i=1}^nz_0(x_i,\theta) \leq\pi_{max}; \ \frac{\lambda_{\text{max}(\theta)}}{\lambda_{\text{min}(\theta)}} \leq \gamma  \right\}
 $$
 where $\tilde\Theta$
 $$
-\tilde\Theta := \left\{ \theta: \pi_g\geq0 \ \forall \ g\geq 1, \pi_0 + \sum_{g=1}^G\pi_g =1; \ \frac{\lambda_{\text{max}(\theta)}}{\lambda_{\text{max}(\theta)}} \leq \gamma  \right\}
+\tilde\Theta := \left\{ \theta: \pi_g\geq0 \ \forall \ g\geq 1, \pi_0 + \sum_{g=1}^G\pi_g =1; \ \frac{\lambda_{\text{max}(\theta)}}{\lambda_{\text{min}(\theta)}} \leq \gamma  \right\}
 $$
 (The unconstrained but bounded space): Defined by the basic non-negativity of mixture proportions and the eigenratio constraint. This is a starting point but is not sufficient for the RIMLE's existence.
 
@@ -151,9 +151,9 @@ end
 $\theta^{(ecm)} \leftarrow \theta^{(s+1)}$
 
 Choice of initial values and input parameters.
-Algorithms 1 and 2 require the initial value $\theta^{(0)}$, and the input parameters $\pi_{max},\gamma$ and k. The initial value $\theta^{(0)}$ can be set by randomly assigning points to G clusters and then computing cluster parameters or by using kmeans. Initialization like this needs to be performed a number of times so that the solution with the largest pseudo-likelihood is selected.
+Algorithms 1 and 2 require the initial value $\theta^{(0)}$, and the input parameters $\pi_{max},\gamma$ and k. The initial value $\theta^{(0)}$ can be set by randomly assigning points to G clusters and then computing cluster parameters. Initialization like this needs to be performed a number of times so that the solution with the largest pseudo-likelihood is selected.
 
-Hennig and Coretto rely on a more refined initialization strategy,
+Hennig and Coretto rely and propose a more refined initialization strategy,
 Initial de-noising: for each data point compute its $r$th-nearest neighbours distance ($r$-NND), for some $r$. All points with r-NND larger than the (1 − $\pi_{max}$)-quantile of the $r$-NND are initialized as noise. The interpretation of $r$ is that ($r$ − 1), but not $r$, points close together may still be interpreted as noise/outliers, whereas $r$ such points would constitute a cluster. Default value will be r = 3.
 Initial clusters: agglomerative hierarchical clustering based on ML criteria for Gaussian  mixture models as in Fraley (1998) is performed on the remaining $\lfloor n(1 − \pi_{max})\rfloor$ regular points to find the initial clusters. The sample mean and covariance matrix of  25 Coretto and Hennig  points belonging to each cluster are computed to define $\theta^{(0)}$. This step is performed based on the hc() function from the mclust package.
 
@@ -164,11 +164,9 @@ The role of the eigenratio can be twofold. If $\gamma$ is set to a low-value, st
 Although through the presence of the product $\pi_0k$ in (1) the parameters $\pi_0$ and $k$ may seem confounded, they actually play a very different role in the RIMLE. $k$ is not treated as a model parameter to be estimated, but rather as a tuning device to enable a good robust clustering. The interpretation is that $k$ is the density value below which groups of observations should rather be treated as “noise” than as “cluster”. This means that a larger value of $k$ will normally yield a larger estimate of $\pi_0$ because more observations will be classified as noise, as opposed to the intuition suggested by having the product $\pi_0k$ in (1). Whether small groups of observations of a certain size and with a certain density peak should rather count as “cluster” or rather as “group of outliers” cannot be identified from the data alone, but is rather a matter of interpretation. RIMLE may be sensitive to the choice of $k$, and a good choice of $k$ is therefore important in practice. 
 A way to find $k$ without knowledge beforehand, is to find a $k$ that optimizes a weighted Kolmogorov-type distance measure between the Mahalanobis distances of all objects to their corresponding cluster centers and the $\chi^2$-distribution, which the Mahalanobis distances should follow if the clusters were indeed Gaussian. The current implementation of the OTRIMLE in the otrimle package selects the best RIMLE solution computed with algorithm 2 on a selected grid of 50 values of log($k$). The default grid includes log($k$) = $-\infty$ so that a pure Gaussian mixture is always included in the competition.
 
-
-
 # Matrix-Variate Extension
 
-We extend the RIMLE framework to matrix-valued observations $\mathbf{X}_i\in\mathbb{R}^{r\times c}$ using the matrix-variate normal density. This follows the matrix-variate identities and notation summarized in `qmds/Noise.qmd`.
+We extend the RIMLE framework to matrix-valued observations $\mathbf{X}_i\in\mathbb{R}^{r\times c}$ using the matrix-variate normal density.
 
 ## Matrix-variate pseudo-density and objective
 
@@ -196,60 +194,248 @@ Points are assigned to the component maximizing these pseudo-posteriors as befor
 
 ## Constraints (matrix form)
 
-To avoid degeneracy we impose analogues of the eigenratio and noise-proportion constraints. A practical choice is to constrain row- and column-covariance eigenratios separately:
+Since $\Sigma_g = \mathbf{V}_g \otimes \mathbf{U}_G$ the eigenvalues of $\Sigma_g$ are $\lambda_j(\mathbf{V}_g)\lambda_h(\mathbf{U}_g)$. Thus,
 $$
-\frac{\lambda_{\max}(\mathbf{U}_g)}{\lambda_{\min}(\mathbf{U}_g)} \leq \gamma_{\text{row}}, \qquad
-\frac{\lambda_{\max}(\mathbf{V}_g)}{\lambda_{\min}(\mathbf{V}_g)} \leq \gamma_{\text{col}} \quad \forall g.
-$$
-Alternatively one may constrain the eigenratio of the Kronecker product covariance $\mathbf{\Sigma}_g = \mathbf{V}_g\otimes\mathbf{U}_g$ directly; both approaches regularize shapes and prevent numerical collapse. The noise-proportion constraint remains
-$$
-\frac{1}{n}\sum_{i=1}^n z_0(\mathbf{X}_i,\theta) \leq \pi_{\max}.
+\frac{\lambda_{\text{max}}(\Sigma_g)}{\lambda_{\text{min}}(\Sigma_g)} = \frac{\lambda_{\text{max}}(\mathbf{V}_g)\lambda_{\text{max}}(\mathbf{U}_g)}{\lambda_{\text{min}}(\mathbf{V}_g)\lambda_{\text{min}}(\mathbf{U}_g)} \leq \gamma
 $$
 
-## ECM algorithm (matrix-variate modifications)
+The original RIMLE constraint is generally about the eigenvalues across all Gaussian components, we could get an exact analogue by defining
+$$
+\lambda_{\text{max}}(\theta) = \underset{g,j,h}{\text{max}} \ \lambda_j(\mathbf{V}_g)\lambda_h(\mathbf{U}_g) \qquad \lambda_{\text{min}}(\theta) = \underset{g,j,h}{\text{min}} \ \lambda_j(\mathbf{V}_g)\lambda_h(\mathbf{U}_g)
+$$
+so that
+$$
+\frac{\text{max}_g\{\lambda_{\text{max}}(\mathbf{V}_g)\lambda_{\text{max}}(\mathbf{U}_g)\}}{\text{min}_g\{\lambda_{\text{min}}(\mathbf{V}_g)\lambda_{\text{min}}(\mathbf{U}_g)\}} \leq \gamma
+$$
+Thus, this global constraint will be used. 
 
-The ECM structure remains the same: an E-step computing $z_{i,g}$ and two conditional maximization steps (CM1 for $(\mathbf{M}_g,\mathbf{U}_g,\mathbf{V}_g)$ and CM2 for the mixing proportions). The CM1 updates use matrix-variate MLEs with weights $w_{i,g}=z_{i,g}$; closed forms for the mean and iterative updates for covariances are as follows.
+## ECM Matrix Algorithm
 
-CM1 (for each component $g$):
-- Mean update (closed form):
-$$
-\mathbf{M}_g^{(s+1)} = \frac{1}{Z_g^{(s)}}\sum_{i=1}^n z_{i,g}^{(s)}\,\mathbf{X}_i, \qquad Z_g^{(s)}=\sum_{i=1}^n z_{i,g}^{(s)}.
-$$
-- Row/column covariance updates (weighted flip-flop): initialize $\mathbf{U}_g,\mathbf{V}_g$ (e.g. from pooled estimates), then iterate until convergence:
-$$
-\mathbf{U}_g \leftarrow \frac{1}{Z_g^{(s)}\,c}\sum_{i=1}^n z_{i,g}^{(s)}(\mathbf{X}_i-\mathbf{M}_g^{(s+1)})\mathbf{V}_g^{-1}(\mathbf{X}_i-\mathbf{M}_g^{(s+1)})^\top,
-$$
-$$
-\mathbf{V}_g \leftarrow \frac{1}{Z_g^{(s)}\,r}\sum_{i=1}^n z_{i,g}^{(s)}(\mathbf{X}_i-\mathbf{M}_g^{(s+1)})^\top\mathbf{U}_g^{-1}(\mathbf{X}_i-\mathbf{M}_g^{(s+1)}).
-$$
-After each flip-flop iteration rescale one matrix to remove the usual identifiability indeterminacy (for example enforce $\text{tr}(\mathbf{U}_g)=r$ and absorb the scalar into $\mathbf{V}_g$).
+One key difference from ordinary RIMLE is that a matrix-normal component has two covariance factors. Meaning the CM1 step no longer has a simple one-shot covariance update. We need a flip-flop alternating conditional maximization step for $\mathbf{U}_g$ and $\mathbf{V}_g$.
 
-To enforce eigenratio constraints apply the shrinkage operator $\ell_\gamma(\cdot,m)$ to the eigenvalues of $\mathbf{U}_g$ and $\mathbf{V}_g$ (separately), exactly as in the vector-valued CM1: compute spectral decompositions, shrink eigenvalues via
+We maximize sample pseudo-log-likelihood via ECM algorithm which again has Q-function
 $$
-\tilde{\lambda}_{g,h} = \ell_{\gamma}(\lambda_{g,h}, m_*),
+Q(\theta_1, \theta_2, \theta^{(s)}) = Q_1(\theta_1,\theta^{(s)}) + Q_2(\theta_2,\theta^{(s)}) + \text{const}
 $$
-and reconstruct the constrained covariances. The scalar $m_*$ is obtained by solving a one-dimensional convex optimization analogous to the vector case (use `optimize` in R).
+where now
+$$
+\begin{align}
+&Q_1(\theta_1,\theta^{(s)}) = \sum_{i=1}^n\sum_{g=1}^Gz_{i,g}^{(s)}\log\phi_{r\times c}(\mathbf{X};\mathbf{M}_g,\mathbf{U}_g,\mathbf{V}_g) \\ 
 
-CM2: update mixing proportions as in the vector case, replacing multivariate Gaussian densities with the matrix-variate density $\phi_{r\times c}$. If the unconstrained update violates the noise-proportion constraint, solve for the scalar $\omega_*$ (using a 1-D root finder such as `uniroot`) and rescale component weights:
-$$
-\pi_0^{(s+1)} = \omega_*, \qquad \pi_g^{(s+1)} = \frac{1-\omega_*}{n - Z_0^{(s)}} Z_g^{(s)} \, (g\ge 1).
+&Q_2(\theta_2,\theta^{(s)}) = \sum_{g=0}^GZ_{g}^{(s)}\log\pi_g
+\end{align}
 $$
 
-## Initialization and choice of $k$ (matrix-aware)
-
-All initialization strategies described earlier carry over with matrix-aware adaptations (use matrix k-means or vectorize with matrix-aware whitening). In particular the Hennig–Coretto initial de-noising using the $r$-nearest-neighbour distance is unchanged in spirit; compute distances using the matrix Mahalanobis metric
+E-step, given current parameter estimates $\theta^{(s)}$, then the pseudo-posterior probabilities are
 $$
-\mathcal{D}_M(\mathbf{X}_i,\mathbf{M},\mathbf{V},\mathbf{U}) = \text{tr}\{\mathbf{U}^{-1}(\mathbf{X}_i-\mathbf{M})\mathbf{V}^{-1}(\mathbf{X}_i-\mathbf{M})^\top\},
+z_{ig}^{(s)}= 
+\begin{cases} 
+\displaystyle \frac{\pi_0^{(s)}k}{f_k(\mathbf{X}_i, \theta^{(s)})} & \text{if g = 0} \\[6 pt]
+\displaystyle \frac{\pi_g^{(s)}\phi_{r\times c}(\mathbf{X}_i; \mathbf{M}_g^{(s)}, \mathbf{U}_g^{(s)},  \mathbf{V}_g^{(s)})}{f_k(\mathbf{X}_i,\theta^{(s)})} & \text{if g = 1,2,..., G}
+\end{cases}
 $$
-and base thresholds on its empirical quantiles.
 
-Choice of $k$: the same two practical options apply:
-- Quantile heuristic: compute for each observation its maximum component density under an initial matrix-variate fit, take $k$ as a low quantile (e.g. 0.05) of these observed maxima (using the matrix density).  
-- Grid search: run Algorithm 2 on a grid of log($k$) values and select the best $k$ by the matrix-valued Kolmogorov-type goodness-of-fit (compare the distribution of $\mathcal{D}_M$ to $\chi^2_{rc}$ or use the DD/K-S procedure from `qmds/Noise.qmd`). Include $\log k=-\infty$ to allow a pure matrix-variate Gaussian mixture.
+For fixed $\mathbf{U}_g$, $\mathbf{V}_g$ the update of the mean matrix is:
+$$
+\mathbf{M}_g^{(s+1)} = \frac{1}{Z_g^{(s)}}\sum_{i=1}^n z_{i,g}^{(s)}\mathbf{X}_i
+$$
+Then to update the covariance we will use an alternating maximization nested inside the CM1 step. Because $\mathbf{U}_g$, $\mathbf{V}_g$ are identifiable only up to a multiplicative constant, we fix $\text{tr}(\mathbf{U}_g) = r$ and absorb the scale into $\mathbf{V}_g$.
+Then holding $\mathbf{U}_g$, $\mathbf{V}_g$ fixed respectively, our update is the weighted row-scatted matrix
+$$
+\begin{align}
+& S^{(s)}_{\mathbf{U}, g} = \frac{1}{cZ_g^{(s)}} \sum_{i=1}^nz_{i,g}^{(s)}(\mathbf{X}_i-\mathbf{M}_g^{(s+1)})\mathbf{V}_g^{-1}(\mathbf{X}_i-\mathbf{M}_g^{(s+1)})^\top \\
+& S^{(s)}_{\mathbf{V}, g} = \frac{1}{rZ_g^{(s)}} \sum_{i=1}^nz_{i,g}^{(s)}(\mathbf{X}_i-\mathbf{M}_g^{(s+1)})^\top\mathbf{U}_g^{-1}(\mathbf{X}_i-\mathbf{M}_g^{(s+1)})
+\end{align}
+$$
+In the absence of constraints we could simply set $\mathbf{U}_g = S^{(s)}_{\mathbf{U}, g}$ and $\mathbf{V}_g = S^{(s)}_{\mathbf{V}, g}$. However, our eigenratio constrain acts on the eigenvalues of the full Kronecker $\Sigma_g = \mathbf{V}_g \otimes \mathbf{U}_g$. Therefore, we use one of the constraints from above. 
 
-## Practical notes
-- Use small covariance regularization (e.g. add $\epsilon I$) when inverting $\mathbf{U}_g$ or $\mathbf{V}_g$.  
-- The flip-flop updates increase per-iteration cost compared to the vector case; vectorize and parallelize across components where possible.  
-- Monitor convergence of both the ECM outer loop and inner flip-flop iterations; set tolerances for the 1-D solvers (e.g. 1e-8) and for covariance updates.
+$$
+&\frac{\text{max}_g\{\lambda_{\text{max}}(\mathbf{V}_g)\lambda_{\text{max}}(\mathbf{U}_g)\}}{\text{min}_g\{\lambda_{\text{min}}(\mathbf{V}_g)\lambda_{\text{min}}(\mathbf{U}_g)\}} \leq \gamma
+$$
 
-This section provides the required matrix-variate counterparts to the RIMLE theory and algorithm above; implementation may follow closely the structure of Algorithm 2 with the CM1 replaced by the weighted flip-flop + eigenvalue-shrinkage procedure described here.
+# Nested CM1 Flip-Flop steps
+
+Inside the flip-flop loop of the CM1 step.
+1. Update $\mathbf{V}_g$ for $g = 1,\dots,G$, holding $\mathbf{U}_1,\dots,\mathbf{U}_G$ fixed. Compute unconstrained scatter matrices.
+$$
+S^{(s)}_{\mathbf{V}, g} = \frac{1}{rZ_g^{(s)}} \sum_{i=1}^nz_{i,g}^{(s)}(\mathbf{X}_i-\mathbf{M}_g^{(s+1)})^\top\mathbf{U}_g^{-1}(\mathbf{X}_i-\mathbf{M}_g^{(s+1)})
+$$
+Perform spectral decomposition
+$$
+S_{\mathbf{V}, g} = \Gamma_{\mathbf{V}, g}\text{diag}(e_{g,1}^{(\mathbf{V})},\dots,e_{g,c}^{(\mathbf{V})})\Gamma_{\mathbf{V}, g}^\top
+$$
+Calculate fixed extreme eigenvalues of $\mathbf{U}$
+$$
+u_{\text{max}} = \underset{g,h}{\text{max}}\lambda_h(\mathbf{U}_g), \qquad
+u_{\text{min}} = \underset{g,h}{\text{min}}\lambda_h(\mathbf{U}_g)
+$$
+Set the conditional bound $\gamma\mathbf{V} = \gamma\frac{u_{\text{min}}}{u_{\text{max}}}$
+Check if $\frac{\text{max}_{g,j}e_{g,j}^{\mathbf{V}}}{\text{min}_{g,j}e_{g,j}^{\mathbf{V}}} \leq \gamma\mathbf{V}$
+  If yes we set $\mathbf V_g = S_{\mathbf{V},g}$
+  If no solve for $m_* > 0$
+$$
+\begin{align}
+&m_* = \underset{m>0}{\text{arg min}}\sum_{g=1}^GZ_g^{(s)}\sum_{j=1}^c\left(\log \ell_{\gamma\mathbf{V}}(e_{g,j}^{(\mathbf{V})}, m) + \frac{e_{g,j}^{(\mathbf{V})}}{\ell_{\gamma\mathbf{V}}(e_{g,j}^{(\mathbf{V})}, m)} \right) \\
+
+\text{Set} \ &\mathbf{V}_g^{(s+1)} = \Gamma_{\mathbf{V}, g}\text{diag}(\ell_{\gamma\mathbf{V}}(e_{g,1}^{(\mathbf{V})},m_*),\dots,\ell_{\gamma\mathbf{V}}(e_{g,c}^{(\mathbf{V})},m_*) )\Gamma_{\mathbf{V}, g}^\top
+\end{align}
+$$
+
+2. Update $\mathbf{U}_g$ for $g = 1,\dots,G$, holding $\mathbf{V}_1,\dots,\mathbf{V}_G$ fixed
+$$
+S^{(s)}_{\mathbf{U}, g} = \frac{1}{cZ_g^{(s)}} \sum_{i=1}^nz_{i,g}^{(s)}(\mathbf{X}_i-\mathbf{M}_g^{(s+1)})\mathbf{V}_g^{-1}(\mathbf{X}_i-\mathbf{M}_g^{(s+1)})^\top
+$$
+Perform spectral decomposition
+$$
+S_{\mathbf{U}, g} = \Gamma_{\mathbf{U}, g}\text{diag}(e_{g,1}^{(\mathbf{U})},\dots,e_{g,r}^{(\mathbf{U})})\Gamma_{\mathbf{U}, g}^\top
+$$
+Calculate fixed extreme eigenvalues of $\mathbf{U}$
+$$
+v_{\text{max}} = \underset{g,h}{\text{max}}\lambda_h(\mathbf{V}_g), \qquad
+v_{\text{min}} = \underset{g,h}{\text{min}}\lambda_h(\mathbf{V}_g)
+$$
+Set the conditional bound $\gamma\mathbf{U} = \gamma\frac{v_{\text{min}}}{v_{\text{max}}}$
+Check if $\frac{\text{max}_{g,j}e_{g,j}^{\mathbf{U}}}{\text{min}_{g,j}e_{g,j}^{\mathbf{U}}} \leq \gamma\mathbf{U}$
+  If yes we set $\mathbf U_g = S_{\mathbf{U},g}$
+  If no solve for $m_* > 0$
+$$
+\begin{align}
+&m_* = \underset{m>0}{\text{arg min}}\sum_{g=1}^GZ_g^{(s)}\sum_{h=1}^c\left(\log \ell_{\gamma\mathbf{U}}(e_{g,h}^{(\mathbf{U})}, m) + \frac{e_{g,h}^{(\mathbf{U})}}{\ell_{\gamma\mathbf{U}}(e_{g,h}^{(\mathbf{U})}, m)} \right) \\
+
+\text{Set} \ &\mathbf{U}_g^{(s+1)} = \Gamma_{\mathbf{U}, g}\text{diag}(\ell_{\gamma\mathbf{U}}(e_{g,1}^{(\mathbf{U})},m_*),\dots,\ell_{\gamma\mathbf{U}}(e_{g,r}^{(\mathbf{U})},m_*) )\Gamma_{\mathbf{U}, g}^\top
+\end{align}
+$$
+
+3. Rescaling, at flip-flop termination. Repeat steps 1 and 2 until convergence of $Q_1$. Once converged we enforce identifiability
+$$
+\mathbf{U}_g \leftarrow \frac{r}{\text{tr}(\mathbf{U}_g)}\mathbf{U}_g, \qquad 
+\mathbf{V}_g \leftarrow \frac{\text{tr}(\mathbf{U}_g)}{r}\mathbf{V}_g \quad \forall g=1,\dots,G
+$$
+
+## CM2 Steps
+
+Then following this we begin our CM2 step updating $\pi_g$. The pseudo-posterior $z_0$ now uses the matrix-variate density. Let $\theta_1^{(s+1)}$ be the parameter block from CM1. If
+$$
+\sum_{i=1}^nz_0(\mathbf{X}_i,(\theta_1^{(s+1)},\dot\theta_2))\leq\pi_{\text{max}} \qquad \dot\theta_2=(\frac{Z_0^{(s)}}{n},\dots,\frac{Z_G^{(s)}}{n})^\top
+$$
+then the unconstrained maximiser is kept
+$$
+\pi_g^{(s+1)}=\frac{Z_g^{(s)}}{n}, \quad g=0,1,\dots,G
+$$
+
+Otherwise we find $\omega_*$ as the root of
+$$
+\sum_{i=1}^n\frac{\omega_*k}{\omega_*k+\frac{1-\omega_*}{n-Z_0^{(s)}}\sum_{g=1}^GZ_g^{(s)}\phi_{r\times c}(\mathbf{X};\mathbf{M}_g^{(s+1)},\mathbf{U}_g^{(s+1)},\mathbf{V}_g^{(s+1)})} = n\pi_{\text{max}}
+$$
+and set
+
+$$
+\pi_0^{(s+1)} = \omega_*, \qquad \pi_g^{(s+1)}=\frac{1-\omega_*}{n-Z_0^{(s)}}Z_g^{(s)}, \quad g\geq1
+$$
+The outer ECM loop iterates E‑step, CM1, CM2 until the relative increase of the pseudo‑log‑likelihood falls below a tolerance tol. The final estimates $\theta^{\text{(ecm)}}$ are then used for cluster and noise assignment. 
+
+## Initialization
+
+The ECM algorithm requires an initial value
+$$
+\theta^{(0)} =
+\left\{
+\pi_0^{(0)},\pi_1^{(0)},\dots,\pi_G^{(0)},
+\mathbf M_1^{(0)},\dots,\mathbf M_G^{(0)},
+\mathbf U_1^{(0)},\dots,\mathbf U_G^{(0)},
+\mathbf V_1^{(0)},\dots,\mathbf V_G^{(0)}
+\right\}
+$$
+
+Since the pseudo-likelihood is non-convex, different initial values may lead to different local maxima. We consider two initialization strategies.
+
+### Random initialization
+
+Randomly partition the observations into $G$ non-empty groups
+$$
+\mathcal C_1,\dots,\mathcal C_G.
+$$
+
+For each group, initialize the mean matrix by
+$$
+\mathbf M_g^{(0)}=\frac{1}{|\mathcal C_g|} \sum_{i\in\mathcal C_g}\mathbf X_i.
+$$
+
+The row and column covariance matrices are initialized using the matrix-normal flip-flop updates
+$$
+\mathbf U_g
+\leftarrow
+\frac{1}{c|\mathcal C_g|}
+\sum_{i\in\mathcal C_g}
+(\mathbf X_i-\mathbf M_g)
+\mathbf V_g^{-1}
+(\mathbf X_i-\mathbf M_g)^\top,
+$$
+
+$$
+\mathbf V_g
+\leftarrow
+\frac{1}{r|\mathcal C_g|}
+\sum_{i\in\mathcal C_g}
+(\mathbf X_i-\mathbf M_g)^\top
+\mathbf U_g^{-1}
+(\mathbf X_i-\mathbf M_g),
+$$
+
+iterated until convergence. The covariance factors are then rescaled to satisfy
+$$
+\operatorname{tr}(\mathbf U_g)=r,
+$$
+
+The initial proportions are
+$$
+\pi_g^{(0)}=\frac{|\mathcal C_g|}{n},
+\qquad g=1,\dots,G,
+$$
+with the remaining proportion assigned to noise,
+$$
+\pi_0^{(0)}=1-\sum_{g=1}^G\pi_g^{(0)}.
+$$
+
+The random initialization is repeated several times and the solution with the largest final pseudo-log-likelihood is retained.
+
+### Hennig--Coretto-style initialization
+
+A more refined initialization first identifies observations in low-density regions and then clusters the remaining observations.
+
+For each observation, calculate its $q$-th nearest-neighbour distance using the Frobenius distance
+$$
+d_F(\mathbf X_i,\mathbf X_j)=|\mathbf X_i-\mathbf X_j|_F.
+$$
+
+Let $d_{i,(q)}$ denote the distance from $\mathbf X_i$ to its $q$-th nearest neighbour. Following Hennig and Coretto, we use $q=3$. The initial noise observations are
+$$
+\mathcal C_0=\left\{i:d_{i,(q)}>Q_{1-\pi_{\max}}\left(d_{1,(q)},\dots,d_{n,(q)}\right)\right\}.
+$$
+
+The remaining observations
+$$
+\mathcal R={1,\dots,n}\setminus\mathcal C_0
+$$
+are clustered into $G$ groups using agglomerative hierarchical clustering.
+
+For the resulting clusters $\mathcal C_1,\dots,\mathcal C_G$, the initial mean matrices are
+$$
+\mathbf M_g^{(0)}=\frac{1}{|\mathcal C_g|}\sum_{i\in\mathcal C_g}\mathbf X_i.
+$$
+
+The covariance factors are then obtained using the same matrix-normal flip-flop updates as above, followed by the rescaling
+
+The initial proportions are
+$$
+\pi_0^{(0)}=\frac{|\mathcal C_0|}{n},
+\qquad
+\pi_g^{(0)}=\frac{|\mathcal C_g|}{n},
+\quad g=1,\dots,G.
+$$
+
+Finally, the initial covariance matrices are checked against the global eigenratio constraint
+
+If necessary, the covariance factors are regularized using the same eigenvalue-shrinkage procedure as in the CM1 step. The ECM algorithm is then run from the resulting initial value. When multiple initializations are used, the solution with the largest pseudo-log-likelihood is selected.
+
+
