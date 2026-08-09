@@ -16,7 +16,7 @@
 #' @noRd
 rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 			   max_iter = 100, tol = 1e-6,
-			   init = c("random", "hennig-coretto"),
+			   init = c("random", "hennig-coretto", "kmeans"),
 			   nstart = 10, verbose = FALSE) {
 	init <- match.arg(init)
 	x_list <- rimle_validate_x_list(x_list)
@@ -28,7 +28,10 @@ rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 	nstart <- as.integer(nstart)
 
 	for (start in seq_len(nstart)) {
-		if (init == "random") {
+		if (init == "kmeans") {
+			params <- rimle_kmeans_init(x_list, g, nstart = 1)
+			params$pi0 <- max(0.01, 1 - sum(params$pi))
+		} else if (init == "random") {
 			params <- rimle_random_init(x_list, g)
 			params$pi0 <- max(0.01, 1 - sum(params$pi))
 		} else {
@@ -79,6 +82,7 @@ rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 			best_params$pi_max <- pi_max
 			best_params$gamma <- gamma
 			best_params$g <- g
+			best_params$init <- init
 		}
 	}
 
@@ -105,7 +109,7 @@ rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 #' @param gamma Eigenratio bound for covariance regularization (default: 1000).
 #' @param max_iter Maximum ECM iterations (default: 100).
 #' @param tol Convergence tolerance on the pseudo-log-likelihood trace.
-#' @param init Initialization scheme: `"random"` or `"hennig-coretto"`.
+#' @param init Initialization scheme: `"random"`, `"hennig-coretto"`, or `"kmeans"`.
 #' @param nstart Number of independent random starts (default: 10).
 #' @param estimate_k Logical: if TRUE, automatically select optimal k using
 #'   KS goodness-of-fit test.
@@ -120,7 +124,7 @@ rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 #' @export
 rimle_fit <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 		      max_iter = 100, tol = 1e-6,
-		      init = c("random", "hennig-coretto"),
+		      init = c("random", "hennig-coretto", "kmeans"),
 		      nstart = 10, estimate_k = FALSE,
 		      k_grid = NULL, verbose = FALSE,
 		      use_parallel = FALSE, n_cores = NULL) {
@@ -214,6 +218,7 @@ print.rimle_fit <- function(x, ...) {
 	cat(sprintf("  Iterations:     %d\n", x$iterations))
 	cat(sprintf("  Converged:      %s\n", if (x$converged) "Yes" else "No"))
 	cat(sprintf("  Log-likelihood: %.4f\n", tail(x$logLik, 1)))
+	cat(sprintf("  Init:           %s\n", x$init))
 
 	invisible(x)
 }
@@ -259,7 +264,8 @@ summary.rimle_fit <- function(object, ...) {
 		n_free_params = n_free,
 		pi_max = object$pi_max,
 		gamma = object$gamma,
-		k = object$k
+		k = object$k,
+		init = object$init
 	)
 
 	if (!is.null(object$k_selection)) {
@@ -305,6 +311,7 @@ print.summary.rimle_fit <- function(x, ...) {
 	cat(sprintf("  pi_max: %.4f\n", x$pi_max))
 	cat(sprintf("  gamma:  %.4f\n", x$gamma))
 	cat(sprintf("  k:      %.4e\n", x$k))
+	cat(sprintf("  init:   %s\n", x$init))
 
 	if (!is.null(x$k_selection)) {
 		cat(sprintf("\nAutomatic K Selection:\n"))
