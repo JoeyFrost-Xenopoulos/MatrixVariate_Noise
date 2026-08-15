@@ -1,0 +1,39 @@
+---
+title: "Untitled"
+format: html
+---
+
+```{r}
+devtools::load_all()
+```
+
+
+```{r}
+source("C:/Users/joey7/Documents/Stats_1/MASTERS/RIMLE/rimle_utils.R")
+source("C:/Users/joey7/Documents/Stats_1/MASTERS/RIMLE/rimle_ks.R")
+source("C:/Users/joey7/Documents/Stats_1/MASTERS/RIMLE/rimle_init.R")
+source("C:/Users/joey7/Documents/Stats_1/MASTERS/RIMLE/rimle_fit.R")
+source("C:/Users/joey7/Documents/Stats_1/MASTERS/RIMLE/rimle_ecm.R")
+```
+
+```{r}
+r <- 4; p <- 4
+simulate_group <- function(n, mean_matrix, row_sd = 0.5, col_sd = 0.5) {
+	row_cov <- diag(row_sd, nrow(mean_matrix))
+	col_cov <- diag(col_sd, ncol(mean_matrix))
+	lapply(seq_len(n), function(i) mean_matrix + row_cov %*% matrix(rnorm(r * p), r, p) %*% col_cov)
+}
+
+M1 <- matrix(1, r, p)
+M2 <- matrix(-1, r, p)
+x_list <- c(simulate_group(40, M1), simulate_group(20, M2))
+
+contam <- lapply(seq_len(15), function(i) matrix(runif(r*p, -3,3), r, p))
+x_list <- c(x_list, contam)
+```
+
+```{r}
+set.seed(NULL)
+rimle_fit(x_list, g = 2, estimate_k = TRUE, init = "kmeans", verbose = TRUE, use_parallel = TRUE, n_cores = 4)
+```
+

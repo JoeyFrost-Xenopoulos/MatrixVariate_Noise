@@ -91,6 +91,11 @@ rimle_hennig_coretto_init <- function(x_list, g, pi_max = 0.5, q = 3) {
 	r <- nrow(x_list[[1]])
 	p <- ncol(x_list[[1]])
 
+	if (!is.numeric(q) || length(q) != 1 || q < 1 || q > n - 1 || q != as.integer(q)) {
+		stop(sprintf("'q' must be an integer between 1 and n - 1 (n = %d).", n))
+	}
+	q <- as.integer(q)
+
 	frob_dists <- matrix(0, n, n)
 	for (i in seq_len(n)) {
 		for (j in seq_len(n)) {
@@ -105,6 +110,9 @@ rimle_hennig_coretto_init <- function(x_list, g, pi_max = 0.5, q = 3) {
 
 	noise_idx <- which(knn_dists > noise_threshold)
 	regular_idx <- which(knn_dists <= noise_threshold)
+
+	pi0_init <- max(0.01, length(noise_idx) / n)
+	pi0_init <- min(pi0_init, pi_max)
 
 	if (length(regular_idx) < g) {
 		warning("Not enough regular observations for HC init; falling back to random init.", call. = FALSE)
@@ -174,12 +182,18 @@ rimle_hennig_coretto_init <- function(x_list, g, pi_max = 0.5, q = 3) {
 		col_covariances[[component]] <- col_cov
 	}
 
+	mixing_proportions <- mixing_proportions / sum(mixing_proportions) * (1 - pi0_init)
+
+	cluster_assignments_full <- integer(n)
+	cluster_assignments_full[noise_idx] <- 0L
+	cluster_assignments_full[regular_idx] <- cluster_assignments
+
 	list(
-		pi0 = length(noise_idx) / n,
+		pi0 = pi0_init,
 		pi = mixing_proportions,
 		M = mean_matrices,
 		U = row_covariances,
 		V = col_covariances,
-		cluster = c(rep(0L, length(noise_idx)), cluster_assignments)
+		cluster = cluster_assignments_full
 	)
 }

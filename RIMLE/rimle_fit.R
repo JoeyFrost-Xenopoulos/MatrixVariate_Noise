@@ -29,7 +29,7 @@ rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 
 	for (start in seq_len(nstart)) {
 		if (init == "kmeans") {
-			params <- rimle_kmeans_init(x_list, g, nstart = 1)
+			params <- rimle_kmeans_init(x_list, g, nstart = 1, verbose = verbose)
 			params$pi0 <- max(0.01, 1 - sum(params$pi))
 		} else if (init == "random") {
 			params <- rimle_random_init(x_list, g)
@@ -48,24 +48,28 @@ rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 		params$z <- matrix(0, n, g + 1)
 
 		loglik_trace <- numeric(0)
+		converged <- FALSE
 
 		for (iteration in seq_len(max_iter)) {
+			old_params <- params
+
 			params <- rimle_e_step(x_list, params, g, n, k)
+			params <- rimle_cm1_step(x_list, params, g, n, gamma)
+			params <- rimle_cm2_step(x_list, params, g, n, k, pi_max)
 
 			z0 <- pmax(params$z[, g + 1], .Machine$double.eps)
-			current_loglik <- log(params$pi0 * k) - mean(log(z0))
+			current_loglik <- sum(log(params$pi0 * k) - log(z0))
 
 			if (!is.finite(current_loglik)) current_loglik <- -1e10
 
 			loglik_trace <- c(loglik_trace, current_loglik)
 
 			if (iteration > 1 &&
-			    abs(loglik_trace[iteration] - loglik_trace[iteration - 1]) < tol) {
+			    abs(loglik_trace[iteration] - loglik_trace[iteration - 1]) /
+			    (abs(loglik_trace[iteration - 1]) + .Machine$double.eps) < tol) {
+				converged <- TRUE
 				break
 			}
-
-			params <- rimle_cm1_step(x_list, params, g, n, gamma)
-			params <- rimle_cm2_step(x_list, params, g, n, k, pi_max)
 		}
 
 		if (verbose && nstart > 1) {
@@ -77,7 +81,7 @@ rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 			best_params <- params
 			best_params$logLik <- loglik_trace
 			best_params$iterations <- length(loglik_trace)
-			best_params$converged <- length(loglik_trace) < max_iter
+			best_params$converged <- converged
 			best_params$k <- k
 			best_params$pi_max <- pi_max
 			best_params$gamma <- gamma

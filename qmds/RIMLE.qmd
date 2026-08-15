@@ -308,15 +308,19 @@ $$
 
 3. Rescaling, at flip-flop termination. Repeat steps 1 and 2 until convergence of $Q_1$. Once converged we enforce identifiability
 $$
-\mathbf{U}_g \leftarrow \frac{r}{\text{tr}(\mathbf{U}_g)}\mathbf{U}_g, \qquad 
-\mathbf{V}_g \leftarrow \frac{\text{tr}(\mathbf{U}_g)}{r}\mathbf{V}_g \quad \forall g=1,\dots,G
+\mathbf{U}_g^{\text{new}} \leftarrow \frac{r}{\text{tr}(\mathbf{U}_g)}\mathbf{U}_g^{\text{old}}, \qquad 
+\mathbf{V}_g^{\text{new}} \leftarrow \frac{\text{tr}(\mathbf{U}_g)}{r}\mathbf{V}_g^{\text{old}} \quad \forall g=1,\dots,G
+$$
+so that
+$$
+\mathbf{V}_g^{\text{new}} \otimes \mathbf{U}_g^{\text{new}} = \mathbf{V}_g^{\text{old}} \otimes \mathbf{U}_g^{\text{old}} 
 $$
 
 ## CM2 Steps
 
 Then following this we begin our CM2 step updating $\pi_g$. The pseudo-posterior $z_0$ now uses the matrix-variate density. Let $\theta_1^{(s+1)}$ be the parameter block from CM1. If
 $$
-\sum_{i=1}^nz_0(\mathbf{X}_i,(\theta_1^{(s+1)},\dot\theta_2))\leq\pi_{\text{max}} \qquad \dot\theta_2=(\frac{Z_0^{(s)}}{n},\dots,\frac{Z_G^{(s)}}{n})^\top
+\sum_{i=1}^nz_0(\mathbf{X}_i,(\theta_1^{(s+1)},\dot\theta_2))\leq n\pi_{\text{max}} \qquad \dot\theta_2=(\frac{Z_0^{(s)}}{n},\dots,\frac{Z_G^{(s)}}{n})^\top
 $$
 then the unconstrained maximiser is kept
 $$
@@ -351,17 +355,39 @@ Since the pseudo-likelihood is non-convex, different initial values may lead to 
 
 ### Random initialization
 
-Randomly partition the observations into $G$ non-empty groups
+Because the pseudo-likelihood is non-convex, different initial values may lead to different local maxima. We therefore use multiple random initializations and retain the solution with the largest final pseudo-log-likelihood.
+
+Let $\omega_0$ denote the initial proportion assigned to the noise component, where
+
+$$
+0 < \omega_0 \leq \pi_{\max}.
+$$
+
+For each random initialization, approximately $\omega_0 n$ observations are first selected to form an initial noise set $\mathcal C_0$. The remaining observations
+
+$$
+\mathcal R = \{1,\dots,n\}\setminus\mathcal C_0
+$$
+
+are then randomly partitioned into $G$ non-empty groups
+
 $$
 \mathcal C_1,\dots,\mathcal C_G.
 $$
 
-For each group, initialize the mean matrix by
+The Gaussian clusters are initialized using the observations in $\mathcal R$, while $\mathcal C_0$ provides an initial set of observations associated with the improper noise component.
+
+For each Gaussian component $g=1,\dots,G$, the initial mean matrix is
+
 $$
-\mathbf M_g^{(0)}=\frac{1}{|\mathcal C_g|} \sum_{i\in\mathcal C_g}\mathbf X_i.
+\mathbf M_g^{(0)}
+=
+\frac{1}{|\mathcal C_g|}
+\sum_{i\in\mathcal C_g}\mathbf X_i.
 $$
 
-The row and column covariance matrices are initialized using the matrix-normal flip-flop updates
+The row and column covariance factors are initialized using matrix-normal flip-flop updates. Starting from a positive-definite initial value for $\mathbf V_g$, we alternately update
+
 $$
 \mathbf U_g
 \leftarrow
@@ -372,6 +398,8 @@ $$
 (\mathbf X_i-\mathbf M_g)^\top,
 $$
 
+and
+
 $$
 \mathbf V_g
 \leftarrow
@@ -381,23 +409,98 @@ $$
 \mathbf U_g^{-1}
 (\mathbf X_i-\mathbf M_g),
 $$
+until the flip-flop iterations converge.
 
-iterated until convergence. The covariance factors are then rescaled to satisfy
+Because the matrix-normal covariance factors are identifiable only up to a multiplicative constant,
 $$
-\operatorname{tr}(\mathbf U_g)=r,
+(a\mathbf U_g)\otimes(a^{-1}\mathbf V_g) = \mathbf U_g\otimes\mathbf V_g, \qquad a>0,
 $$
-
-The initial proportions are
+we impose the identifying constraint
 $$
-\pi_g^{(0)}=\frac{|\mathcal C_g|}{n},
-\qquad g=1,\dots,G,
-$$
-with the remaining proportion assigned to noise,
-$$
-\pi_0^{(0)}=1-\sum_{g=1}^G\pi_g^{(0)}.
+\operatorname{tr}(\mathbf U_g)=r.
 $$
 
-The random initialization is repeated several times and the solution with the largest final pseudo-log-likelihood is retained.
+The covariance factors are then rescaled according to
+$$
+\mathbf U_g^{(0)} = \frac{r}{\text{tr}(\mathbf U_g)}\tilde{\mathbf U}_g, \qquad \mathbf V_g^{(0)}=\frac{\text{tr}(\mathbf U_g)}{r}\tilde{\mathbf V}_g.
+$$
+
+This rescaling ensures that
+$$
+\operatorname{tr}(\mathbf U_g^{(0)})=r
+$$
+
+while preserving the implied Kronecker covariance:
+$$
+\mathbf V_g^{(0)}\otimes\mathbf U_g^{(0)} =
+\left(
+\frac{\text{tr}(\mathbf U_g)}{r}\tilde{\mathbf V}_g
+\right)
+\otimes
+\left(
+\frac{r}{\text{tr}(\mathbf U_g)}\tilde{\mathbf U}_g
+\right)
+= \tilde{\mathbf V}_g\otimes\tilde{\mathbf U}_g.
+$$
+
+The initial mixture proportions are defined according to the sizes of the initial noise and Gaussian groups:
+$$
+\pi_0^{(0)} = \frac{|\mathcal C_0|}{n},
+$$
+
+and
+$$
+\pi_g^{(0)} = \frac{|\mathcal C_g|}{n}, \qquad g=1,\dots,G.
+$$
+
+Consequently,
+$$
+\pi_0^{(0)} + \sum_{g=1}^G\pi_g^{(0)} = \frac{|\mathcal C_0|+\sum_{g=1}^G|\mathcal C_g|}{n} = 1.
+$$
+
+The initial noise proportion is required to satisfy
+$$
+\pi_0^{(0)}\leq\pi_{\max}.
+$$
+
+In practice, we choose the initial noise set such that
+$$
+|\mathcal C_0| \leq \lfloor n\pi_{\max}\rfloor.
+$$
+This ensures that the initial value satisfies the basic noise-proportion constraint.
+
+To avoid singular covariance estimates, the random partition is required to produce sufficiently large non-empty Gaussian groups. If a proposed partition produces a singular or numerically ill-conditioned covariance estimate, that initialization is rejected and a new random partition is generated.
+
+Finally, the initial covariance factors are checked against the global eigenratio constraint. Since the eigenvalues of
+$$
+\mathbf\Sigma_g = \mathbf V_g\otimes\mathbf U_g
+$$
+
+are all products of eigenvalues of $\mathbf V_g$ and $\mathbf U_g$, the initial value must satisfy
+
+$$
+\frac{
+\displaystyle
+\max_{g=1,\dots,G}
+\left\{
+\lambda_{\max}(\mathbf V_g^{(0)})
+\lambda_{\max}(\mathbf U_g^{(0)})
+\right\}
+}{
+\displaystyle
+\min_{g=1,\dots,G}
+\left\{
+\lambda_{\min}(\mathbf V_g^{(0)})
+\lambda_{\min}(\mathbf U_g^{(0)})
+\right\}
+}
+\leq
+\gamma.
+$$
+
+If this constraint is violated, the covariance factors are regularized using the same eigenvalue-shrinkage procedure employed in the CM1 step.
+
+The complete random initialization procedure is repeated a specified number of times. The ECM algorithm is run from each valid initial value, and the final solution with the largest pseudo-log-likelihood is retained.
 
 ### Hennig--Coretto-style initialization
 
@@ -436,6 +539,6 @@ $$
 
 Finally, the initial covariance matrices are checked against the global eigenratio constraint
 
-If necessary, the covariance factors are regularized using the same eigenvalue-shrinkage procedure as in the CM1 step. The ECM algorithm is then run from the resulting initial value. When multiple initializations are used, the solution with the largest pseudo-log-likelihood is selected.
+If necessary, the covariance factors are regularized using the same eigenvalue-shrinkage procedure as in the CM1 step. The ECM algorithm is then run from the resulting initial value. When multiple initialization are used, the solution with the largest pseudo-log-likelihood is selected.
 
 

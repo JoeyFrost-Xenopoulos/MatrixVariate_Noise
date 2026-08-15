@@ -269,7 +269,7 @@ rimle_initialization_loglik <- function(params, x_list, g) {
 #' @param nstart Integer: number of independent starts (default: 10)
 #' @return A list containing initial parameters.
 #' @noRd
-rimle_kmeans_init <- function(x_list, g, nstart = 10) {
+rimle_kmeans_init <- function(x_list, g, nstart = 10, verbose = FALSE) {
 	x_list <- rimle_validate_x_list(x_list)
 	n <- length(x_list)
 
@@ -282,21 +282,29 @@ rimle_kmeans_init <- function(x_list, g, nstart = 10) {
 	x_matrix <- rimle_whitened_vectorized_matrices(x_list, init_basis)
 
 	run_one_restart <- function(restart) {
-		centers <- rimle_kmeanspp_centers(x_matrix, g, n)
-		fit <- tryCatch(
-			kmeans(x_matrix, centers = centers, nstart = 1),
-			error = function(e) NULL
-		)
+		result <- tryCatch({
+			if (verbose) message(sprintf("  Restart %d: kmeans++ seeding...", restart))
+			centers <- rimle_kmeanspp_centers(x_matrix, g, n)
 
-		if (is.null(fit)) {
-			return(list(fit = NULL, score = -Inf))
-		}
+			if (verbose) message(sprintf("  Restart %d: kmeans...", restart))
+			fit <- kmeans(x_matrix, centers = centers, nstart = 1)
 
-		candidate <- rimle_compute_init_params(x_list, g, fit$cluster)
-		candidate <- rimle_short_em_burn_in(candidate, x_list, g, max_iter = 3L)
-		score <- rimle_initialization_loglik(candidate, x_list, g)
+			if (verbose) message(sprintf("  Restart %d: covariance init...", restart))
+			candidate <- rimle_compute_init_params(x_list, g, fit$cluster)
 
-		list(fit = candidate, score = score)
+			if (verbose) message(sprintf("  Restart %d: EM burn-in...", restart))
+			candidate <- rimle_short_em_burn_in(candidate, x_list, g, max_iter = 3L)
+
+			if (verbose) message(sprintf("  Restart %d: scoring...", restart))
+			score <- rimle_initialization_loglik(candidate, x_list, g)
+
+			list(fit = candidate, score = score)
+		}, error = function(e) {
+			message(sprintf("  Restart %d FAILED: %s", restart, conditionMessage(e)))
+			list(fit = NULL, score = -Inf)
+		})
+
+		result
 	}
 
 	results <- lapply(seq_len(nstart), run_one_restart)
@@ -311,10 +319,16 @@ rimle_kmeans_init <- function(x_list, g, nstart = 10) {
 	}
 
 	if (is.null(best_fit)) {
-		centers <- rimle_kmeanspp_centers(x_matrix, g, n)
-		fit <- kmeans(x_matrix, centers = centers, nstart = 1)
-		best_fit <- rimle_compute_init_params(x_list, g, fit$cluster)
-		best_fit <- rimle_short_em_burn_in(best_fit, x_list, g, max_iter = 3L)
+		if (verbose) message("  All restarts failed; trying single fallback...")
+		best_fit <- tryCatch({
+			centers <- rimle_kmeanspp_centers(x_matrix, g, n)
+			fit <- kmeans(x_matrix, centers = centers, nstart = 1)
+			candidate <- rimle_compute_init_params(x_list, g, fit$cluster)
+			rimle_short_em_burn_in(candidate, x_list, g, max_iter = 3L)
+		}, error = function(e) {
+			message(sprintf("  Fallback failed: %s", conditionMessage(e)))
+			NULL
+		})
 	}
 
 	best_fit

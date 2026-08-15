@@ -20,7 +20,7 @@
 #' @noRd
 rimle_select_k <- function(x_list, g, pi_max = 0.5, gamma = 1000,
 			   max_iter = 100, tol = 1e-6,
-			   init = c("random", "hennig-coretto"),
+			   init = c("random", "hennig-coretto", "kmeans"),
 			   nstart = 10, k_grid = NULL,
 			   verbose = FALSE, use_parallel = FALSE,
 			   n_cores = NULL) {
