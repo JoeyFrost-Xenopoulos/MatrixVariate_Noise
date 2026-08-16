@@ -25,8 +25,8 @@ x_list <- c(x_list, contam)
 set.seed(NULL)
 rimle_fit(x_list, g = 2, k = 5.623413e-20, init = "hennig-coretto", verbose = TRUE)
 
-rimle_fit(x_list, g = 2, k = 5.623413e-20, init = "kmeans", verbose = TRUE)
+rimle_fit(x_list, g = 2, k = 1e-04, init = "kmeans", verbose = TRUE)
 
-rimle_fit(x_list, g = 2, estimate_k = TRUE, init = "hennig-coretto", verbose = TRUE, use_parallel = TRUE, n_cores = 4)
+rimle_fit(x_list, g = 2, estimate_k = TRUE, init = "random", verbose = TRUE, use_parallel = TRUE)
 ```
 

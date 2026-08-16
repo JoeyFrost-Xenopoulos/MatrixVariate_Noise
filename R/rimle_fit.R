@@ -16,8 +16,9 @@
 #' @noRd
 rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 			   max_iter = 100, tol = 1e-6,
-			   init = c("random", "hennig-coretto"),
-			   nstart = 10, verbose = FALSE) {
+			   init = c("random", "hennig-coretto", "kmeans"),
+			   nstart = 10, use_parallel = FALSE, n_cores = NULL,
+			   verbose = FALSE) {
 	init <- match.arg(init)
 	x_list <- rimle_validate_x_list(x_list)
 	n <- length(x_list)
@@ -29,18 +30,43 @@ rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 
 	for (start in seq_len(nstart)) {
 		if (init == "random") {
-			params <- rimle_random_init(x_list, g)
-			params$pi0 <- max(0.01, 1 - sum(params$pi))
+			params <- rimle_random_init(x_list, g, pi_max = pi_max, gamma = gamma)
+		} else if (init == "kmeans") {
+			params <- rimle_kmeans_init(x_list, g, pi_max = pi_max,
+			                            nstart = 1, use_parallel = use_parallel,
+			                            n_cores = n_cores, gamma = gamma)
+			if (is.null(params$pi0)) {
+				params$pi0 <- min(max(0.01, 1 - sum(params$pi)), pi_max)
+				remaining <- 1 - params$pi0
+				if (sum(params$pi) > 0) {
+					params$pi <- params$pi / sum(params$pi) * remaining
+				} else {
+					params$pi <- rep(remaining / g, g)
+				}
+			}
 		} else {
-			params <- rimle_hennig_coretto_init(x_list, g, pi_max = pi_max)
-			if (is.null(params$pi0)) params$pi0 <- max(0.01, 1 - sum(params$pi))
+			params <- rimle_hennig_coretto_init(x_list, g, pi_max = pi_max, gamma = gamma)
+			if (is.null(params$pi0)) {
+				params$pi0 <- min(max(0.01, 1 - sum(params$pi)), pi_max)
+				remaining <- 1 - params$pi0
+				if (sum(params$pi) > 0) {
+					params$pi <- params$pi / sum(params$pi) * remaining
+				} else {
+					params$pi <- rep(remaining / g, g)
+				}
+			}
 		}
 
-		if (params$pi0 + sum(params$pi) > 1) {
-			total <- params$pi0 + sum(params$pi)
-			params$pi0 <- params$pi0 / total
-			params$pi <- params$pi / total
+		params$pi0 <- min(max(params$pi0, 0), pi_max)
+		params$pi <- pmax(params$pi, 0)
+		remaining <- 1 - params$pi0
+		if (sum(params$pi) > 0) {
+			params$pi <- params$pi / sum(params$pi) * remaining
+		} else {
+			params$pi <- rep(remaining / g, g)
 		}
+
+		rimle_check_eigenratio_constraint(params, g, gamma)
 
 		params$z <- matrix(0, n, g + 1)
 
@@ -54,10 +80,20 @@ rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 			params <- rimle_cm1_step(x_list, params, g, n, gamma)
 			params <- rimle_cm2_step(x_list, params, g, n, k, pi_max)
 
-			z0 <- pmax(params$z[, g + 1], .Machine$double.eps)
-			current_loglik <- sum(log(params$pi0 * k) - log(z0))
+			current_loglik <- rimle_loglik(x_list, params, g, k)
 
-			if (!is.finite(current_loglik)) current_loglik <- -1e10
+			if (!is.finite(current_loglik)) {
+				message("Non-finite loglik at iteration ", iteration)
+				message("pi0 = ", params$pi0)
+				message("k = ", k)
+				message("z noise range: ",
+						paste(range(params$z[, g + 1], na.rm = TRUE), collapse = " to "))
+				message("Any NA z: ", anyNA(params$z))
+				message("Any nonfinite z: ", any(!is.finite(params$z)))
+
+				stop("Non-finite log-likelihood")
+			}
+
 
 			loglik_trace <- c(loglik_trace, current_loglik)
 
@@ -110,13 +146,13 @@ rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 #' @param gamma Eigenratio bound for covariance regularization (default: 1000).
 #' @param max_iter Maximum ECM iterations (default: 100).
 #' @param tol Convergence tolerance on the pseudo-log-likelihood trace.
-#' @param init Initialization scheme: `"random"` or `"hennig-coretto"`.
+#' @param init Initialization scheme: `"random"`, `"hennig-coretto"`, or `"kmeans"`.
 #' @param nstart Number of independent random starts (default: 10).
 #' @param estimate_k Logical: if TRUE, automatically select optimal k using
 #'   KS goodness-of-fit test.
 #' @param k_grid Numeric vector: grid of k values for automatic selection.
 #' @param verbose Logical: print iteration progress.
-#' @param use_parallel Logical: run k-grid search in parallel.
+#' @param use_parallel Logical: run k-means restarts or k-grid search in parallel.
 #' @param n_cores Integer: number of parallel workers (NULL = auto).
 #'
 #' @return A list of class `"rimle_fit"` containing fitted parameters,
@@ -125,7 +161,7 @@ rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 #' @export
 rimle_fit <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 		      max_iter = 100, tol = 1e-6,
-		      init = c("random", "hennig-coretto"),
+		      init = c("random", "hennig-coretto", "kmeans"),
 		      nstart = 10, estimate_k = FALSE,
 		      k_grid = NULL, verbose = FALSE,
 		      use_parallel = FALSE, n_cores = NULL) {
@@ -166,6 +202,7 @@ rimle_fit <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 	params <- rimle_fit_impl(x_list, g, k, pi_max = pi_max, gamma = gamma,
 				 max_iter = max_iter, tol = tol,
 				 init = init, nstart = nstart,
+				 use_parallel = use_parallel, n_cores = n_cores,
 				 verbose = verbose)
 
 	structure(params, class = "rimle_fit")

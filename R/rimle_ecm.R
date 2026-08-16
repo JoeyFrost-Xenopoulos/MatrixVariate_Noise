@@ -1,3 +1,68 @@
+# #' Pseudo-Log-Likelihood
+# #'
+# #' Computes the total pseudo-log-likelihood (sum over observations, not average)
+# #' directly from the current parameter vector.
+# #'
+# #' @param x_list List of matrices.
+# #' @param params Current parameters.
+# #' @param g Number of Gaussian components.
+# #' @param k Noise constant density.
+# #' @return Numeric scalar: total log-likelihood (sum over all observations).
+# #' @noRd
+rimle_loglik <- function(x_list, params, g, k) {
+	n <- length(x_list)
+	ll <- numeric(n)
+	for (i in seq_len(n)) {
+		dens <- params$pi0 * k
+		for (comp in seq_len(g)) {
+			dens <- dens + params$pi[comp] *
+				rimle_mv_density(x_list[[i]], params$M[[comp]],
+						 params$U[[comp]], params$V[[comp]])
+		}
+		ll[i] <- log(max(dens, .Machine$double.xmin))
+	}
+	sum(ll)
+}
+
+#' Validate Global Kronecker Eigenratio Constraint
+#'
+#' Checks whether the global eigenratio constraint
+#' max_g λ_max(V_g)/λ_max(U_g) / min_g λ_min(V_g)/λ_min(U_g) ≤ γ
+#' is satisfied. Emits a warning if violated.
+#'
+#' @param params Current parameters.
+#' @param g Number of Gaussian components.
+#' @param gamma Eigenratio bound.
+#' @return Invisible NULL.
+#' @noRd
+rimle_check_eigenratio_constraint <- function(params, g, gamma) {
+	if (g <= 0) return(invisible(NULL))
+
+	ratios_max <- numeric(g)
+	ratios_min <- numeric(g)
+	for (comp in seq_len(g)) {
+		u_eigs <- eigen(params$U[[comp]], symmetric = TRUE, only.values = TRUE)$values
+		v_eigs <- eigen(params$V[[comp]], symmetric = TRUE, only.values = TRUE)$values
+		u_max <- max(u_eigs, na.rm = TRUE)
+		u_min <- min(u_eigs, na.rm = TRUE)
+		v_max <- max(v_eigs, na.rm = TRUE)
+		v_min <- min(v_eigs, na.rm = TRUE)
+		if (u_min <= 0 || v_min <= 0) {
+			ratios_max[comp] <- Inf
+			ratios_min[comp] <- 0
+		} else {
+			ratios_max[comp] <- v_max / u_max
+			ratios_min[comp] <- v_min / u_min
+		}
+	}
+
+	global_ratio <- max(ratios_max, na.rm = TRUE) / min(ratios_min, na.rm = TRUE)
+	if (!is.finite(global_ratio) || global_ratio > gamma) {
+		warning(sprintf("Global eigenratio constraint violated: %.4f > %.4f", global_ratio, gamma), call. = FALSE)
+	}
+	invisible(NULL)
+}
+
 #' E-Step for RIMLE ECM Algorithm
 #'
 #' Computes pseudo-posterior probabilities z_g for all components including
@@ -145,10 +210,17 @@ rimle_cm1_update_u <- function(x_list, params, g, n, gamma_U) {
 rimle_cm1_step <- function(x_list, params, g, n, gamma,
 			    max_flip_flop = 50, tol = 1e-6) {
 	r <- nrow(x_list[[1]])
+	p <- ncol(x_list[[1]])
 
 	for (comp in seq_len(g)) {
 		Zg <- params$Zg[comp]
-		if (Zg <= 0) next
+		if (Zg <= 1e-6) {
+			random_idx <- sample.int(n, size = 1)
+			params$M[[comp]] <- x_list[[random_idx]]
+			params$U[[comp]] <- make_spd(matrix(1, r, r))
+			params$V[[comp]] <- make_spd(matrix(1, p, p))
+			next
+		}
 		M_new <- matrix(0, r, ncol(x_list[[1]]))
 		for (i in seq_len(n)) {
 			M_new <- M_new + params$z[i, comp] * x_list[[i]]
@@ -158,9 +230,6 @@ rimle_cm1_step <- function(x_list, params, g, n, gamma,
 
 	prev_Q <- -Inf
 	for (ff_iter in seq_len(max_flip_flop)) {
-		V_old <- params$V
-		U_old <- params$U
-
 		all_U_eigs <- unlist(lapply(params$U, function(U) {
 			eigen(U, symmetric = TRUE, only.values = TRUE)$values
 		}))
@@ -179,24 +248,29 @@ rimle_cm1_step <- function(x_list, params, g, n, gamma,
 
 		params$U <- rimle_cm1_update_u(x_list, params, g, n, gamma_U)
 
-		max_change <- 0
-		for (comp in seq_len(g)) {
-			max_change <- max(max_change, max(abs(params$U[[comp]] - U_old[[comp]])))
-			max_change <- max(max_change, max(abs(params$V[[comp]] - V_old[[comp]])))
-		}
-
-		if (max_change < tol) break
-
 		current_Q <- rimle_compute_q1(x_list, params, g, n)
-		if (ff_iter > 5 && abs(current_Q - prev_Q) < tol) break
+		relative_change <- abs(current_Q - prev_Q) / (abs(prev_Q) + 1e-10)
+		if (relative_change < tol && ff_iter > 1) break
 		prev_Q <- current_Q
 	}
 
 	for (comp in seq_len(g)) {
 		row_scale <- r / sum(diag(params$U[[comp]]))
-		params$U[[comp]] <- make_spd(params$U[[comp]] * row_scale)
-		params$V[[comp]] <- make_spd(params$V[[comp]] / row_scale)
+		U_new <- params$U[[comp]] * row_scale
+		V_new <- params$V[[comp]] / row_scale
+
+		U_eigs <- eigen(U_new, symmetric = TRUE)
+		U_eigs$values <- pmax(U_eigs$values, 1e-10)
+		params$U[[comp]] <- U_eigs$vectors %*%
+			diag(U_eigs$values) %*% t(U_eigs$vectors)
+
+		V_eigs <- eigen(V_new, symmetric = TRUE)
+		V_eigs$values <- pmax(V_eigs$values, 1e-10)
+		params$V[[comp]] <- V_eigs$vectors %*%
+			diag(V_eigs$values) %*% t(V_eigs$vectors)
 	}
+
+	rimle_check_eigenratio_constraint(params, g, gamma)
 
 	params
 }

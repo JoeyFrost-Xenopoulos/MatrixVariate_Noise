@@ -12,7 +12,7 @@ rimle_fit(
   gamma = 1000,
   max_iter = 100,
   tol = 1e-06,
-  init = c("random", "hennig-coretto"),
+  init = c("random", "hennig-coretto", "kmeans"),
   nstart = 10,
   estimate_k = FALSE,
   k_grid = NULL,
@@ -37,7 +37,7 @@ rimle_fit(
 
 \item{tol}{Convergence tolerance on the pseudo-log-likelihood trace.}
 
-\item{init}{Initialization scheme: \code{"random"} or \code{"hennig-coretto"}.}
+\item{init}{Initialization scheme: \code{"random"}, \code{"hennig-coretto"}, or \code{"kmeans"}.}
 
 \item{nstart}{Number of independent random starts (default: 10).}
 
@@ -48,7 +48,7 @@ KS goodness-of-fit test.}
 
 \item{verbose}{Logical: print iteration progress.}
 
-\item{use_parallel}{Logical: run k-grid search in parallel.}
+\item{use_parallel}{Logical: run k-means restarts or k-grid search in parallel.}
 
 \item{n_cores}{Integer: number of parallel workers (NULL = auto).}
 }

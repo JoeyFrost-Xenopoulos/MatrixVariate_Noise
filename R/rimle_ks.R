@@ -20,7 +20,7 @@
 #' @noRd
 rimle_select_k <- function(x_list, g, pi_max = 0.5, gamma = 1000,
 			   max_iter = 100, tol = 1e-6,
-			   init = c("random", "hennig-coretto"),
+			   init = c("random", "hennig-coretto", "kmeans"),
 			   nstart = 10, k_grid = NULL,
 			   verbose = FALSE, use_parallel = FALSE,
 			   n_cores = NULL) {
@@ -59,6 +59,7 @@ rimle_select_k <- function(x_list, g, pi_max = 0.5, gamma = 1000,
 				       pi_max = pi_max, gamma = gamma,
 				       max_iter = max_iter, tol = tol,
 				       init = init, nstart = nstart,
+				       use_parallel = use_parallel, n_cores = n_cores,
 				       verbose = FALSE),
 			error = function(e) {
 				if (verbose) cat("fit failed\n")
@@ -93,7 +94,9 @@ rimle_select_k <- function(x_list, g, pi_max = 0.5, gamma = 1000,
 		ks_result <- tryCatch(
 			mv_noise_ks_score(fit_clean, x_clean),
 			error = function(e) {
-				if (verbose) cat("KS scoring failed\n")
+				if (verbose) {
+					cat(sprintf("KS scoring failed: %s\n", conditionMessage(e)))
+				}
 				list(statistic = Inf, p.value = NA_real_, n_used = length(x_clean))
 			}
 		)
@@ -128,6 +131,7 @@ rimle_select_k <- function(x_list, g, pi_max = 0.5, gamma = 1000,
 				    pi_max = pi_max, gamma = gamma,
 				    max_iter = max_iter, tol = tol,
 				    init = init, nstart = nstart,
+				    use_parallel = use_parallel, n_cores = n_cores,
 				    verbose = verbose)
 
 	final_fit$k_selection <- list(

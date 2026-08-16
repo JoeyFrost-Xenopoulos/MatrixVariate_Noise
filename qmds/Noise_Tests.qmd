@@ -67,8 +67,8 @@ library(ggplot2)
 
 X <- t(sapply(x_list, c))
 
-group <- factor(c(rep("M1", 40),
-                  rep("M2", 20),
+group <- factor(c(rep("M1", 80),
+                  rep("M2", 40),
                   rep("Contam", 15)))
 
 pca <- prcomp(X, scale. = TRUE)
@@ -83,7 +83,7 @@ ggplot(df, aes(PC1, PC2, color = group)) +
   geom_point(size = 3, alpha = 0.8) +
   theme_minimal()
 
-plot(df$PC1, df$PC2, col = fit_hc$cluster + 1)
+plot(df$PC1, df$PC2, col = fit_rim$cluster + 1)
 
 ```
 

@@ -109,7 +109,7 @@ rimle_mv_density <- function(x, M, U, V) {
 #' @return Shrunk eigenvalue.
 #' @noRd
 rimle_shrinkage <- function(a, m, gamma) {
-	pmin(pmax(m, a), gamma * m)
+	pmax(pmin(pmax(m, a), gamma * m), 1e-10)
 }
 
 #' Compute m_* for CM1 Eigenratio Constraint
@@ -164,26 +164,71 @@ rimle_compute_omega_star <- function(x_list, params, g, n, k, Z0, pi_max) {
 	if (Z0 >= n - 1e-8) return(min(pi_max, 0.99))
 
 	f <- function(omega) {
-		if (omega <= 0 || omega >= 1) return(Inf)
+		if (omega <= 0 || omega >= 1) return(NA_real_)
 		total <- 0
 		for (i in seq_len(n)) {
-			denom <- omega * k
+			log_terms <- c(log(omega * k))
 			for (comp in seq_len(g)) {
-				denom <- denom + (1 - omega) / (n - Z0) *
-					params$Zg[comp] * rimle_mv_density(x_list[[i]], params$M[[comp]],
-									     params$U[[comp]], params$V[[comp]])
+				gauss_dens <- rimle_mv_density(x_list[[i]], params$M[[comp]],
+							       params$U[[comp]], params$V[[comp]])
+				if (gauss_dens > 0) {
+					log_terms <- c(log_terms,
+						       log((1 - omega) / (n - Z0)) +
+						       log(params$Zg[comp]) +
+						       log(gauss_dens))
+				}
 			}
-			if (denom <= 0) return(Inf)
-			total <- total + omega * k / denom
+			log_denom <- rimle_log_sum_exp(log_terms)
+			if (is.finite(log_denom) && log_denom > -700) {
+				total <- total + exp(log(omega * k) - log_denom)
+			}
 		}
 		total - n * pi_max
 	}
 
 	tryCatch({
-		uniroot(f, interval = c(1e-8, 1 - 1e-8), tol = 1e-8, extendInt = "no")$root
+		res <- uniroot(f, interval = c(1e-8, min(pi_max, 1 - 1e-8)),
+			       tol = 1e-8, extendInt = "no")
+		min(res$root, pi_max)
 	}, error = function(e) {
-		if (f(0.5) <= 0) 0.5 else 0.1
+		omegas <- seq(1e-8, pi_max, length.out = 100)
+		f_vals <- sapply(omegas, f)
+		if (!any(is.finite(f_vals))) return(min(pi_max, 0.5))
+		omegas[which.min(abs(f_vals))]
 	})
+}
+
+#' Matrix-Variate Mahalanobis Distance
+#'
+#' Computes the Mahalanobis distance between a matrix observation and a mean
+#' matrix under the matrix-variate normal with specified row and column
+#' covariances. Uses Cholesky decomposition for numerical stability.
+#'
+#' @param x A numeric matrix (r x p): the observation.
+#' @param mean_matrix A numeric matrix (r x p): the component mean.
+#' @param row_cov A numeric matrix (r x r): row covariance.
+#' @param col_cov A numeric matrix (p x p): column covariance.
+#' @return Numeric scalar: squared Mahalanobis distance.
+#' @noRd
+rimle_mv_mahalanobis <- function(x, mean_matrix, row_cov, col_cov) {
+  if (!is.matrix(x) || !is.numeric(x)) stop("'x' must be a numeric matrix.")
+  if (!is.matrix(mean_matrix) || !is.numeric(mean_matrix)) stop("'mean_matrix' must be a numeric matrix.")
+  if (!identical(dim(x), dim(mean_matrix))) stop("'x' and 'mean_matrix' must have the same dimensions.")
+  if (!is.matrix(row_cov) || nrow(row_cov) != ncol(row_cov) || nrow(row_cov) != nrow(x)) {
+    stop("'row_cov' must be square with dimension matching nrow(x).")
+  }
+  if (!is.matrix(col_cov) || nrow(col_cov) != ncol(col_cov) || ncol(col_cov) != ncol(x)) {
+    stop("'col_cov' must be square with dimension matching ncol(x).")
+  }
+
+  row_cov <- make_spd(row_cov)
+  col_cov <- make_spd(col_cov)
+  row_chol <- chol(row_cov)
+  col_chol <- chol(col_cov)
+  centered <- x - mean_matrix
+  row_inv_centered <- backsolve(row_chol, forwardsolve(t(row_chol), centered))
+  col_inv <- chol2inv(col_chol)
+  sum(row_inv_centered * (centered %*% col_inv))
 }
 
 #' Compute Q1 for Convergence Check
