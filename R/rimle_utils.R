@@ -112,34 +112,6 @@ rimle_shrinkage <- function(a, m, gamma) {
 	pmin(pmax(m, a), gamma * m)
 }
 
-#' Compute Global Eigenratio
-#'
-#' Computes max_g{lambda_max(V_g) * lambda_max(U_g)} /
-#' min_g{lambda_min(V_g) * lambda_min(U_g)}.
-#'
-#' @param U_list List of row covariance matrices.
-#' @param V_list List of column covariance matrices.
-#' @return Numeric scalar eigenratio.
-#' @noRd
-rimle_global_eigenratio <- function(U_list, V_list) {
-	g <- length(U_list)
-	prod_max <- -Inf
-	prod_min <- Inf
-
-	for (comp in seq_len(g)) {
-		eig_U <- eigen(U_list[[comp]], symmetric = TRUE, only.values = TRUE)$values
-		eig_V <- eigen(V_list[[comp]], symmetric = TRUE, only.values = TRUE)$values
-		prod_eigs <- as.vector(outer(eig_U, eig_V))
-		prod_max <- max(prod_max, max(prod_eigs, na.rm = TRUE))
-		prod_min <- min(prod_min, min(prod_eigs, na.rm = TRUE))
-	}
-
-	if (!is.finite(prod_max) || !is.finite(prod_min) || prod_min <= 0) {
-		return(Inf)
-	}
-	prod_max / prod_min
-}
-
 #' Compute m_* for CM1 Eigenratio Constraint
 #'
 #' Solves the one-dimensional convex problem for the shrinkage parameter.

@@ -16,7 +16,7 @@
 #' @noRd
 rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 			   max_iter = 100, tol = 1e-6,
-			   init = c("random", "hennig-coretto", "kmeans"),
+			   init = c("random", "hennig-coretto"),
 			   nstart = 10, verbose = FALSE) {
 	init <- match.arg(init)
 	x_list <- rimle_validate_x_list(x_list)
@@ -28,10 +28,7 @@ rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 	nstart <- as.integer(nstart)
 
 	for (start in seq_len(nstart)) {
-		if (init == "kmeans") {
-			params <- rimle_kmeans_init(x_list, g, nstart = 1, verbose = verbose)
-			params$pi0 <- max(0.01, 1 - sum(params$pi))
-		} else if (init == "random") {
+		if (init == "random") {
 			params <- rimle_random_init(x_list, g)
 			params$pi0 <- max(0.01, 1 - sum(params$pi))
 		} else {
@@ -113,7 +110,7 @@ rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 #' @param gamma Eigenratio bound for covariance regularization (default: 1000).
 #' @param max_iter Maximum ECM iterations (default: 100).
 #' @param tol Convergence tolerance on the pseudo-log-likelihood trace.
-#' @param init Initialization scheme: `"random"`, `"hennig-coretto"`, or `"kmeans"`.
+#' @param init Initialization scheme: `"random"` or `"hennig-coretto"`.
 #' @param nstart Number of independent random starts (default: 10).
 #' @param estimate_k Logical: if TRUE, automatically select optimal k using
 #'   KS goodness-of-fit test.
@@ -128,7 +125,7 @@ rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 #' @export
 rimle_fit <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 		      max_iter = 100, tol = 1e-6,
-		      init = c("random", "hennig-coretto", "kmeans"),
+		      init = c("random", "hennig-coretto"),
 		      nstart = 10, estimate_k = FALSE,
 		      k_grid = NULL, verbose = FALSE,
 		      use_parallel = FALSE, n_cores = NULL) {

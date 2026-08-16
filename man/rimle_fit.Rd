@@ -12,7 +12,7 @@ rimle_fit(
   gamma = 1000,
   max_iter = 100,
   tol = 1e-06,
-  init = c("random", "hennig-coretto", "kmeans"),
+  init = c("random", "hennig-coretto"),
   nstart = 10,
   estimate_k = FALSE,
   k_grid = NULL,
@@ -37,7 +37,7 @@ rimle_fit(
 
 \item{tol}{Convergence tolerance on the pseudo-log-likelihood trace.}
 
-\item{init}{Initialization scheme: \code{"random"}, \code{"hennig-coretto"}, or \code{"kmeans"}.}
+\item{init}{Initialization scheme: \code{"random"} or \code{"hennig-coretto"}.}
 
 \item{nstart}{Number of independent random starts (default: 10).}
 
