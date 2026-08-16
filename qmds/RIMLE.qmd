@@ -536,7 +536,6 @@ $$
 \pi_g^{(0)}=\frac{|\mathcal C_g|}{n},
 \quad g=1,\dots,G.
 $$
-
 Finally, the initial covariance matrices are checked against the global eigenratio constraint
 
 If necessary, the covariance factors are regularized using the same eigenvalue-shrinkage procedure as in the CM1 step. The ECM algorithm is then run from the resulting initial value. When multiple initialization are used, the solution with the largest pseudo-log-likelihood is selected.

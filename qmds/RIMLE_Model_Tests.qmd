@@ -4,10 +4,8 @@ format: html
 ---
 
 ```{r}
-devtools::load_all()
-```
+library(mclust)
 
-```{r}
 r <- 3; p <- 5
 simulate_group <- function(n, mean_matrix, row_sd = 0.5, col_sd = 0.5) {
 	row_cov <- diag(row_sd, nrow(mean_matrix))
@@ -26,6 +24,8 @@ x_list <- c(x_list, contam)
 ```{r}
 set.seed(NULL)
 rimle_fit(x_list, g = 2, k = 5.623413e-20, init = "hennig-coretto", verbose = TRUE)
+
+rimle_fit(x_list, g = 2, k = 5.623413e-20, init = "kmeans", verbose = TRUE)
 
 rimle_fit(x_list, g = 2, estimate_k = TRUE, init = "hennig-coretto", verbose = TRUE, use_parallel = TRUE, n_cores = 4)
 ```

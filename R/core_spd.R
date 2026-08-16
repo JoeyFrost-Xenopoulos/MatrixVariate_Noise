@@ -17,7 +17,6 @@
 #' 3. Returns the first successful candidate or errors if max_tries exceeded
 #'
 #' @export
-#' @noRd
 make_spd <- function(mat, jitter = 1e-8, max_tries = 8) {
 	if (!is.matrix(mat) || !is.numeric(mat)) {
 		stop("'mat' must be a numeric matrix.")
