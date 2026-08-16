@@ -42,10 +42,10 @@ print(table(fit_hc$cluster))
 print(fit_hc$noise)
 
 fit_hc <- Ampharos::mv_noise_fit(x_list, g = 2, noise_type = "hc",
-                                             init = "dbscan",
-                                             nstart = 10,
-                                             estimate_k = TRUE,
-                                             verbose = TRUE)
+                                              nstart = 10,
+                                              init = "kmeans",
+                                              estimate_k = TRUE,
+                                              verbose = TRUE)
 
 cat('HC fit mixing proportions:\n')
 print(fit_hc$pi)
@@ -53,7 +53,7 @@ cat('\nHC cluster counts (0 indicates noise):\n')
 print(table(fit_hc$cluster))
 print(fit_hc$noise)
 
-fit_hc <- Ampharos::mv_noise_fit(x_list, g = 2, estimate_k = TRUE, init = "emrefine", verbose = TRUE)
+fit_hc <- Ampharos::mv_noise_fit(x_list, g = 2, estimate_k = TRUE, init = "kmeans", verbose = TRUE)
 
 cat('HC fit mixing proportions:\n')
 print(fit_hc$pi)
@@ -182,7 +182,7 @@ fit_hc_viroli_k <- Ampharos::mv_noise_fit(x_list_viroli, g = 3, noise_type = "hc
 
 fit_hc_viroli_ecme <- Ampharos::mv_noise_fit(x_list_viroli, g = 3, noise_type = "hc",
                                                     estimate_k = TRUE,
-                                                    init = "emrefine",
+                                                     init = "kmeans",
                                                      verbose = TRUE)
 
 cat('HC fit mixing proportions:\n')

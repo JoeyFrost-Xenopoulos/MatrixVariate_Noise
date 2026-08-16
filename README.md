@@ -29,7 +29,6 @@ plot(fit$logLik, type = "b")
 All fitting functions accept an `init` argument:
 
 - **`"kmeans++"`** — K-means++ seeding (Arthur & Vassilvitskii, 2007): selects initial centers via D^2 weighting for better spread, then runs k-means. More robust than plain k-means on overlapping clusters.
-- **`"emrefine"`** — Starts with random assignment, then runs a few EM iterations to refine. Balances speed and quality.
 
 ## Noise Types
 

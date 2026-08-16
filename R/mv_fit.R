@@ -9,7 +9,7 @@
 #' @param max_iter Integer: maximum EM iterations (default: 100)
 #' @param tol Numeric: convergence tolerance for log-likelihood (default: 1e-6)
 #' @param nstart Integer: number of k-means restarts for initialization (default: 10). Ignored unless `init = "kmeans"`.
-#' @param init Character: initialization scheme. `"kmeans"` (default), `"emrefine"`, or `"dbscan"`.
+#' @param init Character: initialization scheme. `"kmeans"` (default).
 #' @param verbose Logical: print iteration progress (default: FALSE)
 #' @param use_parallel Logical: if `TRUE`, run the k-means `nstart` restarts in
 #'   parallel via the **future** package. `FALSE` (default) runs sequentially.
@@ -58,10 +58,10 @@
 #'
 #' @export
 mv_mixture_fit <- function(x_list, g, max_iter = 100, tol = 1e-06,
-                           nstart = 10, init = c("kmeans", "emrefine", "dbscan"),
+                           nstart = 10, init = "kmeans",
                            verbose = FALSE, use_parallel = FALSE,
                            n_cores = NULL) {
-	init <- match.arg(init)
+
 	x_list <- mv_validate_x_list(x_list)
 	n <- length(x_list)
 	r <- nrow(x_list[[1]])
@@ -79,7 +79,7 @@ mv_mixture_fit <- function(x_list, g, max_iter = 100, tol = 1e-06,
 		))
 	}
 
-	params <- mv_init_dispatch(x_list, g, init, nstart,
+	params <- mv_init_dispatch(x_list, g, nstart,
 	                          use_parallel = use_parallel, n_cores = n_cores)
 	loglik_trace <- numeric(0)
 	responsibilities <- matrix(0, n, g)

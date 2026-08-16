@@ -294,7 +294,7 @@ mv_update_col_cov <- function(x_list, mean_matrix, u_inv_target, weights,
 #'
 #' Updates the parameters of the first `g` Gaussian components from posterior
 #' responsibilities. Shared by `mv_mixture_fit`, `mv_noise_fit_impl`,
-#' `mv_short_em_burn_in`, and `mv_mixture_emrefine_init` so the per-component
+#' `mv_short_em_burn_in` so the per-component
 #' update logic lives in exactly one place.
 #'
 #' @param params Current parameter list (pi, M, U, V).
@@ -306,7 +306,7 @@ mv_update_col_cov <- function(x_list, mean_matrix, u_inv_target, weights,
 #' @param r Number of rows.
 #' @param p Number of columns.
 #' @param warn_zero Logical: emit a warning when a component has zero effective
-#'   membership (used by full fits and emrefine, not by burn-in).
+#'   membership (used by full fits, not by burn-in).
 #' @return A new parameter list with component pi, M, U, V updated. The global
 #'   mixing proportions are NOT renormalized here; callers renormalize over the
 #'   components they manage (g, or g + 1 for the noise model).
@@ -350,7 +350,7 @@ mv_em_mstep <- function(params, x_list, responsibilities, g, n, r, p,
 
 #' Compute Component Parameters from Cluster Assignments
 #'
-#' Shared logic used by both kmeans and emrefine initialization to compute
+#' Shared logic used by kmeans initialization to compute
 #' mean matrices and covariances from initial cluster assignments.
 #'
 #' @param x_list Validated list of matrices.

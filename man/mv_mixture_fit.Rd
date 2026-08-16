@@ -10,7 +10,7 @@ mv_mixture_fit(
   max_iter = 100,
   tol = 1e-06,
   nstart = 10,
-  init = c("kmeans", "emrefine", "dbscan"),
+  init = "kmeans",
   verbose = FALSE,
   use_parallel = FALSE,
   n_cores = NULL
@@ -27,7 +27,7 @@ mv_mixture_fit(
 
 \item{nstart}{Integer: number of k-means restarts for initialization (default: 10). Ignored unless \code{init = "kmeans"}.}
 
-\item{init}{Character: initialization scheme. \code{"kmeans"} (default), \code{"emrefine"}, or \code{"dbscan"}.}
+\item{init}{Character: initialization scheme. \code{"kmeans"} (default).}
 
 \item{verbose}{Logical: print iteration progress (default: FALSE)}
 
