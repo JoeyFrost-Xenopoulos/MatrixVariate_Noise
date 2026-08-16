@@ -12,6 +12,7 @@
 #' @param tol Convergence tolerance.
 #' @param init Initialization method.
 #' @param nstart Number of random restarts.
+#' @param q Nearest neighbor order for Hennig-Coretto initialization.
 #' @param k_grid Grid of k values to search.
 #' @param verbose Logical.
 #' @param use_parallel Logical.
@@ -21,7 +22,7 @@
 rimle_select_k <- function(x_list, g, pi_max = 0.5, gamma = 1000,
 			   max_iter = 100, tol = 1e-6,
 			   init = c("random", "hennig-coretto", "kmeans"),
-			   nstart = 10, k_grid = NULL,
+			   nstart = 10, q = 3, k_grid = NULL,
 			   verbose = FALSE, use_parallel = FALSE,
 			   n_cores = NULL) {
 	init <- match.arg(init)
@@ -58,7 +59,7 @@ rimle_select_k <- function(x_list, g, pi_max = 0.5, gamma = 1000,
 			rimle_fit_impl(x_list = x_list, g = g, k = current_k,
 				       pi_max = pi_max, gamma = gamma,
 				       max_iter = max_iter, tol = tol,
-				       init = init, nstart = nstart,
+				       init = init, nstart = nstart, q = q,
 				       use_parallel = use_parallel, n_cores = n_cores,
 				       verbose = FALSE),
 			error = function(e) {
@@ -130,7 +131,7 @@ rimle_select_k <- function(x_list, g, pi_max = 0.5, gamma = 1000,
 	final_fit <- rimle_fit_impl(x_list = x_list, g = g, k = selected_k,
 				    pi_max = pi_max, gamma = gamma,
 				    max_iter = max_iter, tol = tol,
-				    init = init, nstart = nstart,
+				    init = init, nstart = nstart, q = q,
 				    use_parallel = use_parallel, n_cores = n_cores,
 				    verbose = verbose)
 

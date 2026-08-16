@@ -19,16 +19,13 @@ contam <- lapply(seq_len(15), function(i) matrix(runif(r*p, -1, 1), r, p))
 x_list <- c(x_list, contam)
 ```
 
+
 ```{r}
 library(RIMLEMV)
 library(mclust)
 set.seed(NULL)
 
-rimle_fit(x_list_viroli, g = 3, estimate_k = TRUE, init = "random", verbose = TRUE, nstart = 1, use_parallel = TRUE, n_cores = 4)
-
-rimle_fit(x_list, g = 2, k = 1e-04, init = "kmeans", verbose = TRUE)
-
-rimle_fit(x_list_viroli, g = 3, estimate_k = TRUE, init = "hennig-coretto", verbose = TRUE)
+rimle_fit(x_list_viroli, g = 3, k = 1e-14, init = "hennig-coretto", verbose = TRUE, nstart = 1)
 ```
 
 

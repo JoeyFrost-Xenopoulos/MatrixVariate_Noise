@@ -11,13 +11,14 @@
 #' @param tol Convergence tolerance.
 #' @param init Initialization method.
 #' @param nstart Number of random restarts.
+#' @param q Nearest neighbor order for Hennig-Coretto initialization.
 #' @param verbose Logical.
 #' @return Parameter list without class.
 #' @noRd
 rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 			   max_iter = 100, tol = 1e-6,
 			   init = c("random", "hennig-coretto", "kmeans"),
-			   nstart = 10, use_parallel = FALSE, n_cores = NULL,
+			   nstart = 10, q = 3, use_parallel = FALSE, n_cores = NULL,
 			   verbose = FALSE) {
 	init <- match.arg(init)
 	x_list <- rimle_validate_x_list(x_list)
@@ -45,7 +46,7 @@ rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 				}
 			}
 		} else {
-			params <- rimle_hennig_coretto_init(x_list, g, pi_max = pi_max, gamma = gamma)
+			params <- rimle_hennig_coretto_init(x_list, g, pi_max = pi_max, q = q, gamma = gamma)
 			if (is.null(params$pi0)) {
 				params$pi0 <- min(max(0.01, 1 - sum(params$pi)), pi_max)
 				remaining <- 1 - params$pi0
@@ -148,6 +149,7 @@ rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 #' @param tol Convergence tolerance on the pseudo-log-likelihood trace.
 #' @param init Initialization scheme: `"random"`, `"hennig-coretto"`, or `"kmeans"`.
 #' @param nstart Number of independent random starts (default: 10).
+#' @param q Nearest neighbor order for Hennig-Coretto initialization (default: 3).
 #' @param estimate_k Logical: if TRUE, automatically select optimal k using
 #'   KS goodness-of-fit test.
 #' @param k_grid Numeric vector: grid of k values for automatic selection.
@@ -162,7 +164,7 @@ rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 rimle_fit <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 		      max_iter = 100, tol = 1e-6,
 		      init = c("random", "hennig-coretto", "kmeans"),
-		      nstart = 10, estimate_k = FALSE,
+		      nstart = 10, q = 3, estimate_k = FALSE,
 		      k_grid = NULL, verbose = FALSE,
 		      use_parallel = FALSE, n_cores = NULL) {
 	init <- match.arg(init)
@@ -179,10 +181,15 @@ rimle_fit <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 			     n, g))
 	}
 
+	if (!is.numeric(q) || length(q) != 1 || q < 1 || q > n - 1 || q != as.integer(q)) {
+		stop(sprintf("'q' must be an integer between 1 and n - 1 (n = %d).", n))
+	}
+	q <- as.integer(q)
+
 	if (estimate_k) {
 		return(rimle_select_k(x_list, g, pi_max = pi_max, gamma = gamma,
 				      max_iter = max_iter, tol = tol,
-				      init = init, nstart = nstart,
+				      init = init, nstart = nstart, q = q,
 				      k_grid = k_grid, verbose = verbose,
 				      use_parallel = use_parallel, n_cores = n_cores))
 	}
@@ -201,7 +208,7 @@ rimle_fit <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 
 	params <- rimle_fit_impl(x_list, g, k, pi_max = pi_max, gamma = gamma,
 				 max_iter = max_iter, tol = tol,
-				 init = init, nstart = nstart,
+				 init = init, nstart = nstart, q = q,
 				 use_parallel = use_parallel, n_cores = n_cores,
 				 verbose = verbose)
 
