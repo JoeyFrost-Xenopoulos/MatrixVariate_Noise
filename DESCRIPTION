@@ -1,14 +1,14 @@
-Package: Ampharos
-Title: Matrix-Variate Clustering
+Package: RIMLEMV
+Title: RIMLE Matrix-Variate Clustering
 Version: 0.0.1
 Authors@R: 
     person("Joey", "Frost-Xenopoulos", , "joeyfrostxenopoulos@trentu.ca", role = c("aut", "cre"))
-Description: Matrix-variate clustering algorithms with noise. 
+Description: Robust Improper Maximum Likelihood Estimator for Matrix Varite Clustering 
 License: MIT
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 Imports:
-    geometry,
     future,
-    future.apply
+    future.apply,
+    mclust

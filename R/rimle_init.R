@@ -3,6 +3,7 @@
 #' Randomly partitions observations into G non-empty groups and computes
 #' initial parameters using matrix-normal flip-flop updates.
 #'
+#' @importFrom mclust hc hclass
 #' @param x_list List of matrices.
 #' @param g Number of components.
 #' @return Initial parameter list.

@@ -9,6 +9,7 @@ devtools::load_all()
 
 
 ```{r}
+library(mclust)
 source("C:/Users/joey7/Documents/Stats_1/MASTERS/RIMLE/rimle_utils.R")
 source("C:/Users/joey7/Documents/Stats_1/MASTERS/RIMLE/rimle_ks.R")
 source("C:/Users/joey7/Documents/Stats_1/MASTERS/RIMLE/rimle_init.R")
@@ -17,7 +18,7 @@ source("C:/Users/joey7/Documents/Stats_1/MASTERS/RIMLE/rimle_ecm.R")
 ```
 
 ```{r}
-r <- 4; p <- 4
+r <- 3; p <- 5
 simulate_group <- function(n, mean_matrix, row_sd = 0.5, col_sd = 0.5) {
 	row_cov <- diag(row_sd, nrow(mean_matrix))
 	col_cov <- diag(col_sd, ncol(mean_matrix))
@@ -26,14 +27,17 @@ simulate_group <- function(n, mean_matrix, row_sd = 0.5, col_sd = 0.5) {
 
 M1 <- matrix(1, r, p)
 M2 <- matrix(-1, r, p)
-x_list <- c(simulate_group(40, M1), simulate_group(20, M2))
+x_list <- c(simulate_group(80, M1), simulate_group(40, M2))
 
-contam <- lapply(seq_len(15), function(i) matrix(runif(r*p, -3,3), r, p))
+contam <- lapply(seq_len(15), function(i) matrix(runif(r*p, -1, 1), r, p))
 x_list <- c(x_list, contam)
 ```
 
 ```{r}
 set.seed(NULL)
-rimle_fit(x_list, g = 2, estimate_k = TRUE, init = "kmeans", verbose = TRUE, use_parallel = TRUE, n_cores = 4)
+rimle_fit(x_list, g = 2, k = 5.623413e-20, init = "hennig-coretto", verbose = TRUE)
+
+rimle_fit(x_list, g = 2, k = 5.623413e-20, init = "kmeans", verbose = TRUE)
+
 ```
 
