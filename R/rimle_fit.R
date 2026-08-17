@@ -84,14 +84,6 @@ rimle_fit_impl <- function(x_list, g, k, pi_max = 0.5, gamma = 1000,
 			current_loglik <- rimle_loglik(x_list, params, g, k)
 
 			if (!is.finite(current_loglik)) {
-				message("Non-finite loglik at iteration ", iteration)
-				message("pi0 = ", params$pi0)
-				message("k = ", k)
-				message("z noise range: ",
-						paste(range(params$z[, g + 1], na.rm = TRUE), collapse = " to "))
-				message("Any NA z: ", anyNA(params$z))
-				message("Any nonfinite z: ", any(!is.finite(params$z)))
-
 				stop("Non-finite log-likelihood")
 			}
 
