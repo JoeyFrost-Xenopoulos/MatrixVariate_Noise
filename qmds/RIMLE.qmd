@@ -540,6 +540,24 @@ Finally, the initial covariance matrices are checked against the global eigenrat
 
 If necessary, the covariance factors are regularized using the same eigenvalue-shrinkage procedure as in the CM1 step. The ECM algorithm is then run from the resulting initial value. When multiple initialization are used, the solution with the largest pseudo-log-likelihood is selected.
 
-When automatic $k$-selection is enabled (`estimate_k = TRUE`) and the Hennig--Coretto initialization fails for all candidates on the $k$-grid because the global eigenratio constraint is violated, the implementation automatically increases $q$ by 1 and repeats the entire $k$-grid search. This retry continues until at least one $k$-candidate yields a valid fit, or until $q$ reaches its maximum allowed value $n-1$. If no valid fit is found after exhausting all $q$ values, the algorithm stops with an error.
+When automatic $k$-selection is enabled (`estimate_k = TRUE`) and the Hennig--Coretto initialization fails for all candidates on the $k$-grid because the global eigenratio constraint is violated, the implementation automatically increases $q$ by 1 and repeats the entire $k$-grid search. This retry continues until at least one $k$-candidate yields a valid fit, or until $q$ reaches its maximum allowed value $n-1$. When automatic $k$-selection is enabled (`estimate_k = TRUE`) and the Hennig--Coretto initialization fails for all candidates on the $k$-grid because the global eigenratio constraint is violated, the implementation automatically increases $q$ by 1 and repeats the entire $k$-grid search. This retry continues until at least one $k$-candidate yields a valid fit, or until $q$ reaches its maximum allowed value $n-1$. If no valid fit is found after exhausting all $q$ values, the algorithm stops with an error.
+
+### K-means++ initialization
+
+As an alternative to the hierarchical initialization, we also provide a $k$-means++ initialization strategy that operates in a whitened vectorized space.
+
+For each matrix observation $\mathbf{X}_i$, we first form a vectorized representation $\text{vec}(\mathbf{X}_i)\in\mathbb{R}^{rc}$. Before applying $k$-means++, we apply a whitening transformation that centers the data by the global sample mean and then decorrelates and scales the vectors using the Cholesky factors of the pooled row and column covariance matrices. Specifically, let $\bar{\mathbf{X}}$ denote the global mean matrix and let $\mathbf{L}_U$ and $\mathbf{L}_V$ denote Cholesky factors of the empirical row and column covariance matrices. The whitened observation is obtained by applying the linear map that centers by $\bar{\mathbf{X}}$ and then premultiplies by $\mathbf{L}_U^{-\top}$ and postmultiplies by $\mathbf{L}_V^{-1}$ before vectorization. This ensures that the $k$-means algorithm operates on standardized, approximately isotropic features, which improves the quality of the initial partition.
+
+Given $G$ components, we run $k$-means++ seeding in the whitened space with a user-specified number of restarts $n_{\text{start}}$. For each restart, the $k$-means++ algorithm selects the first center uniformly at random and then chooses subsequent centers with probability proportional to the squared Euclidean distance to the nearest existing center. After the centers are initialized, standard Lloyd iterations are performed. The resulting cluster assignments are then used to compute the RIMLE initial parameters: the mean matrix $\mathbf{M}_g^{(0)}$, the row and column covariance factors $\mathbf{U}_g^{(0)}$ and $\mathbf{V}_g^{(0)}$ via the same matrix-normal flip-flop updates as in the random initialization, and the mixing proportions $\pi_g^{(0)} = |\mathcal{C}_g|/n$.
+
+Because the initial proportions must also leave room for the noise component, we set
+$$
+\pi_0^{(0)} = \min\Bigl\{\max\bigl\{0.01,\;1-\sum_{g=1}^G\pi_g^{(0)}\bigr\},\;\pi_{\max}\Bigr\},
+$$
+and rescale the Gaussian proportions to sum to $1-\pi_0^{(0)}$.
+
+The $k$-means++ initialization is evaluated by the pseudo-log-likelihood of the resulting parameter set. When $n_{\text{start}} > 1$, the restart producing the largest pseudo-log-likelihood is retained. The optional parallel backend distributes the restarts across multiple workers to reduce wall-clock time.
+
+After the cluster-specific covariances are computed, the same eigenvalue-shrinkage regularization is applied to enforce the global eigenratio constraint. If all $n_{\text{start}}$ restarts fail to produce a valid clustering, the implementation falls back to a single standard $k$-means run from the $k$-means++ seeds.
 
 
