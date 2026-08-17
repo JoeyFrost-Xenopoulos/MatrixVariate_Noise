@@ -296,8 +296,7 @@ rimle_hennig_coretto_init <- function(x_list, g, pi_max = 0.5, q = 3, gamma = 10
 #'
 #' Performs k-means++ clustering in a whitened vectorized space to obtain
 #' initial cluster assignments, then derives RIMLE parameters (mean matrices,
-#' row/column covariances, mixing proportions) from those assignments. Far-field
-#' observations are assigned to the noise component (cluster 0).
+#' row/column covariances, mixing proportions) from those assignments.
 #'
 #' The matrix-to-vector transformation applies whitening: each matrix is
 #' centered by the global mean, then decorrelated and scaled by the pooled
@@ -307,25 +306,25 @@ rimle_hennig_coretto_init <- function(x_list, g, pi_max = 0.5, q = 3, gamma = 10
 #' @param g Number of Gaussian components.
 #' @param pi_max Maximum noise proportion.
 #' @param nstart Number of k-means restarts.
-#' @param q Nearest neighbor order for noise threshold.
+#' @param use_parallel Logical: enable parallel nstart restarts for kmeans init.
+#' @param n_cores Integer: number of parallel workers (NULL = auto).
+#' @param gamma Eigenratio bound for constraint enforcement.
 #' @return Initial parameter list with noise.
 #' @noRd
 rimle_kmeans_init <- function(x_list, g, pi_max = 0.5, nstart = 10,
-                              use_parallel = FALSE, n_cores = NULL, q = 3,
+                              use_parallel = FALSE, n_cores = NULL,
                               gamma = 1000) {
   x_list <- rimle_validate_x_list(x_list)
   n <- length(x_list)
   r <- nrow(x_list[[1]])
   p <- ncol(x_list[[1]])
 
-  q <- as.integer(q)
-  if (q < 1 || q > n - 1) {
-    q <- max(1L, min(as.integer(n - 1), as.integer(3)))
+  if (!is.numeric(nstart) || length(nstart) != 1 || !is.finite(nstart) || nstart < 1) {
+    stop("'nstart' must be a positive numeric scalar.")
   }
+  nstart <- as.integer(nstart)
 
   init_basis <- mv_init_whitening_basis(x_list)
-  init_basis$row_whitener <- solve(chol(init_basis$row_cov))
-  init_basis$col_whitener <- t(solve(chol(init_basis$col_cov)))
   x_matrix <- mv_whitened_vectorized_matrices(x_list, init_basis)
 
   run_one_restart <- function(restart) {
@@ -336,45 +335,18 @@ rimle_kmeans_init <- function(x_list, g, pi_max = 0.5, nstart = 10,
     )
 
     if (is.null(fit)) {
-      return(list(cluster = integer(0), noise_idx = integer(0), pi0_init = 0.01,
-                  score = Inf))
+      return(list(fit = NULL, score = -Inf))
     }
 
     candidate <- mv_compute_init_params(x_list, g, fit$cluster, init_method = "K-means")
+    score <- mv_initialization_loglik(candidate, x_list, g)
 
-    whitened_means <- do.call(rbind, lapply(seq_len(g), function(comp) {
-      as.vector(init_basis$row_whitener %*% (candidate$M[[comp]] - init_basis$mean) %*% t(init_basis$col_whitener))
-    }))
-
-    mahal_dists <- numeric(n)
-    for (i in seq_len(n)) {
-      min_dist <- Inf
-      for (comp in seq_len(g)) {
-        d <- sum((x_matrix[i, ] - whitened_means[comp, ])^2)
-        if (d < min_dist) min_dist <- d
-      }
-      mahal_dists[i] <- min_dist
-    }
-
-    knn_dists <- numeric(n)
-    for (i in seq_len(n)) {
-      others <- mahal_dists[-i]
-      knn_dists[i] <- sort(others)[min(q, length(others))]
-    }
-
-    noise_threshold <- quantile(knn_dists, probs = 1 - pi_max, names = FALSE)
-    noise_idx <- which(knn_dists > noise_threshold)
-    pi0_init <- max(0.01, length(noise_idx) / n)
-    pi0_init <- min(pi0_init, pi_max)
-
-    list(cluster = fit$cluster, noise_idx = noise_idx, pi0_init = pi0_init,
-         score = -mean(knn_dists))
+    list(fit = candidate, score = score)
   }
 
   config <- mv_parallel_config(
     use_parallel = use_parallel,
     n_cores = n_cores,
-    parallel_strategy = "restart",
     requested = "restart",
     n_tasks = nstart
   )
@@ -385,24 +357,20 @@ rimle_kmeans_init <- function(x_list, g, pi_max = 0.5, nstart = 10,
     results <- lapply(seq_len(nstart), run_one_restart)
   }
 
-  best_result <- NULL
-  best_score <- Inf
+  best_fit <- NULL
+  best_score <- -Inf
   for (res in results) {
-    if (length(res$cluster) > 0 && res$score < best_score) {
+    if (is.finite(res$score) && res$score > best_score) {
       best_score <- res$score
-      best_result <- res
+      best_fit <- res$fit
     }
   }
 
-  if (is.null(best_result)) {
+  if (is.null(best_fit)) {
     fallback <- kmeans(x_matrix, centers = mv_kmeanspp_centers(x_matrix, g, n), nstart = 1)
     cluster_assignments <- fallback$cluster
-    noise_idx <- integer(0)
-    pi0_init <- 0.01
   } else {
-    cluster_assignments <- best_result$cluster
-    noise_idx <- best_result$noise_idx
-    pi0_init <- best_result$pi0_init
+    cluster_assignments <- best_fit$cluster
   }
 
   mixing_proportions <- numeric(g)
@@ -466,11 +434,13 @@ rimle_kmeans_init <- function(x_list, g, pi_max = 0.5, nstart = 10,
     col_covariances[[component]] <- col_cov
   }
 
-  mixing_proportions <- mixing_proportions / sum(mixing_proportions) * (1 - pi0_init)
-
-  cluster_assignments_full <- integer(n)
-  cluster_assignments_full[noise_idx] <- 0L
-  cluster_assignments_full[setdiff(seq_len(n), noise_idx)] <- cluster_assignments[setdiff(seq_len(n), noise_idx)]
+  pi0_init <- min(max(0.01, 1 - sum(mixing_proportions)), pi_max)
+  remaining <- 1 - pi0_init
+  if (sum(mixing_proportions) > 0) {
+    mixing_proportions <- mixing_proportions / sum(mixing_proportions) * remaining
+  } else {
+    mixing_proportions <- rep(remaining / g, g)
+  }
 
   fixed <- rimle_check_and_fix_eigenratio_init(row_covariances, col_covariances, gamma)
 
@@ -480,6 +450,6 @@ rimle_kmeans_init <- function(x_list, g, pi_max = 0.5, nstart = 10,
     M = mean_matrices,
     U = fixed$U,
     V = fixed$V,
-    cluster = cluster_assignments_full
+    cluster = cluster_assignments
   )
 }

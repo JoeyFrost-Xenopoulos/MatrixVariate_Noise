@@ -45,79 +45,94 @@ rimle_select_k <- function(x_list, g, pi_max = 0.5, gamma = 1000,
 		}
 	}
 
-	ks_scores <- rep(Inf, length(k_grid))
-	all_ks_results <- vector("list", length(k_grid))
+	q_current <- as.integer(q)
+	q_max <- n - 1L
 
-	evaluate_k_candidate <- function(idx) {
-		current_k <- k_grid[idx]
-
-		if (verbose) {
-			cat("  Testing k =", format(current_k, scientific = TRUE), "... ")
+	repeat {
+		if (verbose && q_current != q) {
+			cat(sprintf("Retrying k-grid search with q = %d\n", q_current))
 		}
 
-		fit_noise <- tryCatch(
-			rimle_fit_impl(x_list = x_list, g = g, k = current_k,
-				       pi_max = pi_max, gamma = gamma,
-				       max_iter = max_iter, tol = tol,
-				       init = init, nstart = nstart, q = q,
-				       use_parallel = use_parallel, n_cores = n_cores,
-				       verbose = FALSE),
-			error = function(e) {
-				if (verbose) cat("fit failed\n")
-				NULL
+		ks_scores <- rep(Inf, length(k_grid))
+		all_ks_results <- vector("list", length(k_grid))
+
+		evaluate_k_candidate <- function(idx) {
+			current_k <- k_grid[idx]
+
+			if (verbose) {
+				cat("  Testing k =", format(current_k, scientific = TRUE), "... ")
 			}
-		)
 
-		if (is.null(fit_noise)) {
-			return(list(statistic = Inf, p.value = NA_real_, n_used = 0))
-		}
-
-		keep_idx <- which(fit_noise$cluster > 0)
-		x_clean <- x_list[keep_idx]
-
-		if (length(x_clean) <= g) {
-			if (verbose) cat("insufficient retained observations\n")
-			return(list(statistic = Inf, p.value = NA_real_, n_used = length(x_clean)))
-		}
-
-		fit_clean <- tryCatch(
-			mv_mixture_fit(x_list = x_clean, g = g, max_iter = max_iter, tol = tol, verbose = FALSE),
-			error = function(e) {
-				if (verbose) cat("refit failed\n")
-				NULL
-			}
-		)
-
-		if (is.null(fit_clean)) {
-			return(list(statistic = Inf, p.value = NA_real_, n_used = length(x_clean)))
-		}
-
-		ks_result <- tryCatch(
-			mv_noise_ks_score(fit_clean, x_clean),
-			error = function(e) {
-				if (verbose) {
-					cat(sprintf("KS scoring failed: %s\n", conditionMessage(e)))
+			fit_noise <- tryCatch(
+				rimle_fit_impl(x_list = x_list, g = g, k = current_k,
+					       pi_max = pi_max, gamma = gamma,
+					       max_iter = max_iter, tol = tol,
+					       init = init, nstart = nstart, q = q_current,
+					       use_parallel = use_parallel, n_cores = n_cores,
+					       verbose = FALSE),
+				error = function(e) {
+					if (verbose) cat("fit failed\n")
+					NULL
 				}
-				list(statistic = Inf, p.value = NA_real_, n_used = length(x_clean))
-			}
-		)
+			)
 
-		if (verbose) {
-			cat(sprintf("KS = %.4f (n_used = %d)\n", ks_result$statistic, ks_result$n_used))
+			if (is.null(fit_noise)) {
+				return(list(statistic = Inf, p.value = NA_real_, n_used = 0))
+			}
+
+			keep_idx <- which(fit_noise$cluster > 0)
+			x_clean <- x_list[keep_idx]
+
+			if (length(x_clean) <= g) {
+				if (verbose) cat("insufficient retained observations\n")
+				return(list(statistic = Inf, p.value = NA_real_, n_used = length(x_clean)))
+			}
+
+			fit_clean <- tryCatch(
+				mv_mixture_fit(x_list = x_clean, g = g, max_iter = max_iter, tol = tol, verbose = FALSE),
+				error = function(e) {
+					if (verbose) cat("refit failed\n")
+					NULL
+				}
+			)
+
+			if (is.null(fit_clean)) {
+				return(list(statistic = Inf, p.value = NA_real_, n_used = length(x_clean)))
+			}
+
+			ks_result <- tryCatch(
+				mv_noise_ks_score(fit_clean, x_clean),
+				error = function(e) {
+					if (verbose) {
+						cat(sprintf("KS scoring failed: %s\n", conditionMessage(e)))
+					}
+					list(statistic = Inf, p.value = NA_real_, n_used = length(x_clean))
+				}
+			)
+
+			if (verbose) {
+				cat(sprintf("KS = %.4f (n_used = %d)\n", ks_result$statistic, ks_result$n_used))
+			}
+
+			ks_result
 		}
 
-		ks_result
-	}
+		grid_results <- lapply(seq_along(k_grid), evaluate_k_candidate)
 
-	grid_results <- lapply(seq_along(k_grid), evaluate_k_candidate)
+		for (i in seq_along(k_grid)) {
+			ks_scores[i] <- grid_results[[i]]$statistic
+			all_ks_results[[i]] <- grid_results[[i]]
+		}
 
-	for (i in seq_along(k_grid)) {
-		ks_scores[i] <- grid_results[[i]]$statistic
-		all_ks_results[[i]] <- grid_results[[i]]
-	}
+		if (!all(is.infinite(ks_scores))) {
+			break
+		}
 
-	if (all(is.infinite(ks_scores))) {
-		stop("All candidate k values failed during KS selection.")
+		if (init != "hennig-coretto" || q_current >= q_max) {
+			stop("All candidate k values failed during KS selection.")
+		}
+
+		q_current <- q_current + 1L
 	}
 
 	best_idx <- which.min(ks_scores)
@@ -131,7 +146,7 @@ rimle_select_k <- function(x_list, g, pi_max = 0.5, gamma = 1000,
 	final_fit <- rimle_fit_impl(x_list = x_list, g = g, k = selected_k,
 				    pi_max = pi_max, gamma = gamma,
 				    max_iter = max_iter, tol = tol,
-				    init = init, nstart = nstart, q = q,
+				    init = init, nstart = nstart, q = q_current,
 				    use_parallel = use_parallel, n_cores = n_cores,
 				    verbose = verbose)
 

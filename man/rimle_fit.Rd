@@ -14,6 +14,7 @@ rimle_fit(
   tol = 1e-06,
   init = c("random", "hennig-coretto", "kmeans"),
   nstart = 10,
+  q = 3,
   estimate_k = FALSE,
   k_grid = NULL,
   verbose = FALSE,
@@ -40,6 +41,8 @@ rimle_fit(
 \item{init}{Initialization scheme: \code{"random"}, \code{"hennig-coretto"}, or \code{"kmeans"}.}
 
 \item{nstart}{Number of independent random starts (default: 10).}
+
+\item{q}{Nearest neighbor order for Hennig-Coretto initialization (default: 3).}
 
 \item{estimate_k}{Logical: if TRUE, automatically select optimal k using
 KS goodness-of-fit test.}

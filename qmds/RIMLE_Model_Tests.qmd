@@ -25,7 +25,9 @@ library(RIMLEMV)
 library(mclust)
 set.seed(NULL)
 
-rimle_fit(x_list_viroli, g = 3, k = 1e-14, init = "hennig-coretto", verbose = TRUE, nstart = 1)
+rimle_fit(x_list, g = 2, estimate_k = TRUE, init = "kmeans", verbose = TRUE, nstart = 1)
+
+rimle_fit(x_list_viroli, g = 3, estimate_k = TRUE, init = "hennig-coretto", verbose = TRUE, nstart = 1, q = 4)
 ```
 
 
@@ -66,7 +68,7 @@ x_list_viroli <- c(
 )
 
 # Add permuted outliers (15 matrices with permuted entries)
-outlier_idx_viroli <- sample(length(x_list_viroli), 150)
+outlier_idx_viroli <- sample(length(x_list_viroli), 15)
 for (idx in outlier_idx_viroli) {
   x_list_viroli[[idx]] <- matrix(sample(x_list_viroli[[idx]]), r_viroli, p_viroli)
 }

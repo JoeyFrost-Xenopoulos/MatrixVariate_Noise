@@ -540,4 +540,6 @@ Finally, the initial covariance matrices are checked against the global eigenrat
 
 If necessary, the covariance factors are regularized using the same eigenvalue-shrinkage procedure as in the CM1 step. The ECM algorithm is then run from the resulting initial value. When multiple initialization are used, the solution with the largest pseudo-log-likelihood is selected.
 
+When automatic $k$-selection is enabled (`estimate_k = TRUE`) and the Hennig--Coretto initialization fails for all candidates on the $k$-grid because the global eigenratio constraint is violated, the implementation automatically increases $q$ by 1 and repeats the entire $k$-grid search. This retry continues until at least one $k$-candidate yields a valid fit, or until $q$ reaches its maximum allowed value $n-1$. If no valid fit is found after exhausting all $q$ values, the algorithm stops with an error.
+
 
