@@ -85,7 +85,6 @@ run_single_fit <- function(x_list, init, q = 3) {
     RIMLEMV::rimle_fit(
       x_list = x_list,
       g = g,
-      k = 1,
       estimate_k = TRUE,
       init = init,
       q = q,
@@ -95,7 +94,8 @@ run_single_fit <- function(x_list, init, q = 3) {
       gamma = 1000,
       max_iter = 100,
       tol = 1e-6,
-      use_parallel = FALSE
+      use_parallel = TRUE,
+      n_cores = 8
     )
   }, error = function(e) {
     message("Fit failed: ", conditionMessage(e))
