@@ -141,6 +141,54 @@ rimle_random_init <- function(x_list, g, pi_max = 0.5, gamma = 1000) {
 	)
 }
 
+#' Compute q-Nearest-Neighbor Distances
+#'
+#' Computes the distance from each observation to its q-th nearest neighbor
+#' using RcppHNSW approximate nearest neighbors when available, otherwise
+#' falls back to exact Frobenius distance computation.
+#'
+#' @param x_list List of matrices.
+#' @param q Nearest neighbor order.
+#' @return Numeric vector of q-NN distances.
+#' @noRd
+rimle_compute_knn_dists <- function(x_list, q) {
+	n <- length(x_list)
+
+	ann_dists <- tryCatch({
+		if (!requireNamespace("RcppHNSW", quietly = TRUE)) {
+			stop("RcppHNSW not available")
+		}
+		x_mat <- do.call(rbind, lapply(x_list, as.vector))
+		index <- RcppHNSW::hnsw_build(x_mat, dim_type = "euclidean")
+		knn_result <- RcppHNSW::hnsw_query(index, x_mat, k = q + 1L)
+
+		dists <- knn_result$distances
+		if (is.matrix(dists)) {
+			dists[, q + 1L, drop = TRUE]
+		} else if (is.list(dists)) {
+			vapply(dists, function(d) d[q + 1L], numeric(1))
+		} else {
+			stop("Unexpected distances format from RcppHNSW")
+		}
+	}, error = function(e) NULL)
+
+	if (!is.null(ann_dists) &&
+	    length(ann_dists) == n &&
+	    all(is.finite(ann_dists)) &&
+	    all(ann_dists >= 0)) {
+		return(ann_dists)
+	}
+
+	frob_dists <- matrix(0, n, n)
+	for (i in seq_len(n)) {
+		for (j in seq_len(n)) {
+			frob_dists[i, j] <- norm(x_list[[i]] - x_list[[j]], type = "F")
+		}
+	}
+	diag(frob_dists) <- Inf
+	apply(frob_dists, 1, function(row) sort(row)[q])
+}
+
 #' Hennig-Coretto Style Initialization for RIMLE
 #'
 #' Identifies low-density observations via q-NND and clusters the remaining
@@ -163,15 +211,7 @@ rimle_hennig_coretto_init <- function(x_list, g, pi_max = 0.5, q = 3, gamma = 10
 	}
 	q <- as.integer(q)
 
-	frob_dists <- matrix(0, n, n)
-	for (i in seq_len(n)) {
-		for (j in seq_len(n)) {
-			frob_dists[i, j] <- norm(x_list[[i]] - x_list[[j]], type = "F")
-		}
-	}
-	diag(frob_dists) <- Inf
-
-	knn_dists <- apply(frob_dists, 1, function(row) sort(row)[q])
+	knn_dists <- rimle_compute_knn_dists(x_list, q)
 
 	noise_threshold <- quantile(knn_dists, probs = 1 - pi_max, names = FALSE)
 

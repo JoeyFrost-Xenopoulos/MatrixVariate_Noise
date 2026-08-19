@@ -68,7 +68,8 @@ rimle_select_k <- function(x_list, g, pi_max = 0.5, gamma = 1000,
 					       pi_max = pi_max, gamma = gamma,
 					       max_iter = max_iter, tol = tol,
 					       init = init, nstart = nstart, q = q_current,
-					       use_parallel = use_parallel, n_cores = n_cores,
+					       use_parallel = use_parallel && !grid_config$active,
+					       n_cores = n_cores,
 					       verbose = FALSE),
 				error = function(e) {
 					if (verbose) cat("fit failed\n")
@@ -117,7 +118,19 @@ rimle_select_k <- function(x_list, g, pi_max = 0.5, gamma = 1000,
 			ks_result
 		}
 
-		grid_results <- lapply(seq_along(k_grid), evaluate_k_candidate)
+		grid_config <- mv_parallel_config(
+			use_parallel = use_parallel,
+			n_cores = n_cores,
+			parallel_strategy = "auto",
+			requested = "grid",
+			n_tasks = length(k_grid)
+		)
+
+		if (grid_config$active) {
+			grid_results <- mv_future_lapply(seq_along(k_grid), evaluate_k_candidate, grid_config)
+		} else {
+			grid_results <- lapply(seq_along(k_grid), evaluate_k_candidate)
+		}
 
 		for (i in seq_along(k_grid)) {
 			ks_scores[i] <- grid_results[[i]]$statistic

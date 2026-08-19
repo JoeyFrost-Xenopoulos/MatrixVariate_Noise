@@ -12,3 +12,5 @@ Imports:
     future,
     future.apply,
     mclust
+Suggests:
+    RcppHNSW

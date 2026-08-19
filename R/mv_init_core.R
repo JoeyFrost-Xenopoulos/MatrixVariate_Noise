@@ -393,3 +393,105 @@ mv_future_lapply <- function(X, FUN, config, ...) {
 		future.scheduling = FALSE
 	)
 }
+
+#' Save/Restore RNG State
+#'
+#' Captures the current RNG kind and `.Random.seed` so a code block can mutate
+#' the RNG and then restore exactly what the caller had.
+#'
+#' @return A list with elements `kind` and `seed`.
+#' @noRd
+mv_rng_state_save <- function() {
+	kind <- RNGkind()
+	seed <- if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+		get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+	} else {
+		NULL
+	}
+	list(kind = kind, seed = seed)
+}
+
+#' @param state List produced by `mv_rng_state_save()`.
+#' @rdname mv_rng_state_save
+#' @noRd
+mv_rng_state_restore <- function(state) {
+	if (is.null(state)) return(invisible(NULL))
+	RNGkind(state$kind[1], state$kind[2], state$kind[3])
+	if (is.null(state$seed)) {
+		if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+			rm(".Random.seed", envir = .GlobalEnv)
+		}
+	} else {
+		assign(".Random.seed", state$seed, envir = .GlobalEnv)
+	}
+	invisible(NULL)
+}
+
+#' Derive a Deterministic Per-Task Seed
+#'
+#' Maps a user seed and a 1-based task index to a positive integer seed.
+#'
+#' @param base_seed Integer user seed.
+#' @param idx Positive integer task index (1-based).
+#' @return A positive integer seed.
+#' @noRd
+mv_task_seed <- function(base_seed, idx) {
+	stopifnot(is.numeric(base_seed), is.finite(base_seed),
+		  is.numeric(idx), idx >= 1)
+	cap <- .Machine$integer.max
+	derived <- (as.integer(base_seed) * 1000003L + as.integer(idx) * 2L - 1L) %% cap
+	if (derived <= 0L) derived <- derived + cap
+	derived
+}
+
+#' Null-Coalescing Helper
+#'
+#' @noRd
+`%||%` <- function(a, b) {
+	if (is.null(a)) b else a
+}
+
+#' Set Up Worker Environment
+#'
+#' Sources the package R files into a private environment and attaches it
+#' so that mv_* functions are visible inside parallel workers.
+#'
+#' @noRd
+mv_parallel_worker_setup <- function() {
+	if (exists("mv_future_lapply", mode = "function")) {
+		return(invisible(NULL))
+	}
+
+	root <- getwd()
+	while (!file.exists(file.path(root, "DESCRIPTION")) && dirname(root) != root) {
+		root <- dirname(root)
+	}
+
+	r_dir <- file.path(root, "R")
+	if (!dir.exists(r_dir)) {
+		return(invisible(NULL))
+	}
+
+	source_files <- c(
+		"rimle_utils.R",
+		"core_spd.R",
+		"mv_core.R",
+		"mv_init_core.R",
+		"rimle_init.R",
+		"rimle_fit.R",
+		"rimle_ecm.R",
+		"rimle_ks.R"
+	)
+
+	private_env <- new.env(parent = baseenv())
+	for (f in source_files) {
+		fp <- file.path(r_dir, f)
+		if (file.exists(fp)) {
+			sys.source(fp, envir = private_env)
+		}
+	}
+
+	do.call(attach, list(what = private_env, name = "rimlemv_worker_env",
+			     pos = 2L, warn.conflicts = FALSE))
+	invisible(NULL)
+}
