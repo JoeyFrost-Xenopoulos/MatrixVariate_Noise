@@ -49,7 +49,7 @@ a) Eigenration constraint, restricts the ration of the largest eigenvalue to the
 $$
 \lambda_{\text{max}(\theta)} / \lambda_{\text{min}(\theta)} \leq \gamma < +\infty
 $$
-This constraint prevents any single covariance matrix from becoming "too flat" or "too spread out". It acts both as a regularization parameter (preventing numerical issues) and as a model selector (by setting $\gamma=1$, you force all clusters to be spherical and equal in size, similar to k-means).
+It acts both as a regularization parameter (preventing numerical issues) and as a model selector (by setting $\gamma=1$, you force all clusters to be spherical and equal in size, similar to k-means).
 
 b) Noise proportion constraint, restricts the maximum proportion of points that can be assigned to the improper noise component
 $$
@@ -123,26 +123,26 @@ $$
 \end{align}
 $$
     end
-    if max $\{e_{g,h}/e_{t,h}; \quad t,g=1,2,\dots,G, \ g\neq t, h=1,2,\dots,p\} \leq \gamma$ then
+    if $\frac{\text{max}_{g,h}e_{g,h}}{\text{min}_{g,h}e_{g,h}} \leq \gamma$ then
       $\Sigma_g^{(s+1)} \leftarrow S_g^{(s+1)}$
     else
 $$
 \begin{align}
-&m_* \leftarrow \underset{m>0}{\text{arg min}} \sum_{g=1}^Gz_g^{(s)}\sum_{h=1}^p\left(\log(\ell_\gamma(e_{g,h}, m)) + \frac{e_{g,h}}{\ell_\gamma(e_{g,h}, m)} \right) \\
-& \Sigma_g^{(s+1)} \leftarrow V_g^{(s+1)}\text{diag}(\ell_\gamma(e_{g,1}, m_*),\dots,\ell_\gamma(e_{g,h}, m_*)) V_g^{(s+1)\top} \quad \forall g=1,2,\dots,G
+&m_* \leftarrow \underset{m>0}{\text{arg min}} \sum_{g=1}^GZ_g^{(s)}\sum_{h=1}^p\left(\log(\ell_\gamma(e_{g,h}, m)) + \frac{e_{g,h}}{\ell_\gamma(e_{g,h}, m)} \right) \\
+& \Sigma_g^{(s+1)} \leftarrow V_g^{(s+1)}\text{diag}(\ell_\gamma(e_{g,1}, m_*),\dots,\ell_\gamma(e_{g,p}, m_*)) V_g^{(s+1)\top} \quad \forall g=1,2,\dots,G
 \end{align}
 $$
   end
   
   CM2-step
-    if $\Sigma_{i=1}^nz_0(x_i,(\theta_1^{(s+1)},\dot\theta_2))\leq n\pi_{max}, \quad \text{where} \ \dot\theta_2 = (Z_0^{(s)}/n,\dots,Z_g^{(s)}/n)^\top$ then
+    if $\sum_{i=1}^nz_0(x_i,(\theta_1^{(s+1)},\dot\theta_2))\leq n\pi_{max}, \quad \text{where} \ \dot\theta_2 = (Z_0^{(s)}/n,\dots,Z_g^{(s)}/n)^\top$ then
       $\pi_g^{(s+1)} \leftarrow Z_g^{(s)} /n \ \forall \ g=0,1,\dots,G$
     else
 $$
 \begin{align}
 &\text{compute} \ \omega_*: \left(\sum_{i=1}^n \frac{\omega_*k}{\omega_*k + \frac{1-\omega_*}{n-Z_0^{(s)}}\sum_{g=1}^GZ_g^{(s)}\phi(x_i;\mu_g^{(s+1)},\Sigma_g^{(s+1)})}\ \right) -n\pi_{max} = 0 \\
 &\pi_0^{(s+1)} \leftarrow \omega_* \\
-&\pi_g^{(s+1)} \leftarrow \frac{1-\omega_*}{n-Z_0^{(s)}}Z_g^{(s)}
+&\pi_g^{(s+1)} \leftarrow \frac{1-\omega_*}{n-Z_0^{(s)}}Z_g^{(s)} \qquad \forall g = 1,\dots,G
 \end{align}
 $$
 
@@ -250,7 +250,7 @@ $$
 In the absence of constraints we could simply set $\mathbf{U}_g = S^{(s)}_{\mathbf{U}, g}$ and $\mathbf{V}_g = S^{(s)}_{\mathbf{V}, g}$. However, our eigenratio constrain acts on the eigenvalues of the full Kronecker $\Sigma_g = \mathbf{V}_g \otimes \mathbf{U}_g$. Therefore, we use one of the constraints from above. 
 
 $$
-&\frac{\text{max}_g\{\lambda_{\text{max}}(\mathbf{V}_g)\lambda_{\text{max}}(\mathbf{U}_g)\}}{\text{min}_g\{\lambda_{\text{min}}(\mathbf{V}_g)\lambda_{\text{min}}(\mathbf{U}_g)\}} \leq \gamma
+\frac{\text{max}_g\{\lambda_{\text{max}}(\mathbf{V}_g)\lambda_{\text{max}}(\mathbf{U}_g)\}}{\text{min}_g\{\lambda_{\text{min}}(\mathbf{V}_g)\lambda_{\text{min}}(\mathbf{U}_g)\}} \leq \gamma
 $$
 
 # Nested CM1 Flip-Flop steps
@@ -283,7 +283,7 @@ $$
 
 2. Update $\mathbf{U}_g$ for $g = 1,\dots,G$, holding $\mathbf{V}_1,\dots,\mathbf{V}_G$ fixed
 $$
-S^{(s)}_{\mathbf{U}, g} = \frac{1}{cZ_g^{(s)}} \sum_{i=1}^nz_{i,g}^{(s)}(\mathbf{X}_i-\mathbf{M}_g^{(s+1)})\mathbf{V}_g^{-1}(\mathbf{X}_i-\mathbf{M}_g^{(s+1)})^\top
+S^{(s)}_{\mathbf{U}, g} = \frac{1}{rZ_g^{(s)}} \sum_{i=1}^nz_{i,g}^{(s)}(\mathbf{X}_i-\mathbf{M}_g^{(s+1)})\mathbf{V}_g^{-1}(\mathbf{X}_i-\mathbf{M}_g^{(s+1)})^\top
 $$
 Perform spectral decomposition
 $$
@@ -329,7 +329,7 @@ $$
 
 Otherwise we find $\omega_*$ as the root of
 $$
-\sum_{i=1}^n\frac{\omega_*k}{\omega_*k+\frac{1-\omega_*}{n-Z_0^{(s)}}\sum_{g=1}^GZ_g^{(s)}\phi_{r\times c}(\mathbf{X};\mathbf{M}_g^{(s+1)},\mathbf{U}_g^{(s+1)},\mathbf{V}_g^{(s+1)})} = n\pi_{\text{max}}
+\sum_{i=1}^n\frac{\omega_*k}{\omega_*k+\frac{1-\omega_*}{n-Z_0^{(s)}}\sum_{g=1}^GZ_g^{(s)}\phi_{r\times c}(\mathbf{X}_i;\mathbf{M}_g^{(s+1)},\mathbf{U}_g^{(s+1)},\mathbf{V}_g^{(s+1)})} = n\pi_{\text{max}}
 $$
 and set
 
@@ -363,22 +363,30 @@ $$
 0 < \omega_0 \leq \pi_{\max}.
 $$
 
-For each random initialization, approximately $\omega_0 n$ observations are first selected to form an initial noise set $\mathcal C_0$. The remaining observations
+For each random initialization, select a set of observations
 
+$$
+\mathcal C_0 \subset \{1,\dots,n\}
+$$
+with
+$$
+|\mathcal C_0| \leq \lfloor n\pi_{\max}\rfloor
+$$
+
+The remaining observations are
 $$
 \mathcal R = \{1,\dots,n\}\setminus\mathcal C_0
 $$
 
-are then randomly partitioned into $G$ non-empty groups
-
+The observations in $\mathcal R$ are then randomly partitioned into $G$ non-empty groups
 $$
 \mathcal C_1,\dots,\mathcal C_G.
 $$
+The random partition is required to produce sufficiently large groups so that the cluster-specific matrix-normal covariance factors can be estimated as positive-definite matrices. If a proposed partition produces a singular or numerically ill-conditioned covariance estimate, the initialization is rejected and a new partition is generated.
 
 The Gaussian clusters are initialized using the observations in $\mathcal R$, while $\mathcal C_0$ provides an initial set of observations associated with the improper noise component.
 
 For each Gaussian component $g=1,\dots,G$, the initial mean matrix is
-
 $$
 \mathbf M_g^{(0)}
 =
@@ -387,27 +395,25 @@ $$
 $$
 
 The row and column covariance factors are initialized using matrix-normal flip-flop updates. Starting from a positive-definite initial value for $\mathbf V_g$, we alternately update
-
 $$
 \mathbf U_g
 \leftarrow
 \frac{1}{c|\mathcal C_g|}
 \sum_{i\in\mathcal C_g}
-(\mathbf X_i-\mathbf M_g)
+(\mathbf X_i-\mathbf M_g^{(0)})
 \mathbf V_g^{-1}
-(\mathbf X_i-\mathbf M_g)^\top,
+(\mathbf X_i-\mathbf M_g^{(0)})^\top,
 $$
 
 and
-
 $$
 \mathbf V_g
 \leftarrow
 \frac{1}{r|\mathcal C_g|}
 \sum_{i\in\mathcal C_g}
-(\mathbf X_i-\mathbf M_g)^\top
+(\mathbf X_i-\mathbf M_g^{(0)})^\top
 \mathbf U_g^{-1}
-(\mathbf X_i-\mathbf M_g),
+(\mathbf X_i-\mathbf M_g^{(0)}),
 $$
 until the flip-flop iterations converge.
 
@@ -445,29 +451,40 @@ $$
 
 The initial mixture proportions are defined according to the sizes of the initial noise and Gaussian groups:
 $$
-\pi_0^{(0)} = \frac{|\mathcal C_0|}{n},
+\tilde\pi_g^{(0)} = \frac{|\mathcal C_g|}{n - |\mathcal C_0|}, \qquad g=1,\dots,G.
 $$
 
+We then choose an initial noise mixture weight
+$$
+0 \leq \pi_0^{(0)}\leq\pi_{\max}.
+$$
+and set
+$$
+\pi_g^{(0)} = (1-\pi_0^{(0)})\tilde\pi_g^{(0)}, \qquad \forall g = 1, \dots,G
+$$
+So that
+$$
+\pi_0^{(0)} + \sum_{g=1}^G\pi_g^{(0)} = 1
+$$
+
+This ensures that the initial value satisfies the basic noise-proportion constraint. Our initial parameter vector is now
+$$
+\theta^{(0)} = \{\pi_0^{(0)},\pi_1^{(0)},\dots,\pi_G^{(0)},\mathbf{M}_1^{(0)},\dots,\mathbf{M}_G^{(0)}, \mathbf{U}_1^{(0)},\dots,\mathbf{U}_G^{(0)},\mathbf{V}_1^{(0)},\dots,\mathbf{V}_g^{(0)} \}
+$$
+
+The condition
+$$
+\pi_0^{(0)} \leq \pi_{\text{max}}
+$$
+alone does not guarantee that the initial parameter vector satisfies the RIMLE noise constraint, because the constraint is imposed on the average pseudo-posterior probability of the noise component. Therefore, after constructing $\theta^{(0)}$ we calculate
+$$
+z_{i0}^{(0)} - \frac{\pi_0^{(0)}k}{\pi_0^{(0)}k+\sum_{g=1}^G\pi_g^{(0)}\phi_{r \times c}(\mathbf{X}_i;\mathbf{M}_g^{(0)},\mathbf{U}_g^{(0)},\mathbf{V}_g^{(0)})}
+$$
 and
 $$
-\pi_g^{(0)} = \frac{|\mathcal C_g|}{n}, \qquad g=1,\dots,G.
+z_0^{(0)} = \frac{1}{n}\sum^n_{i=1}z_{i0}^{(0)}
 $$
-
-Consequently,
-$$
-\pi_0^{(0)} + \sum_{g=1}^G\pi_g^{(0)} = \frac{|\mathcal C_0|+\sum_{g=1}^G|\mathcal C_g|}{n} = 1.
-$$
-
-The initial noise proportion is required to satisfy
-$$
-\pi_0^{(0)}\leq\pi_{\max}.
-$$
-
-In practice, we choose the initial noise set such that
-$$
-|\mathcal C_0| \leq \lfloor n\pi_{\max}\rfloor.
-$$
-This ensures that the initial value satisfies the basic noise-proportion constraint.
+The initialization is accepted only if $z_0^{(0)} \leq \pi_{\text{max}}$ If this condition is violated, the initialization is rejected. Alternatively, the CM2 update can be applied once to modify the mixing proportions so that the noise constraint is satisfied, after which the resulting parameter vector is used as the starting value for the ECM algorithm.
 
 To avoid singular covariance estimates, the random partition is required to produce sufficiently large non-empty Gaussian groups. If a proposed partition produces a singular or numerically ill-conditioned covariance estimate, that initialization is rejected and a new random partition is generated.
 
@@ -475,7 +492,6 @@ Finally, the initial covariance factors are checked against the global eigenrati
 $$
 \mathbf\Sigma_g = \mathbf V_g\otimes\mathbf U_g
 $$
-
 are all products of eigenvalues of $\mathbf V_g$ and $\mathbf U_g$, the initial value must satisfy
 
 $$
@@ -540,7 +556,7 @@ Finally, the initial covariance matrices are checked against the global eigenrat
 
 If necessary, the covariance factors are regularized using the same eigenvalue-shrinkage procedure as in the CM1 step. The ECM algorithm is then run from the resulting initial value. When multiple initialization are used, the solution with the largest pseudo-log-likelihood is selected.
 
-When automatic $k$-selection is enabled (`estimate_k = TRUE`) and the Hennig--Coretto initialization fails for all candidates on the $k$-grid because the global eigenratio constraint is violated, the implementation automatically increases $q$ by 1 and repeats the entire $k$-grid search. This retry continues until at least one $k$-candidate yields a valid fit, or until $q$ reaches its maximum allowed value $n-1$. When automatic $k$-selection is enabled (`estimate_k = TRUE`) and the Hennig--Coretto initialization fails for all candidates on the $k$-grid because the global eigenratio constraint is violated, the implementation automatically increases $q$ by 1 and repeats the entire $k$-grid search. This retry continues until at least one $k$-candidate yields a valid fit, or until $q$ reaches its maximum allowed value $n-1$. If no valid fit is found after exhausting all $q$ values, the algorithm stops with an error.
+When automatic $k$-selection is enabled (`estimate_k = TRUE`) and the Hennig--Coretto initialization fails for all candidates on the $k$-grid because the global eigenratio constraint is violated, the implementation automatically increases $q$ by 1 and repeats the entire $k$-grid search. This retry continues until at least one $k$-candidate yields a valid fit, or until $q$ reaches its maximum allowed value $n-1$. If no valid fit is found after exhausting all $q$ values, the algorithm stops with an error.
 
 ### K-means++ initialization
 
