@@ -11,6 +11,7 @@ if (!requireNamespace("clusterGeneration", quietly = TRUE)) {
 }
 
 library(RIMLEMV)
+library(mclust)
 library(clusterGeneration)
 
 # ---- Parameters ----

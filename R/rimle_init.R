@@ -195,7 +195,7 @@ rimle_hennig_coretto_init <- function(x_list, g, pi_max = 0.5, q = 3, gamma = 10
 			if (!isNamespaceLoaded("mclust")) {
 				suppressPackageStartupMessages(library(mclust, character.only = TRUE, quietly = TRUE))
 			}
-			mclust::hc(modelName = "EEE", data = x_mat)
+			mclust::hc(data = x_mat)
 		}, error = function(e) NULL)
 		if (!is.null(hc_model)) {
 			cluster_assignments <- mclust::hclass(hc_model, g)
