@@ -176,6 +176,7 @@ for (dim_idx in seq_along(dims)) {
       results[[row_idx]] <- list(
         r = r, p = p, rep = rep, seed = seed,
         init = init_method,
+        n_noise = n_noise,
         correct_noise = NA,
         noise_count = NA,
         selected_k = NA,
@@ -195,6 +196,7 @@ for (dim_idx in seq_along(dims)) {
     results[[row_idx]] <- list(
       r = r, p = p, rep = rep, seed = seed,
       init = init_method,
+      n_noise = n_noise,
       correct_noise = fit_result$correct_noise,
       noise_count = fit_result$noise_count,
       selected_k = fit_result$selected_k,
@@ -215,9 +217,12 @@ for (dim_idx in seq_along(dims)) {
       grid_results[[grid_row_idx]] <- list(
         r = r, p = p, rep = rep, seed = seed,
         init = init_method,
+        n_noise = n_noise,
         k_idx = k_idx,
         k_value = fit_result$k_grid[k_idx],
-        n_used = n_used_vec[k_idx]
+        n_used = n_used_vec[k_idx],
+        selected = fit_result$k_grid[k_idx] == fit_result$selected_k,
+        q_final = if (init_method == "hennig-coretto") q_final else NA_integer_
       )
       grid_row_idx <- grid_row_idx + 1
     }
