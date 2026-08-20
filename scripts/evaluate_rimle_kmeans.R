@@ -18,7 +18,7 @@ set.seed(42)
 n <- 300
 g <- 3
 n_noise <- 15
-n_reps <- 5
+n_reps <- 1
 init_method <- "kmeans"
 q_initial <- 3
 

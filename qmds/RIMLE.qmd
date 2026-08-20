@@ -45,7 +45,7 @@ Here, an improper density is involved, and so these are “pseudo posterior prob
 
 To prevent degeneration of the density function, we define a constrained parameter space $\Theta_n$. This space introduces two types of restrictions:
 
-a) Eigenration constraint, restricts the ration of the largest eigenvalue to the smallest eigenvalue of any covariance matrix across all Gaussian components
+a) Eigenration constraint, restricts the ratio of the largest eigenvalue to the smallest eigenvalue of any covariance matrix across all Gaussian components
 $$
 \lambda_{\text{max}(\theta)} / \lambda_{\text{min}(\theta)} \leq \gamma < +\infty
 $$
