@@ -15,6 +15,8 @@ rimle_check_and_fix_eigenratio_init <- function(U_list, V_list, gamma,
 	g <- length(U_list)
 	if (g == 0) return(list(U = U_list, V = V_list))
 
+	Zg <- rep(1, g)
+
 	for (attempt in seq_len(max_attempts)) {
 		all_u_eigs <- pmax(unlist(lapply(U_list, function(U) {
 			eigen(U, symmetric = TRUE, only.values = TRUE)$values
@@ -28,10 +30,36 @@ rimle_check_and_fix_eigenratio_init <- function(U_list, V_list, gamma,
 
 		if (global_ratio <= gamma) break
 
-		U_list <- lapply(U_list, function(U) {
-			eig <- eigen(U, symmetric = TRUE)
-			eig$vectors %*% diag(0.95 * eig$values) %*% t(eig$vectors)
+		u_max <- max(all_u_eigs, na.rm = TRUE)
+		u_min <- min(all_u_eigs, na.rm = TRUE)
+		gamma_V <- gamma * u_min / u_max
+
+		v_eig_values_list <- lapply(V_list, function(V) {
+			eigen(V, symmetric = TRUE, only.values = TRUE)$values
 		})
+		m_star_v <- rimle_compute_m_star(v_eig_values_list, Zg, gamma_V)
+		for (comp in seq_len(g)) {
+			eig <- eigen(V_list[[comp]], symmetric = TRUE)
+			sh <- rimle_shrinkage(eig$values, m_star_v, gamma_V)
+			V_list[[comp]] <- eig$vectors %*% diag(sh) %*% t(eig$vectors)
+		}
+
+		all_v_eigs <- pmax(unlist(lapply(V_list, function(V) {
+			eigen(V, symmetric = TRUE, only.values = TRUE)$values
+		})), 1e-10)
+		v_max <- max(all_v_eigs, na.rm = TRUE)
+		v_min <- min(all_v_eigs, na.rm = TRUE)
+		gamma_U <- gamma * v_min / v_max
+
+		u_eig_values_list <- lapply(U_list, function(U) {
+			eigen(U, symmetric = TRUE, only.values = TRUE)$values
+		})
+		m_star_u <- rimle_compute_m_star(u_eig_values_list, Zg, gamma_U)
+		for (comp in seq_len(g)) {
+			eig <- eigen(U_list[[comp]], symmetric = TRUE)
+			sh <- rimle_shrinkage(eig$values, m_star_u, gamma_U)
+			U_list[[comp]] <- eig$vectors %*% diag(sh) %*% t(eig$vectors)
+		}
 	}
 
 	list(U = U_list, V = V_list)
@@ -486,7 +514,7 @@ rimle_kmeans_init <- function(x_list, g, pi_max = 0.5, nstart = 10,
     col_covariances[[component]] <- col_cov
   }
 
-  pi0_init <- min(max(0.01, 1 - sum(mixing_proportions)), pi_max)
+  pi0_init <- min(max(0.01, pi_max * 0.1), pi_max)
   remaining <- 1 - pi0_init
   if (sum(mixing_proportions) > 0) {
     mixing_proportions <- mixing_proportions / sum(mixing_proportions) * remaining

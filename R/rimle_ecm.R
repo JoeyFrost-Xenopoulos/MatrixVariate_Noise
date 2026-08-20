@@ -219,7 +219,7 @@ rimle_cm1_step <- function(x_list, params, g, n, gamma,
 		params$M[[comp]] <- M_new / Zg
 	}
 
-	prev_Q <- -Inf
+	prev_Q <- NULL
 	for (ff_iter in seq_len(max_flip_flop)) {
 		all_U_eigs <- unlist(lapply(params$U, function(U) {
 			eigen(U, symmetric = TRUE, only.values = TRUE)$values
@@ -240,8 +240,10 @@ rimle_cm1_step <- function(x_list, params, g, n, gamma,
 		params$U <- rimle_cm1_update_u(x_list, params, g, n, gamma_U)
 
 		current_Q <- rimle_compute_q1(x_list, params, g, n)
-		relative_change <- abs(current_Q - prev_Q) / (abs(prev_Q) + 1e-10)
-		if (relative_change < tol && ff_iter > 1) break
+		if (!is.null(prev_Q)) {
+			relative_change <- abs(current_Q - prev_Q) / (abs(prev_Q) + 1e-10)
+			if (relative_change < tol) break
+		}
 		prev_Q <- current_Q
 	}
 

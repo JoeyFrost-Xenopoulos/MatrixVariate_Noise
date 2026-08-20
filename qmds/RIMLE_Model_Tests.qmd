@@ -4,7 +4,7 @@ format: html
 ---
 
 ```{r}
-r <- 8; p <- 5
+r <- 4; p <- 5
 simulate_group <- function(n, mean_matrix, row_sd = 0.5, col_sd = 0.5) {
 	row_cov <- diag(row_sd, nrow(mean_matrix))
 	col_cov <- diag(col_sd, ncol(mean_matrix))
@@ -25,7 +25,7 @@ library(RIMLEMV)
 library(mclust)
 set.seed(NULL)
 
-rimle_fit(x_list, g = 2, estimate_k = TRUE, init = "hennig-coretto", verbose = TRUE, nstart = 1, q = 4)
+rimle_fit(x_list, g = 2, estimate_k = TRUE, init = "hennig-coretto", verbose = TRUE, nstart = 1)
 
 rimle_fit(x_list_viroli, g = 3, estimate_k = TRUE, init = "hennig-coretto", verbose = TRUE, nstart = 1, q = 4)
 ```
