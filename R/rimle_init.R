@@ -16,15 +16,15 @@ rimle_check_and_fix_eigenratio_init <- function(U_list, V_list, gamma,
 	if (g == 0) return(list(U = U_list, V = V_list))
 
 	for (attempt in seq_len(max_attempts)) {
-		all_u_eigs <- unlist(lapply(U_list, function(U) {
+		all_u_eigs <- pmax(unlist(lapply(U_list, function(U) {
 			eigen(U, symmetric = TRUE, only.values = TRUE)$values
-		}))
-		all_v_eigs <- unlist(lapply(V_list, function(V) {
+		})), 1e-10)
+		all_v_eigs <- pmax(unlist(lapply(V_list, function(V) {
 			eigen(V, symmetric = TRUE, only.values = TRUE)$values
-		}))
+		})), 1e-10)
 
-		global_ratio <- max(all_u_eigs * rep(max(all_v_eigs), length(all_u_eigs))) /
-			min(all_u_eigs * rep(min(all_v_eigs), length(all_u_eigs)))
+		all_products <- as.numeric(outer(all_u_eigs, all_v_eigs))
+		global_ratio <- max(all_products, na.rm = TRUE) / min(all_products, na.rm = TRUE)
 
 		if (global_ratio <= gamma) break
 
@@ -55,24 +55,30 @@ rimle_random_init <- function(x_list, g, pi_max = 0.5, gamma = 1000) {
 	r <- nrow(x_list[[1]])
 	p <- ncol(x_list[[1]])
 
+	noise_size <- sample(seq_len(min(n - g, floor(n * pi_max))), 1)
+	noise_idx <- sample(seq_len(n), noise_size)
+	regular_idx <- setdiff(seq_len(n), noise_idx)
+
 	cluster_assignments <- sample(seq_len(g), n, replace = TRUE)
-	while (length(unique(cluster_assignments)) < g) {
-		cluster_assignments <- sample(seq_len(g), n, replace = TRUE)
+	cluster_assignments[noise_idx] <- NA_integer_
+	while (length(unique(cluster_assignments[regular_idx])) < g) {
+		cluster_assignments[regular_idx] <- sample(seq_len(g), length(regular_idx), replace = TRUE)
 	}
 
 	mixing_proportions <- numeric(g)
 	mean_matrices <- vector("list", g)
 	row_covariances <- vector("list", g)
 	col_covariances <- vector("list", g)
+	regular_n <- length(regular_idx)
 
 	for (component in seq_len(g)) {
-		component_index <- which(cluster_assignments == component)
+		component_index <- regular_idx[cluster_assignments[regular_idx] == component]
 		if (length(component_index) == 0) {
-			component_index <- ((component - 1L) %% n) + 1L
+			component_index <- regular_idx[seq_len(min(1L, regular_n))]
 		}
 
 		component_data <- x_list[component_index]
-		mixing_proportions[component] <- length(component_index) / n
+		mixing_proportions[component] <- length(component_index) / regular_n
 		mean_matrices[[component]] <- Reduce(`+`, component_data) / length(component_data)
 
 		row_cov <- matrix(0, r, r)
@@ -110,8 +116,10 @@ rimle_random_init <- function(x_list, g, pi_max = 0.5, gamma = 1000) {
 
 			row_scale <- sum(diag(row_cov_new)) / r
 
-			row_cov_new <- make_spd(row_cov_new / row_scale)
-			col_cov_new <- make_spd(col_cov_new * row_scale)
+			row_cov_new <- row_cov_new / row_scale
+			col_cov_new <- col_cov_new * row_scale
+			row_cov_new <- make_spd(row_cov_new)
+			col_cov_new <- make_spd(col_cov_new)
 
 			row_cov <- row_cov_new
 			col_cov <- col_cov_new
@@ -121,13 +129,17 @@ rimle_random_init <- function(x_list, g, pi_max = 0.5, gamma = 1000) {
 		col_covariances[[component]] <- col_cov
 	}
 
-	pi0 <- min(max(0.01, 1 - sum(mixing_proportions)), pi_max)
+	pi0 <- noise_size / n
+	if (pi0 > pi_max) pi0 <- pi_max
+	if (pi0 < 0.01) pi0 <- 0.01
 	remaining <- 1 - pi0
 	if (sum(mixing_proportions) > 0) {
 		mixing_proportions <- mixing_proportions / sum(mixing_proportions) * remaining
 	} else {
 		mixing_proportions <- rep(remaining / g, g)
 	}
+
+	cluster_assignments[noise_idx] <- 0L
 
 	fixed <- rimle_check_and_fix_eigenratio_init(row_covariances, col_covariances, gamma)
 

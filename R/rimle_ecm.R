@@ -38,25 +38,16 @@ rimle_loglik <- function(x_list, params, g, k) {
 rimle_check_eigenratio_constraint <- function(params, g, gamma) {
 	if (g <= 0) return(invisible(NULL))
 
-	ratios_max <- numeric(g)
-	ratios_min <- numeric(g)
+	all_products <- numeric(0)
+	global_ratio <- Inf
 	for (comp in seq_len(g)) {
-		u_eigs <- eigen(params$U[[comp]], symmetric = TRUE, only.values = TRUE)$values
-		v_eigs <- eigen(params$V[[comp]], symmetric = TRUE, only.values = TRUE)$values
-		u_max <- max(u_eigs, na.rm = TRUE)
-		u_min <- min(u_eigs, na.rm = TRUE)
-		v_max <- max(v_eigs, na.rm = TRUE)
-		v_min <- min(v_eigs, na.rm = TRUE)
-		if (u_min <= 0 || v_min <= 0) {
-			ratios_max[comp] <- Inf
-			ratios_min[comp] <- 0
-		} else {
-			ratios_max[comp] <- v_max / u_max
-			ratios_min[comp] <- v_min / u_min
-		}
+		u_eigs <- pmax(eigen(params$U[[comp]], symmetric = TRUE, only.values = TRUE)$values, 1e-10)
+		v_eigs <- pmax(eigen(params$V[[comp]], symmetric = TRUE, only.values = TRUE)$values, 1e-10)
+		all_products <- c(all_products, as.numeric(outer(u_eigs, v_eigs)))
 	}
-
-	global_ratio <- max(ratios_max, na.rm = TRUE) / min(ratios_min, na.rm = TRUE)
+	if (length(all_products) > 0) {
+		global_ratio <- max(all_products, na.rm = TRUE) / min(all_products, na.rm = TRUE)
+	}
 	if (!is.finite(global_ratio) || global_ratio > gamma) {
 		warning(sprintf("Global eigenratio constraint violated: %.4f > %.4f", global_ratio, gamma), call. = FALSE)
 	}
