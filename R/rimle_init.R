@@ -273,7 +273,7 @@ rimle_hennig_coretto_init <- function(x_list, g, pi_max = 0.5, q = 3, gamma = 10
 		x_mat <- do.call(rbind, lapply(regular_data, as.vector))
 		hc_err <- NULL
 		hc_model <- tryCatch(
-			mclust::hc(data = x_mat),
+			mclust::hc(data = x_mat, modelName = "EEE"),
 			error = function(e) {
 				hc_err <<- conditionMessage(e)
 				NULL
