@@ -48,7 +48,7 @@ rimle_check_eigenratio_constraint <- function(params, g, gamma) {
 	if (length(all_products) > 0) {
 		global_ratio <- max(all_products, na.rm = TRUE) / min(all_products, na.rm = TRUE)
 	}
-	if (!is.finite(global_ratio) || global_ratio > gamma) {
+	if (!is.finite(global_ratio) || global_ratio > gamma + .Machine$double.eps * gamma) {
 		warning(sprintf("Global eigenratio constraint violated: %.4f > %.4f", global_ratio, gamma), call. = FALSE)
 	}
 	invisible(NULL)

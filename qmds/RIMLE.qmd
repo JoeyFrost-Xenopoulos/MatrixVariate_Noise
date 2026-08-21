@@ -364,7 +364,6 @@ $$
 $$
 
 For each random initialization, select a set of observations
-
 $$
 \mathcal C_0 \subset \{1,\dots,n\}
 $$
@@ -478,7 +477,7 @@ $$
 $$
 alone does not guarantee that the initial parameter vector satisfies the RIMLE noise constraint, because the constraint is imposed on the average pseudo-posterior probability of the noise component. Therefore, after constructing $\theta^{(0)}$ we calculate
 $$
-z_{i0}^{(0)} - \frac{\pi_0^{(0)}k}{\pi_0^{(0)}k+\sum_{g=1}^G\pi_g^{(0)}\phi_{r \times c}(\mathbf{X}_i;\mathbf{M}_g^{(0)},\mathbf{U}_g^{(0)},\mathbf{V}_g^{(0)})}
+z_{i0}^{(0)} = \frac{\pi_0^{(0)}k}{\pi_0^{(0)}k+\sum_{g=1}^G\pi_g^{(0)}\phi_{r \times c}(\mathbf{X}_i;\mathbf{M}_g^{(0)},\mathbf{U}_g^{(0)},\mathbf{V}_g^{(0)})}
 $$
 and
 $$
