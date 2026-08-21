@@ -487,8 +487,14 @@ mv_parallel_worker_setup <- function() {
 
 	required_packages <- c("mclust")
 	for (pkg in required_packages) {
-		if (requireNamespace(pkg, quietly = TRUE)) {
+		have_pkg <- requireNamespace(pkg, quietly = TRUE)
+		message(sprintf("[worker_setup] requireNamespace(%s) = %s", pkg, have_pkg))
+		if (have_pkg) {
 			loadNamespace(pkg)
+			ns_ok <- "package:mclust" %in% search()
+			ns_exports_ok <- "hcVVV" %in% getNamespaceExports(pkg)
+			message(sprintf("[worker_setup] %s loaded on search path = %s", pkg, ns_ok))
+			message(sprintf("[worker_setup] %s exports hcVVV = %s", pkg, ns_exports_ok))
 		}
 	}
 
