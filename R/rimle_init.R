@@ -272,13 +272,13 @@ rimle_hennig_coretto_init <- function(x_list, g, pi_max = 0.5, q = 3, gamma = 10
 	if (requireNamespace("mclust", quietly = TRUE)) {
 		x_mat <- do.call(rbind, lapply(regular_data, as.vector))
 		hc_err <- NULL
-		hc_model <- tryCatch({
-			suppressPackageStartupMessages(library(mclust, character.only = TRUE, quietly = TRUE, warn.conflicts = FALSE))
-			mclust::hc(data = x_mat)
-		}, error = function(e) {
-			hc_err <<- conditionMessage(e)
-			NULL
-		})
+		hc_model <- tryCatch(
+			mclust::hc(data = x_mat),
+			error = function(e) {
+				hc_err <<- conditionMessage(e)
+				NULL
+			}
+		)
 		if (!is.null(hc_model)) {
 			cluster_assignments <- mclust::hclass(hc_model, g)
 		} else {

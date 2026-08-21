@@ -484,6 +484,14 @@ mv_parallel_worker_setup <- function() {
 	)
 
 	private_env <- new.env(parent = baseenv())
+
+	required_packages <- c("mclust")
+	for (pkg in required_packages) {
+		if (requireNamespace(pkg, quietly = TRUE)) {
+			loadNamespace(pkg)
+		}
+	}
+
 	for (f in source_files) {
 		fp <- file.path(r_dir, f)
 		if (file.exists(fp)) {
