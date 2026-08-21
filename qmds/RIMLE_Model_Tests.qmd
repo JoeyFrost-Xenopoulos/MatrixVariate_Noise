@@ -28,7 +28,7 @@ set.seed(NULL)
 rimle_fit(x_list, g = 2, estimate_k = TRUE, init = "hennig-coretto", verbose = TRUE, nstart = 1)
 
 set.seed(1301)
-rimle_fit(x_list_viroli, g = 3, estimate_k = TRUE, init = "hennig-coretto", verbose = TRUE, nstart = 1, q = 5)
+rimle_fit(x_list_viroli, g = 3, estimate_k = TRUE, init = "hennig-coretto", verbose = TRUE, nstart = 1, use_parallel = TRUE, n_cores = 12)
 ```
 
 
