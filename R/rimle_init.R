@@ -269,30 +269,30 @@ rimle_hennig_coretto_init <- function(x_list, g, pi_max = 0.5, q = 3, gamma = 10
 
 	regular_data <- x_list[regular_idx]
 
-	if (requireNamespace("mclust", quietly = TRUE)) {
-		x_mat <- do.call(rbind, lapply(regular_data, as.vector))
-		hc_err <- NULL
-		hc_model <- tryCatch(
-			mclust::hc(data = x_mat, modelName = "EEE"),
-			error = function(e) {
-				hc_err <<- conditionMessage(e)
-				NULL
-			}
-		)
-		if (!is.null(hc_model)) {
-			cluster_assignments <- mclust::hclass(hc_model, g)
-		} else {
-			warning(sprintf("mclust::hc initialization failed: %s; using base R hclust.", hc_err), call. = FALSE)
-			d <- dist(x_mat)
-			hc <- hclust(d, method = "ward.D2")
-			cluster_assignments <- cutree(hc, k = g)
-		}
+	x_mat <- do.call(rbind, lapply(regular_data, as.vector))
+	hc_err <- NULL
+	hc_model <- tryCatch({
+	# mclust::hc internally does do.call(paste0("hc", modelName), ...),
+	# which fails ("could not find function hcXXX") when mclust is loaded
+	# but not attached. Call the model-specific function via the namespace
+	# directly; this resolves regardless of attachment state.
+	hc_fun <- tryCatch(
+		get(paste0("hc", "EEE"), envir = asNamespace("mclust"), mode = "function"),
+		error = function(e) NULL
+	)
+	if (is.null(hc_fun)) stop("mclust hcEEE unavailable")
+	hc_fun(stats::dist(x_mat))
+	}, error = function(e) {
+	hc_err <<- conditionMessage(e)
+	NULL
+	})
+	if (!is.null(hc_model)) {
+	cluster_assignments <- mclust::hclass(hc_model, g)
 	} else {
-		warning("mclust package not available; using base R hclust for initialization.", call. = FALSE)
-		x_mat <- do.call(rbind, lapply(regular_data, as.vector))
-		d <- dist(x_mat)
-		hc <- hclust(d, method = "ward.D2")
-		cluster_assignments <- cutree(hc, k = g)
+	warning(sprintf("mclust::hc initialization failed: %s; using base R hclust.", hc_err), call. = FALSE)
+	d <- dist(x_mat)
+	hc <- hclust(d, method = "ward.D2")
+	cluster_assignments <- cutree(hc, k = g)
 	}
 
 	mixing_proportions <- numeric(g)
